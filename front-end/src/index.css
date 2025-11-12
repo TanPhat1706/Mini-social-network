@@ -1,0 +1,16 @@
+/* src/index.css */
+
+/* 1. Import Font Roboto */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+/* 2. CSS Reset cơ bản */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  background-color: #f4f6f8; /* Một màu nền xám nhẹ cho toàn bộ app */
+}
