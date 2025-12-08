@@ -1,23 +1,39 @@
+/* File CSS mặc định (Ví dụ: index.css hoặc App.css) */
+
+:root {
+  /* Định nghĩa các biến màu nếu cần */
+  /* color-scheme: light dark; */
+  /* color: rgba(255, 255, 255, 0.87); */
+  /* background-color: #242424; */
+}
+
+/* Cấu hình vùng chứa gốc */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+  max-width: 1280px; /* Chiều rộng tối đa */
+  margin: 0 auto;    /* Căn giữa */
+  padding: 2rem;     /* Đệm xung quanh */
   text-align: center;
 }
 
+/* Style cho logo (thường là logo Vite/React) */
 .logo {
   height: 6em;
   padding: 1.5em;
-  will-change: filter;
+  will-change: filter; /* Khai báo để tối ưu hóa hiệu suất */
   transition: filter 300ms;
 }
+
+/* Hiệu ứng đổ bóng khi hover */
 .logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+  filter: drop-shadow(0 0 2em #646cffaa); /* Màu xanh tím */
 }
 
+/* Hiệu ứng đổ bóng cho logo React khi hover */
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa); /* Màu xanh React */
+}
+
+/* Định nghĩa animation quay */
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);
@@ -27,16 +43,19 @@
   }
 }
 
+/* Áp dụng animation quay cho logo (trừ khi người dùng ưu tiên giảm chuyển động) */
 @media (prefers-reduced-motion: no-preference) {
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
   }
 }
 
+/* Style cho các thành phần thẻ (Card) */
 .card {
   padding: 2em;
 }
 
+/* Style cho văn bản "Read the docs" */
 .read-the-docs {
   color: #888;
 }
