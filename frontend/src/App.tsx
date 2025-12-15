@@ -1,66 +1,36 @@
-// src/App.tsx
-import React from 'react';
-// Import các thành phần định tuyến
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-// Import các trang và Context
-import AuthPage from './pages/AuthPage';
-import HomePage from './pages/HomePage'; 
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Profile from './pages/Profile';
+import type { JSX } from 'react';
 
-// --- 1. ĐỊNH NGHĨA PROPS CHO PROTECTED ROUTE ---
-/**
- * Định nghĩa kiểu dữ liệu cho props của ProtectedRoute.
- * Chỉ nhận children (các component được bọc bên trong).
- */
-interface ProtectedRouteProps {
-    children: React.ReactNode;
-}
-
-// --- 2. COMPONENT ROUTE BẢO VỆ (PROTECTED ROUTE) ---
-/**
- * Component kiểm tra trạng thái đăng nhập của người dùng.
- * Nếu không có currentUser, chuyển hướng về trang /login.
- */
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  // Lấy trạng thái đăng nhập từ AuthContext
-  const { currentUser } = useAuth();
-  
-  if (!currentUser) {
-    // Nếu chưa đăng nhập, chuyển hướng về /login và thay thế lịch sử trình duyệt
-    return <Navigate to="/login" replace />;
-  }
-  // Nếu đã đăng nhập, hiển thị component con (children)
-  return <>{children}</>;
+// Component bảo vệ route
+const PrivateRoute = ({ children }: { children: JSX.Element }) => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? children : <Navigate to="/login" />;
 };
 
-// --- 3. COMPONENT CHÍNH APP ---
-const App: React.FC = () => {
+function App() {
   return (
-    <Router>
-      {/* AuthProvider bao bọc toàn bộ ứng dụng để chia sẻ trạng thái xác thực */}
-      <AuthProvider>
+    <AuthProvider>
+      <BrowserRouter>
         <Routes>
-          
-          {/* 1. Public Routes: Các trang công khai (Login, Register) */}
-          <Route path="/login" element={<AuthPage />} />
-          <Route path="/register" element={<AuthPage />} />
-          
-          {/* 2. Protected Route: Trang cần xác thực (HomePage) */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route 
-            path="/home" 
+            path="/profile" 
             element={
-              <ProtectedRoute>
-                <HomePage />
-              </ProtectedRoute>
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
             } 
           />
-          
-          {/* 3. Catch-all Route: Xử lý các đường dẫn không khớp, chuyển hướng về /login */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
-          
+          {/* Mặc định vào profile nếu sai đường dẫn */}
+          <Route path="*" element={<Navigate to="/profile" />} />
         </Routes>
-      </AuthProvider>
-    </Router>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
