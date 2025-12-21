@@ -15,3 +15,10 @@ export interface User {
 export interface AuthResponse {
   token: string;
 }
+
+export interface UpdateProfileData {
+  fullName?: string;
+  className?: string;
+  bio?: string;
+  avatarUrl?: string;
+}

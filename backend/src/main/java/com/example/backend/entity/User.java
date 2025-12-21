@@ -31,7 +31,7 @@ public class User {
     @Column(length = 50)
     private String role; // "STUDENT", "ADMIN"
 
-    @Column(name = "avatar_url", length = 50)
+    @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 
     @Column(columnDefinition = "nvarchar(50)")

@@ -8,6 +8,7 @@ import com.example.backend.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.example.backend.dto.UpdateProfileRequest;
 
 import java.time.LocalDateTime;
 
@@ -73,5 +74,26 @@ public class AuthService {
         // 5. Tạo JWT Token
         // Lưu ý: Dùng studentCode làm định danh (subject) trong Token
         return jwtUtil.generateToken(user.getStudentCode());
+    }
+
+    public User updateProfile(String studentCode, UpdateProfileRequest req) {
+        User user = userRepository.findByStudentCode(studentCode)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Chỉ cập nhật nếu dữ liệu gửi lên không bị null (có thay đổi)
+        if (req.getFullName() != null && !req.getFullName().isEmpty()) {
+            user.setFullName(req.getFullName());
+        }
+        if (req.getClassName() != null) {
+            user.setClassName(req.getClassName());
+        }
+        if (req.getBio() != null) {
+            user.setBio(req.getBio());
+        }
+        if (req.getAvatarUrl() != null) {
+            user.setAvatarUrl(req.getAvatarUrl());
+        }
+
+        return userRepository.save(user);
     }
 }

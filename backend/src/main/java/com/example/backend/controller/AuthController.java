@@ -10,6 +10,7 @@ import com.example.backend.dto.RegisterRequest;
 import com.example.backend.entity.User;
 import com.example.backend.service.AuthService;
 import com.example.backend.repository.UserRepository; // 1. Import Repository
+import com.example.backend.dto.UpdateProfileRequest;
 
 import java.util.Collections; // 2. Sửa import đúng (java.util)
 
@@ -56,5 +57,17 @@ public class AuthController {
 
         user.setPassword(null); // Ẩn mật khẩu hash trước khi trả về
         return ResponseEntity.ok(user);
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@RequestBody UpdateProfileRequest req) {
+        try {
+            String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
+            User updatedUser = authService.updateProfile(studentCode, req);
+            updatedUser.setPassword(null); // Ẩn mật khẩu
+            return ResponseEntity.ok(updatedUser);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

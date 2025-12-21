@@ -246,3 +246,98 @@ body {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* --- Edit Modal --- */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s;
+}
+
+.modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: 15px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  animation: slideUp 0.3s;
+}
+
+.modal-header {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  color: var(--text-dark);
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-secondary {
+  background: #e0e0e0;
+  color: #333;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.btn-secondary:hover { background: #d0d0d0; }
+
+.btn-save {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.btn-save:hover { background: var(--secondary-color); }
+/* --- Facebook Style Avatar Upload --- */
+.avatar-upload-wrapper {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.avatar-upload-wrapper:hover .camera-overlay {
+  opacity: 1;
+}
+
+.camera-overlay {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  background-color: #d8dadf;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid white;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.camera-icon {
+  font-size: 20px;
+}
+
+/* Ẩn input file mặc định xấu xí đi */
+input[type="file"] {
+  display: none;
+}
