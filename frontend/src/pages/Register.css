@@ -1,0 +1,96 @@
+/* src/pages/Register.css */
+.register-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--bg-body);
+  padding: 20px;
+}
+
+.register-content {
+  background: var(--bg-card);
+  padding: 40px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-md);
+  width: 100%;
+  max-width: 500px; /* Form đăng ký rộng hơn chút */
+  text-align: center;
+}
+
+.reg-brand {
+  font-size: 40px;
+  font-weight: 800;
+  background: linear-gradient(45deg, #1877F2, #00C6FF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 10px;
+  display: inline-block;
+}
+
+.reg-subtitle {
+  color: var(--text-sub);
+  font-size: 16px;
+  margin-bottom: 30px;
+}
+
+.reg-form-group {
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.reg-row {
+  display: flex;
+  gap: 16px;
+}
+
+.modern-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #dddfe2;
+  border-radius: var(--radius-btn);
+  font-size: 15px;
+  transition: 0.2s;
+  background: #f5f6f7;
+  color: var(--text-main);
+}
+
+.modern-input:focus {
+  background: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(24, 119, 242, 0.2);
+  outline: none;
+}
+
+.btn-submit-reg {
+  width: 100%;
+  background-color: #42b72a; /* Màu xanh lá đặc trưng cho hành động tạo mới */
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 12px;
+  border: none;
+  border-radius: var(--radius-btn);
+  cursor: pointer;
+  margin-top: 10px;
+  transition: transform 0.1s;
+}
+
+.btn-submit-reg:hover {
+  background-color: #36a420;
+  transform: translateY(-1px);
+}
+
+.reg-footer {
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+.link-login {
+  color: var(--primary);
+  font-weight: 600;
+  margin-left: 5px;
+  cursor: pointer;
+}
+.link-login:hover { text-decoration: underline; }

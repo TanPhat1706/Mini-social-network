@@ -1,0 +1,102 @@
+.header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--header-height);
+  background-color: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 24px;
+  z-index: 1000;
+}
+
+.brand-logo {
+  font-size: 26px;
+  font-weight: 800;
+  background: linear-gradient(45deg, #1877F2, #00C6FF); /* Gradient đẹp */
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  cursor: pointer;
+  letter-spacing: -0.5px;
+}
+
+.search-bar {
+  background-color: var(--bg-body);
+  padding: 12px 20px;
+  border-radius: 50px;
+  border: 1px solid transparent;
+  width: 280px;
+  color: var(--text-main);
+  font-size: 15px;
+  transition: 0.2s;
+}
+.search-bar:focus {
+  background-color: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(24, 119, 242, 0.2);
+  outline: none;
+}
+
+.nav-group { display: flex; gap: 12px; }
+
+.nav-item {
+  width: 44px; height: 44px;
+  background-color: var(--bg-body);
+  border-radius: 50%;
+  display: flex; justify-content: center; align-items: center;
+  cursor: pointer;
+  font-size: 20px;
+  color: var(--text-main);
+}
+.nav-item:hover {
+  background-color: #d8dadf;
+  transform: translateY(-2px); /* Hiệu ứng nhấc nhẹ */
+}
+.nav-item.active {
+  color: var(--primary);
+  background-color: rgba(24, 119, 242, 0.1);
+}
+
+/* Badge số lượng thông báo (chấm đỏ) */
+.badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: #e41e3f; /* Màu đỏ thông báo */
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 10px;
+  border: 2px solid var(--bg-card);
+}
+
+/* Container cho icon để đặt badge */
+.nav-icon-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Dropdown menu */
+.notification-dropdown {
+  position: absolute;
+  top: 55px; /* Cách header một chút */
+  right: 10px;
+  width: 360px;
+  max-height: 80vh; /* Giới hạn chiều cao */
+  overflow-y: auto;
+  background-color: var(--bg-card);
+  border-radius: var(--radius-card);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+  padding: 8px;
+  animation: fadeIn 0.2s ease-out;
+  border: 1px solid #dddfe2;
+}
+
+/* Scrollbar cho dropdown đẹp hơn */
+.notification-dropdown::-webkit-scrollbar { width: 6px; }
+.notification-dropdown::-webkit-scrollbar-thumb { background: #bcc0c4; border-radius: 4px; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }

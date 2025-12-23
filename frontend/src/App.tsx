@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import Home from './pages/Home'; 
 import type { JSX } from 'react';
 
 // Component bảo vệ route
@@ -18,6 +19,17 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          
+          {/* Trang chủ (Home) - Cần đăng nhập mới xem được */}
+          <Route 
+            path="/" 
+            element={
+              <PrivateRoute>
+                <Home />
+              </PrivateRoute>
+            } 
+          />
+
           <Route 
             path="/profile" 
             element={
@@ -26,8 +38,8 @@ function App() {
               </PrivateRoute>
             } 
           />
-          {/* Mặc định vào profile nếu sai đường dẫn */}
-          <Route path="*" element={<Navigate to="/profile" />} />
+          {/* Nếu sai đường dẫn thì về trang chủ */}
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

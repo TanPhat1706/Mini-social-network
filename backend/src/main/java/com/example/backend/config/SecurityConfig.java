@@ -47,9 +47,9 @@ public class SecurityConfig {
                     return cfg;
                 }))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/friends/**").authenticated()
                         .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
-                        .requestMatchers("/uploads/**").permitAll() // <--- THÊM DÒNG NÀY (Cho phép xem ảnh không cần
-                                                                    // login)
+                        .requestMatchers("/uploads/**").permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(daoAuthenticationProvider())

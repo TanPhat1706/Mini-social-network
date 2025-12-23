@@ -1,343 +1,43 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+/* src/index.css */
 
-:root {
-  --primary-color: #667eea;
-  --secondary-color: #764ba2;
-  --accent-color: #00d2ff;
-  --text-dark: #333;
-  --text-light: #666;
-  --bg-color: #f3f4f6;
-  --white: #ffffff;
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  --input-bg: #f5f7fa;
-}
-
-* {
+/* 1. Reset lề mặc định của trình duyệt */
+body {
   margin: 0;
   padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased; /* Giúp chữ mượt hơn trên Mac */
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f0f2f5; /* Màu nền dự phòng nếu biến CSS chưa load */
+}
+
+/* 2. Đảm bảo ứng dụng luôn full chiều cao màn hình */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+/* 3. Quy tắc Box-Sizing (Rất quan trọng để không vỡ layout) */
+*, *::before, *::after {
   box-sizing: border-box;
 }
 
-body {
-  font-family: 'Poppins', sans-serif;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  min-height: 100vh;
-  color: var(--text-dark);
-}
-
-/* --- Authentication (Login/Register) --- */
-.auth-wrapper {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  padding: 20px;
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-}
-
-.auth-card {
-  background: var(--white);
-  width: 100%;
-  max-width: 450px;
-  padding: 40px;
-  border-radius: 20px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-  text-align: center;
-  animation: slideUp 0.5s ease-out;
-}
-
-.auth-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text-dark);
-  margin-bottom: 10px;
-}
-
-.auth-subtitle {
-  color: var(--text-light);
-  margin-bottom: 30px;
-  font-size: 14px;
-}
-
-.form-group {
-  margin-bottom: 20px;
-  text-align: left;
-}
-
-.form-input {
-  width: 100%;
-  padding: 14px 16px;
-  border: 2px solid transparent;
-  background-color: var(--input-bg);
-  border-radius: 12px;
-  font-size: 15px;
-  transition: all 0.3s ease;
-  outline: none;
-}
-
-.form-input:focus {
-  background-color: var(--white);
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-}
-
-.btn-primary {
-  width: 100%;
-  padding: 14px;
-  background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
-  color: var(--white);
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(118, 75, 162, 0.3);
-}
-
-.auth-footer {
-  margin-top: 25px;
-  font-size: 14px;
-  color: var(--text-light);
-}
-
-.auth-link {
-  color: var(--primary-color);
-  font-weight: 600;
+/* 4. Reset thẻ a (link) để không bị gạch chân xấu xí */
+a {
   text-decoration: none;
-  margin-left: 5px;
+  color: inherit;
 }
 
-.auth-link:hover {
-  text-decoration: underline;
+/* 5. Reset các thẻ danh sách */
+ul, ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-/* --- Profile Page --- */
-.profile-wrapper {
-  max-width: 900px;
-  margin: 40px auto;
-  padding: 0 20px;
-}
-
-.profile-card {
-  background: var(--white);
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: var(--shadow);
-  animation: fadeIn 0.6s ease;
-}
-
-.profile-cover {
-  height: 200px;
-  background: linear-gradient(to right, #8e2de2, #4a00e0);
-  position: relative;
-}
-
-.profile-avatar-container {
-  display: flex;
-  justify-content: center;
-  margin-top: -75px;
-  position: relative;
-}
-
-.profile-avatar {
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  border: 5px solid var(--white);
-  object-fit: cover;
-  background-color: #ddd;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-
-.profile-info {
-  text-align: center;
-  padding: 20px 40px 40px;
-}
-
-.profile-name {
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--text-dark);
-}
-
-.profile-role {
-  display: inline-block;
-  padding: 4px 12px;
-  background-color: #e0e7ff;
-  color: var(--primary-color);
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 600;
-  margin: 10px 0;
-}
-
-.profile-stats {
-  display: flex;
-  justify-content: center;
-  gap: 40px;
-  margin: 25px 0;
-  padding: 20px 0;
-  border-top: 1px solid #eee;
-  border-bottom: 1px solid #eee;
-}
-
-.stat-item h4 {
-  font-size: 20px;
-  color: var(--text-dark);
-}
-.stat-item p {
-  font-size: 13px;
-  color: var(--text-light);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.profile-details-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  text-align: left;
-  margin-top: 20px;
-}
-
-.detail-box {
-  background: var(--input-bg);
-  padding: 15px;
-  border-radius: 12px;
-}
-
-.detail-label {
-  font-size: 12px;
-  color: var(--text-light);
-  margin-bottom: 5px;
-}
-.detail-value {
-  font-weight: 600;
-  color: var(--text-dark);
-}
-
-.btn-logout {
-  background-color: #ff4757;
-  color: white;
-  border: none;
-  padding: 10px 25px;
-  border-radius: 30px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 20px;
-  transition: all 0.2s;
-}
-.btn-logout:hover {
-  background-color: #ff6b81;
-  transform: translateY(-2px);
-}
-
-/* Animations */
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* --- Edit Modal --- */
-.modal-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  animation: fadeIn 0.3s;
-}
-
-.modal-content {
-  background: white;
-  padding: 30px;
-  border-radius: 15px;
-  width: 90%;
-  max-width: 500px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-  animation: slideUp 0.3s;
-}
-
-.modal-header {
-  font-size: 20px;
-  font-weight: bold;
-  margin-bottom: 20px;
-  color: var(--text-dark);
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.btn-secondary {
-  background: #e0e0e0;
-  color: #333;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-}
-.btn-secondary:hover { background: #d0d0d0; }
-
-.btn-save {
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-}
-.btn-save:hover { background: var(--secondary-color); }
-/* --- Facebook Style Avatar Upload --- */
-.avatar-upload-wrapper {
-  position: relative;
-  display: inline-block;
-  cursor: pointer;
-}
-
-.avatar-upload-wrapper:hover .camera-overlay {
-  opacity: 1;
-}
-
-.camera-overlay {
-  position: absolute;
-  bottom: 5px;
-  right: 5px;
-  background-color: #d8dadf;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border: 2px solid white;
-  opacity: 0.8;
-  transition: opacity 0.2s;
-}
-
-.camera-icon {
-  font-size: 20px;
-}
-
-/* Ẩn input file mặc định xấu xí đi */
-input[type="file"] {
-  display: none;
+/* 6. Font cho code (không bắt buộc, nhưng tốt nếu debug) */
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
 }

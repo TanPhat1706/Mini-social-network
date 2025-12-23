@@ -1,0 +1,152 @@
+.profile-page { padding-top: var(--header-height); min-height: 100vh; background: var(--bg-card); }
+
+.cover-section {
+  position: relative;
+  background: linear-gradient(to bottom, #fff, #f0f2f5);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  padding-bottom: 20px;
+}
+
+.cover-photo {
+  max-width: 1100px; margin: 0 auto; height: 360px;
+  background: linear-gradient(135deg, #1877F2, #00C6FF, #0072ff); /* Gradient đẹp */
+  border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
+}
+
+.profile-header-content {
+  max-width: 1000px; margin: 0 auto;
+  padding: 0 20px; display: flex; align-items: flex-end; gap: 20px;
+  margin-top: -40px; /* Avatar đè lên cover */
+}
+
+.profile-avatar-xl {
+  width: 170px; height: 170px; border-radius: 50%;
+  border: 5px solid white; object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.profile-details { flex: 1; padding-bottom: 10px; }
+.profile-fullname { font-size: 32px; font-weight: 800; color: #1c1e21; margin: 0; }
+.profile-bio { font-size: 16px; color: var(--text-sub); margin-top: 5px; }
+
+.btn-edit-profile {
+  background: var(--secondary); color: #050505;
+  border: none; padding: 10px 16px; border-radius: 8px;
+  font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  margin-bottom: 15px;
+}
+.btn-edit-profile:hover { background: #d8dadf; }
+
+.profile-body {
+  background: var(--bg-body); padding-top: 24px; min-height: 500px;
+}
+.profile-container {
+  max-width: 1050px; margin: 0 auto; display: flex; gap: 20px; padding: 0 20px;
+}
+
+.profile-card {
+  background: white; border-radius: var(--radius-card); padding: 20px;
+  box-shadow: var(--shadow-sm); margin-bottom: 20px;
+}
+.card-title { font-size: 20px; font-weight: 700; margin-bottom: 15px; color: #1c1e21; }
+.info-row { display: flex; gap: 10px; margin-bottom: 10px; color: var(--text-main); font-size: 15px; }
+
+/* --- PHẦN MODAL (POPUP) MỚI --- */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8); /* Nền trắng mờ hiện đại */
+  backdrop-filter: blur(5px); /* Hiệu ứng kính mờ */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: var(--radius-card);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+  animation: slideUp 0.3s ease-out;
+}
+
+.modal-header {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 20px;
+  text-align: center;
+  color: #1c1e21;
+}
+
+.close-btn {
+  position: absolute;
+  top: 15px; right: 20px;
+  font-size: 24px;
+  cursor: pointer;
+  color: #65676b;
+  transition: 0.2s;
+}
+.close-btn:hover { color: #1c1e21; }
+
+.avatar-upload-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.edit-avatar-preview {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid var(--bg-body);
+  box-shadow: var(--shadow-sm);
+}
+
+.camera-icon {
+  position: absolute;
+  bottom: 0;
+  background: var(--bg-card);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  font-size: 18px;
+  transition: 0.2s;
+}
+.camera-icon:hover { transform: scale(1.1); background: #e4e6eb; }
+
+.modal-form-group { margin-bottom: 15px; }
+.modal-label { font-size: 14px; font-weight: 600; color: var(--text-sub); margin-bottom: 5px; display: block; }
+
+.btn-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-cancel {
+  background: var(--secondary);
+  color: #050505;
+  padding: 10px 20px;
+  border-radius: var(--radius-btn);
+  border: none; font-weight: 600; cursor: pointer;
+}
+.btn-save {
+  background: var(--primary);
+  color: white;
+  padding: 10px 20px;
+  border-radius: var(--radius-btn);
+  border: none; font-weight: 600; cursor: pointer;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }

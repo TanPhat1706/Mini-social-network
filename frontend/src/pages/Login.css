@@ -1,0 +1,94 @@
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--bg-body);
+  padding: 20px;
+}
+
+.auth-content {
+  display: flex;
+  align-items: center;
+  max-width: 1000px;
+  width: 100%;
+  gap: 60px;
+}
+
+/* Phần giới thiệu bên trái */
+.auth-intro { flex: 1; }
+.auth-logo {
+  font-size: 56px;
+  font-weight: 800;
+  background: linear-gradient(45deg, #1877F2, #00C6FF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 10px;
+}
+.auth-desc {
+  font-size: 24px;
+  line-height: 1.4;
+  color: #333;
+}
+
+/* Phần Form bên phải */
+.auth-form-box {
+  flex: 0.8;
+  background: var(--bg-card);
+  padding: 30px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #dddfe2;
+  border-radius: var(--radius-btn);
+  font-size: 16px;
+  margin-bottom: 16px;
+  transition: 0.2s;
+}
+.auth-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(24, 119, 242, 0.2);
+  outline: none;
+}
+
+.btn-primary {
+  width: 100%;
+  background-color: var(--primary);
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 12px;
+  border: none;
+  border-radius: var(--radius-btn);
+  cursor: pointer;
+}
+.btn-primary:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
+
+.btn-success {
+  background-color: #42b72a;
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--radius-btn);
+  cursor: pointer;
+  margin-top: 20px;
+  display: inline-block;
+}
+.btn-success:hover { background-color: #36a420; }
+
+.divider { border-bottom: 1px solid #dadde1; margin: 24px 0; }
+.auth-link { color: var(--primary); font-size: 14px; cursor: pointer; }
+.auth-link:hover { text-decoration: underline; }
+
+/* Responsive Mobile */
+@media (max-width: 800px) {
+  .auth-content { flex-direction: column; gap: 30px; text-align: center; }
+  .auth-intro { margin-bottom: 20px; }
+}

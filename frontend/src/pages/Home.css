@@ -1,0 +1,51 @@
+.home-wrapper {
+  padding-top: calc(var(--header-height) + 24px);
+  min-height: 100vh;
+  display: flex; justify-content: center;
+  max-width: 1200px; margin: 0 auto;
+  gap: 30px; padding-left: 16px; padding-right: 16px;
+}
+
+.feed-column { width: 680px; flex-shrink: 0; }
+
+.sidebar-column {
+  width: 360px; flex-shrink: 0;
+  position: sticky; top: 85px; height: fit-content;
+  display: flex; flexDirection: column; gap: 20px;
+}
+
+/* Box Đăng bài đẹp hơn */
+.create-post-box {
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
+  padding: 16px; margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 16px;
+}
+.cp-top { display: flex; gap: 12px; align-items: center; }
+.cp-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+.cp-input {
+  flex: 1; background: var(--bg-body); border: none; border-radius: 25px;
+  padding: 12px 20px; font-size: 15px; transition: 0.2s;
+  color: var(--text-main);
+}
+.cp-input:hover { background: #e4e6eb; }
+.cp-input:focus { outline: none; background: #e4e6eb; }
+
+.cp-btn {
+  background: var(--primary); color: white; border: none; border-radius: var(--radius-btn);
+  padding: 10px; font-weight: 600; cursor: pointer; width: 100%;
+}
+.cp-btn:disabled { background: var(--secondary); color: #bcc0c4; cursor: not-allowed; }
+
+/* Style cho các Card bên Sidebar (Requests, Suggested) */
+.sidebar-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+}
+.sidebar-title {
+  font-size: 16px; font-weight: 700; color: var(--text-sub);
+  margin-bottom: 16px; display: flex; justify-content: space-between;
+}

@@ -1,0 +1,21 @@
+.footer {
+  text-align: center;
+  color: #65676b;
+  font-size: 13px;
+  padding: 30px 0;
+  border-top: 1px solid #dddfe2;
+  width: 100%;
+  background-color: var(--bg-body); /* Hoặc màu trắng nếu muốn */
+  margin-top: 40px; /* Cách nội dung bên trên ra một chút */
+}
+
+.footer-links {
+  margin-top: 8px;
+  font-size: 12px;
+}
+.footer-links span {
+  margin: 0 8px;
+  cursor: pointer;
+  color: #65676b;
+}
+.footer-links span:hover { text-decoration: underline; }
