@@ -1,16 +1,9 @@
-package com.example.backend.controller;
+package com.example.backend.User;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-
-import com.example.backend.dto.LoginRequest;
-import com.example.backend.dto.RegisterRequest;
-import com.example.backend.entity.User;
-import com.example.backend.service.AuthService;
-import com.example.backend.repository.UserRepository; // 1. Import Repository
-import com.example.backend.dto.UpdateProfileRequest;
 
 import java.util.Collections; // 2. Sửa import đúng (java.util)
 

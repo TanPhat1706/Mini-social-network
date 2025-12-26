@@ -1,10 +1,8 @@
-package com.example.backend.service;
+package com.example.backend.FriendRequest;
 
-import com.example.backend.dto.FriendshipDTO;
-import com.example.backend.entity.Friendship;
-import com.example.backend.entity.User;
-import com.example.backend.repository.FriendshipRepository;
-import com.example.backend.repository.UserRepository;
+import com.example.backend.User.User;
+import com.example.backend.User.UserRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,12 +13,15 @@ import java.util.stream.Collectors;
 
 @Service
 public class FriendshipService {
-    @Autowired FriendshipRepository friendshipRepository;
-    @Autowired UserRepository userRepository;
+    @Autowired
+    FriendshipRepository friendshipRepository;
+    @Autowired
+    UserRepository userRepository;
 
     // Gửi lời mời (Xử lý cả việc khôi phục DELETED)
     public String sendRequest(Integer senderId, Integer receiverId) {
-        if (senderId.equals(receiverId)) throw new RuntimeException("Không thể kết bạn với chính mình");
+        if (senderId.equals(receiverId))
+            throw new RuntimeException("Không thể kết bạn với chính mình");
 
         Optional<Friendship> existing = friendshipRepository.findFriendship(senderId, receiverId);
 
@@ -65,7 +66,7 @@ public class FriendshipService {
     public String removeFriendship(Integer userId, Integer targetId) {
         Friendship f = friendshipRepository.findFriendship(userId, targetId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy mối quan hệ"));
-        
+
         f.setStatus("DELETED"); // Chỉ đánh dấu là đã xóa
         f.setActionUserId(userId);
         friendshipRepository.save(f);
@@ -80,10 +81,10 @@ public class FriendshipService {
         // Lấy danh sách ID những người cần loại bỏ (ACCEPTED hoặc PENDING)
         // Những người DELETED thì không loại bỏ -> Vẫn gợi ý lại
         Set<Integer> excludeIds = myRelations.stream()
-            .filter(f -> (f.getUser1Id().equals(myId) || f.getUser2Id().equals(myId)))
-            .filter(f -> !f.getStatus().equals("DELETED")) 
-            .map(f -> f.getUser1Id().equals(myId) ? f.getUser2Id() : f.getUser1Id())
-            .collect(Collectors.toSet());
+                .filter(f -> (f.getUser1Id().equals(myId) || f.getUser2Id().equals(myId)))
+                .filter(f -> !f.getStatus().equals("DELETED"))
+                .map(f -> f.getUser1Id().equals(myId) ? f.getUser2Id() : f.getUser1Id())
+                .collect(Collectors.toSet());
 
         excludeIds.add(myId); // Loại bỏ chính mình
 

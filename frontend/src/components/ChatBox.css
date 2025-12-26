@@ -1,0 +1,205 @@
+/* src/components/ChatBox.css */
+
+/* 1. KHUNG CHÍNH (Container) */
+.fb-chat-container {
+  position: fixed;
+  bottom: 0;
+  right: 80px;
+  width: 338px; /* Chiều rộng chuẩn của tab Messenger web */
+  height: 455px;
+  background: white;
+  border-radius: 8px 8px 0 0;
+  box-shadow: var(--shadow-chat);
+  display: flex;
+  flex-direction: column;
+  z-index: 2000;
+  font-family: inherit;
+  overflow: hidden; /* Để bo góc hoạt động */
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* 2. HEADER */
+.fb-chat-header {
+  padding: 8px 12px;
+  background: white;
+  display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  height: 52px;
+}
+
+.fb-chat-user-info {
+  display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1;
+}
+
+.fb-chat-avatar-header {
+  width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
+}
+.fb-active-status-dot {
+  position: absolute; bottom: 0; right: 0; width: 10px; height: 10px;
+  background: #31a24c; border-radius: 50%; border: 2px solid white;
+}
+
+.fb-chat-names { display: flex; flex-direction: column; justify-content: center; }
+.fb-target-name { font-weight: 600; font-size: 15px; color: var(--messenger-text-primary); line-height: 1.2; }
+.fb-active-status-text { font-size: 12px; color: var(--messenger-text-secondary); }
+
+.fb-chat-actions { display: flex; gap: 8px; color: var(--messenger-blue); }
+.fb-icon {
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; cursor: pointer; font-style: normal; font-size: 18px;
+  transition: 0.2s; color: var(--messenger-blue);
+}
+.fb-icon:hover { background-color: #f2f2f2; }
+.close-icon:hover { background-color: #f2f2f2; color: red; }
+
+
+/* 3. BODY TIN NHẮN */
+.fb-chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex; flex-direction: column; gap: 2px; /* Khoảng cách giữa các tin nhắn rất nhỏ */
+  background: white;
+}
+/* Thanh cuộn đẹp hơn */
+.fb-chat-body::-webkit-scrollbar { width: 6px; }
+.fb-chat-body::-webkit-scrollbar-thumb { background: #bcc0c4; border-radius: 10px; }
+
+.fb-message-row {
+  display: flex; align-items: flex-end; /* Căn đáy để avatar thẳng hàng với tin cuối */
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.fb-my-row { justify-content: flex-end; }
+.fb-their-row { justify-content: flex-start; }
+
+.fb-avatar-spacer {
+  width: 28px; height: 28px; display: flex; align-items: flex-end;
+}
+.fb-msg-avatar-tiny {
+  width: 28px; height: 28px; border-radius: 50%; object-fit: cover;
+}
+
+/* Style cho bong bóng tin nhắn */
+.fb-message-bubble {
+  max-width: 70%;
+  padding: 8px 12px;
+  border-radius: 18px; /* Bo tròn mặc định */
+  font-size: 15px;
+  line-height: 1.4;
+  word-wrap: break-word;
+  position: relative;
+}
+
+/* Bong bóng của mình */
+.fb-my-bubble {
+  background-color: var(--messenger-blue);
+  color: white;
+  border-bottom-right-radius: 4px; /* Góc dưới phải nhọn hơn một chút nếu là tin giữa */
+}
+.fb-my-bubble.last-in-group {
+  border-bottom-right-radius: 18px; /* Tin cuối thì bo tròn lại */
+}
+
+/* Bong bóng của người khác */
+.fb-their-bubble {
+  background-color: var(--messenger-bg-grey);
+  color: var(--messenger-text-primary);
+  border-bottom-left-radius: 4px; /* Góc dưới trái nhọn hơn */
+}
+.fb-their-bubble.last-in-group {
+  border-bottom-left-radius: 18px; /* Tin cuối thì bo tròn lại */
+}
+
+
+/* 4. FOOTER NHẬP LIỆU */
+.fb-chat-footer {
+  padding: 12px 8px;
+  display: flex; align-items: center; gap: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  background: white;
+  height: 52px;
+}
+
+.fb-footer-icons-left { display: flex; gap: 4px; color: var(--messenger-blue); }
+.fb-icon-footer {
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; cursor: pointer; font-style: normal; font-size: 20px;
+  transition: 0.2s;
+}
+.fb-icon-footer:hover { background-color: #f2f2f2; }
+
+.fb-input-container {
+  flex: 1;
+  background-color: var(--messenger-bg-grey);
+  border-radius: 20px;
+  display: flex; align-items: center;
+  padding: 0 12px;
+  height: 36px;
+}
+
+.fb-chat-input {
+  flex: 1; border: none; background: transparent;
+  outline: none; font-size: 15px;
+  padding: 8px 0;
+}
+
+.emoji-icon { color: var(--messenger-text-secondary); margin-left: 8px; cursor: pointer;}
+
+.fb-footer-icons-right {
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.fb-send-btn { color: var(--messenger-blue); font-size: 20px; font-style: normal;}
+.fb-like-btn { color: var(--messenger-blue); font-size: 24px; font-style: normal;}
+
+/* BỔ SUNG STYLE CHO BONG BÓNG */
+.chat-bubble-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 2001;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: transform 0.2s;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.chat-bubble-container:hover {
+  transform: scale(1.1);
+}
+
+.chat-bubble-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid white;
+}
+
+.chat-bubble-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border-radius: 50%;
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  opacity: 0;
+  transition: 0.2s;
+  border: 1px solid white;
+}
+
+.chat-bubble-container:hover .chat-bubble-close {
+  opacity: 1;
+}
+
+@keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }

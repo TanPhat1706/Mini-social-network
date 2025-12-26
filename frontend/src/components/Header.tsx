@@ -3,22 +3,22 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import type { User } from '../types';
 import FriendRequests from './FriendRequests';
+import MessengerDropdown from './MessengerDropdown'; // <--- IMPORT MỚI
 import './Header.css';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // State quản lý danh sách lời mời & đóng mở dropdown
   const [requests, setRequests] = useState<User[]>([]);
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [showNotiDropdown, setShowNotiDropdown] = useState(false);
+  const [showMsgDropdown, setShowMsgDropdown] = useState(false); // <--- STATE MỚI
   
-  // Ref để xử lý click outside (bấm ra ngoài thì đóng dropdown)
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const notiRef = useRef<HTMLDivElement>(null);
+  const msgRef = useRef<HTMLDivElement>(null); // <--- REF MỚI
 
   const isActive = (path: string) => location.pathname === path ? 'nav-item active' : 'nav-item';
 
-  // Hàm tải dữ liệu lời mời
   const fetchRequests = async () => {
     try {
       const res = await axiosClient.get('/friends/requests');
@@ -26,59 +26,61 @@ const Header: React.FC = () => {
     } catch (err) { console.error(err); }
   };
 
-  useEffect(() => {
-    fetchRequests(); // Gọi ngay khi mount
-    
-    // Có thể set interval để auto-refresh mỗi 30s nếu muốn realtime
-    // const interval = setInterval(fetchRequests, 30000);
-    // return () => clearInterval(interval);
-  }, []);
+  useEffect(() => { fetchRequests(); }, []);
 
-  // Đóng dropdown khi click ra ngoài
+  // Click outside to close
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
+      if (notiRef.current && !notiRef.current.contains(event.target as Node)) {
+        setShowNotiDropdown(false);
+      }
+      if (msgRef.current && !msgRef.current.contains(event.target as Node)) {
+        setShowMsgDropdown(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [dropdownRef]);
+  }, []);
 
   return (
     <div className="header">
       <div style={{display: 'flex', alignItems: 'center', gap: '20px'}}>
         <div className="brand-logo" onClick={() => navigate('/')}>MiniSocial</div>
-        <input className="search-bar" placeholder="Tìm kiếm bạn bè, bài viết..." />
+        <input className="search-bar" placeholder="Tìm kiếm bạn bè..." />
       </div>
       
       <div className="nav-group">
         <div className={isActive('/')} onClick={() => navigate('/')} title="Trang chủ">🏠</div>
         <div className={isActive('/profile')} onClick={() => navigate('/profile')} title="Hồ sơ">👤</div>
         
-        {/* --- ICON THÔNG BÁO (Chuông) --- */}
-        <div className="nav-icon-container" ref={dropdownRef}>
+        {/* --- ICON MESSENGER --- */}
+        <div className="nav-icon-container" ref={msgRef}>
+           <div 
+             className={`nav-item ${showMsgDropdown ? 'active' : ''}`}
+             onClick={() => setShowMsgDropdown(!showMsgDropdown)}
+             title="Tin nhắn"
+             style={{fontSize: '22px'}}
+           >
+             💬
+           </div>
+           {showMsgDropdown && <MessengerDropdown onClose={() => setShowMsgDropdown(false)} />}
+        </div>
+
+        {/* --- ICON THÔNG BÁO --- */}
+        <div className="nav-icon-container" ref={notiRef}>
           <div 
-            className={`nav-item ${showDropdown ? 'active' : ''}`} 
-            title="Thông báo / Lời mời kết bạn"
-            onClick={() => setShowDropdown(!showDropdown)}
+            className={`nav-item ${showNotiDropdown ? 'active' : ''}`} 
+            onClick={() => setShowNotiDropdown(!showNotiDropdown)}
           >
             🔔
-            {/* Nếu có lời mời thì hiện Badge đỏ */}
             {requests.length > 0 && <span className="badge">{requests.length}</span>}
           </div>
-
-          {/* DROPDOWN MENU */}
-          {showDropdown && (
+          {showNotiDropdown && (
             <div className="notification-dropdown">
-              <FriendRequests 
-                requests={requests} 
-                onRequestChanged={fetchRequests} // Khi accept/delete xong thì reload lại list
-              />
+              <FriendRequests requests={requests} onRequestChanged={fetchRequests} />
             </div>
           )}
         </div>
-        {/* -------------------------------- */}
 
         <div className="nav-item" title="Đăng xuất" onClick={() => {
             localStorage.removeItem('token');

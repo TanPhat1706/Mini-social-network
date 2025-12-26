@@ -1,0 +1,161 @@
+/* Container chính của Dropdown */
+.messenger-dropdown {
+  position: absolute;
+  top: 50px; /* Cách header một chút */
+  right: -10px; /* Căn phải */
+  width: 360px; /* Chiều rộng chuẩn FB */
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 12px 28px 0 rgba(0, 0, 0, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  z-index: 10000;
+  font-family: inherit;
+  user-select: none;
+  border: 1px solid #dddfe2;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Phần Header: Tiêu đề + Icon */
+.msg-dd-header {
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.msg-dd-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #050505;
+}
+
+.msg-dd-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.msg-dd-icon {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background-color: transparent;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: #65676b;
+  font-size: 16px;
+}
+.msg-dd-icon:hover { background-color: #f2f2f2; }
+
+/* Thanh tìm kiếm */
+.msg-dd-search {
+  padding: 4px 16px;
+}
+.msg-search-input {
+  width: 100%;
+  background-color: #f0f2f5;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 16px;
+  font-size: 15px;
+  outline: none;
+  color: #050505;
+}
+
+/* Các Tabs: Tất cả, Chưa đọc... */
+.msg-dd-tabs {
+  padding: 12px 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.msg-pill {
+  padding: 6px 14px;
+  border-radius: 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.msg-pill.active {
+  background-color: #e7f3ff;
+  color: #1877f2; /* Xanh FB */
+}
+
+.msg-pill.inactive {
+  background-color: transparent;
+  color: #65676b;
+}
+.msg-pill.inactive:hover { background-color: #f2f2f2; }
+
+/* Danh sách tin nhắn */
+.msg-dd-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px 8px 8px;
+}
+
+/* Item tin nhắn */
+.msg-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: 0.2s;
+}
+
+.msg-item:hover { background-color: #f2f2f2; }
+
+.msg-item-avatar-wrapper {
+  position: relative;
+  margin-right: 12px;
+}
+
+.msg-item-avatar {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.msg-item-info {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.msg-item-name {
+  font-size: 15px;
+  font-weight: 500; /* Mặc định */
+  color: #050505;
+  margin-bottom: 2px;
+}
+
+.msg-item-preview {
+  font-size: 13px;
+  color: #65676b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+}
+
+/* Style cho tin chưa đọc: Chữ đậm + Chấm xanh */
+.msg-item.unread .msg-item-name,
+.msg-item.unread .msg-item-preview {
+  font-weight: 700;
+  color: #050505; /* Màu đen đậm */
+}
+
+.msg-item-dot {
+  width: 12px; height: 12px;
+  background-color: #2e89ff;
+  border-radius: 50%;
+  margin-left: 8px;
+  flex-shrink: 0;
+}

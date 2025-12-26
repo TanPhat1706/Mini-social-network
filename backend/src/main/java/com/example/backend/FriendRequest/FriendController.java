@@ -1,9 +1,8 @@
-package com.example.backend.controller;
+package com.example.backend.FriendRequest;
 
-import com.example.backend.dto.FriendshipDTO;
-import com.example.backend.entity.User;
-import com.example.backend.repository.UserRepository;
-import com.example.backend.service.FriendshipService;
+import com.example.backend.User.User;
+import com.example.backend.User.UserRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;

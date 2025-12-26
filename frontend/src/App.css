@@ -20,6 +20,15 @@
   --radius-btn: 8px;
   
   --header-height: 60px;   /* Cao hơn chút cho thoáng */
+  /* Màu chuẩn Facebook Messenger */
+  --messenger-blue: #0084ff; /* Màu xanh đặc trưng */
+  --messenger-bg-grey: #f0f2f5; /* Màu nền bubble của người khác */
+  --messenger-text-primary: #050505;
+  --messenger-text-secondary: #65676b;
+  --shadow-chat: 0 12px 28px 0 rgba(0, 0, 0, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+  
+  /* Font chữ giống FB */
+  font-family: Segoe UI Historic, Segoe UI, Helvetica, Arial, sans-serif;
 }
 
 body {
