@@ -100,3 +100,24 @@
 .notification-dropdown::-webkit-scrollbar-thumb { background: #bcc0c4; border-radius: 4px; }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+.nav-icon-container {
+  position: relative; /* Quan trọng để định vị badge */
+}
+
+/* Badge số đỏ */
+.badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background-color: #e41e3f; /* Đỏ Facebook */
+  color: white;
+  border-radius: 50%;
+  padding: 2px 5px;
+  font-size: 11px;
+  font-weight: bold;
+  border: 2px solid white;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1;
+}

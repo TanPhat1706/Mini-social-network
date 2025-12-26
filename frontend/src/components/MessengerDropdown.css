@@ -159,3 +159,38 @@
   margin-left: 8px;
   flex-shrink: 0;
 }
+
+/* Item tin nhắn: Style mặc định */
+.msg-item-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: #050505;
+}
+
+.msg-item-preview {
+  font-size: 13px;
+  color: #65676b; /* Xám nhạt */
+}
+
+/* --- TRẠNG THÁI CHƯA ĐỌC --- */
+.msg-item.unread .msg-item-name {
+  font-weight: 800; /* Tên đậm hơn */
+}
+
+.msg-item.unread .msg-item-preview {
+  font-weight: 700;
+  color: #050505; /* Tin nhắn màu đen đậm */
+}
+
+.msg-item.unread .msg-item-preview span {
+  color: #050505;
+}
+
+/* Chấm xanh */
+.msg-item-dot {
+  width: 12px; height: 12px;
+  background-color: #2e89ff; /* Xanh FB */
+  border-radius: 50%;
+  margin-left: 10px;
+  flex-shrink: 0;
+}

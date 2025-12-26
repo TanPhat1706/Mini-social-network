@@ -14,8 +14,14 @@ public class ChatMessage {
 
     private Integer senderId;
     private Integer receiverId;
+
+    @Column(columnDefinition = "TEXT")
     private String content;
+
     private LocalDateTime timestamp;
+
+    @Column(name = "is_read")
+    private boolean isRead = false;
 
     @PrePersist
     protected void onCreate() {
