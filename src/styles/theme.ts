@@ -1,6 +1,5 @@
 // src/styles/theme.ts
 import { createTheme } from '@mui/material/styles';
-import { red } from '@mui/material/colors';
 
 // -- BẮT ĐẦU VÙNG TÙY CHỈNH CỦA BẠN --
 

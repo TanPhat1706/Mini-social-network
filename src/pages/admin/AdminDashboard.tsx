@@ -125,7 +125,7 @@ const AdminDashboard = () => {
       </Typography>
 
       <Grid container spacing={3}>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid xs={12} sm={6} md={4}>
           <StatCard
             title="TỔNG BÀI VIẾT"
             value={stats.totalPosts}
@@ -134,7 +134,7 @@ const AdminDashboard = () => {
           />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid xs={12} sm={6} md={4}>
           <StatCard
             title="NGƯỜI DÙNG CHỜ DUYỆT"
             value={stats.pendingUsers}
@@ -143,7 +143,7 @@ const AdminDashboard = () => {
           />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid xs={12} sm={6} md={4}>
           <StatCard
             title="NGƯỜI DÙNG HOẠT ĐỘNG"
             value={stats.activeUsers}

@@ -7,7 +7,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
-import BrokenImageIcon from '@mui/icons-material/BrokenImage';
 
 import api from '../../api/api';
 
