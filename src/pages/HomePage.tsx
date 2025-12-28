@@ -88,7 +88,7 @@ export default function HomePage() {
           </Grid> */}
 
           {/* --- CỘT GIỮA: NEWSFEED --- */}
-          <Grid item xs={12} md={6} lg={8}>
+          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
             <Box sx={{ maxWidth: '800px', mx: 'auto' }}>
             
               {/* CreatePost */}
@@ -109,7 +109,7 @@ export default function HomePage() {
                 ))
               )}
             </Box>
-          </Grid>
+          </Box>
 
           {/* --- CỘT PHẢI: SIDEBAR (GỢI Ý & BẠN BÈ) --- */}
           {/* Lưu ý: Em đang dùng div class sidebar-column, nếu vỡ layout thì bọc nó vào Grid item của MUI nhé */}

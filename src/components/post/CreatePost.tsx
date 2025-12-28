@@ -1,8 +1,22 @@
-import React, { useState, useRef, useEffect } from 'react'; // ⭐️ Thêm useEffect
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  Box, Paper, Avatar, Button, Divider, IconButton,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, Typography,
-  Tooltip, CircularProgress, ImageList, ImageListItem, Skeleton
+  Box,
+  Paper,
+  Avatar,
+  Button,
+  Divider,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Typography,
+  Tooltip,
+  CircularProgress,
+  ImageList,
+  ImageListItem,
+  Skeleton,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
@@ -10,6 +24,7 @@ import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import api from '../../api/api';
+import type { User } from '../../types';
 
 // --- Styled Components ---
 const FakeInputButton = styled(Button)(({ theme }) => ({
@@ -26,30 +41,34 @@ const FakeInputButton = styled(Button)(({ theme }) => ({
 }));
 
 export default function CreatePost() {
-  // ⭐️ State cho User Info
-  const [user, setUser] = useState(null); 
-  
+  const [user, setUser] = useState<User | null>(null);
   const [open, setOpen] = useState(false);
   const [postContent, setPostContent] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [previewUrls, setPreviewUrls] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ⭐️ FETCH USER PROFILE TẠI ĐÂY
+  // Fetch user profile
   useEffect(() => {
     const fetchUserProfile = async () => {
-        try {
-            const response = await api.get('/api/auth/profile');
-            setUser(response.data);
-        } catch (err) {
-            console.error("Failed to fetch user profile in CreatePost:", err);
-            // Có thể set user mặc định nếu lỗi
-        }
+      try {
+        const response = await api.get('/api/auth/profile');
+        setUser(response.data);
+      } catch (err) {
+        console.error('Failed to fetch user profile in CreatePost:', err);
+      }
     };
     fetchUserProfile();
   }, []);
+
+  // Cleanup tất cả object URLs khi component unmount hoặc previewUrls thay đổi
+  useEffect(() => {
+    return () => {
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [previewUrls]);
 
   const handleClickOpen = () => setOpen(true);
 
@@ -62,55 +81,68 @@ export default function CreatePost() {
   const resetForm = () => {
     setPostContent('');
     setSelectedFiles([]);
-    previewUrls.forEach(url => URL.revokeObjectURL(url));
+    // Revoke tất cả preview URLs cũ
+    previewUrls.forEach((url) => URL.revokeObjectURL(url));
     setPreviewUrls([]);
   };
 
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-    setSelectedFiles(prev => [...prev, ...files]);
-    const newPreviewUrls = files.map(file => URL.createObjectURL(file));
-    setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputFiles = e.target.files;
+    if (!inputFiles || inputFiles.length === 0) return;
+
+    const files = Array.from(inputFiles);
+
+    // Tạo preview URLs mới
+    const newPreviewUrls = files.map((file) => URL.createObjectURL(file));
+
+    // Cập nhật state
+    setSelectedFiles((prev) => [...prev, ...files]);
+    setPreviewUrls((prev) => [...prev, ...newPreviewUrls]);
+
+    // Reset value của input để có thể chọn lại cùng file nếu cần
+    e.target.value = '';
   };
 
-  const handleRemoveImage = (index) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  const handleRemoveImage = (index: number) => {
+    // Revoke URL của ảnh bị xóa
     URL.revokeObjectURL(previewUrls[index]);
-    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handlePost = async () => {
     if (!postContent.trim() && selectedFiles.length === 0) return;
+
     setIsLoading(true);
     try {
       const formData = new FormData();
       formData.append('content', postContent);
       formData.append('visibility', 'PUBLIC');
+
       selectedFiles.forEach((file) => {
         formData.append('mediaFiles', file);
       });
 
       await api.post('/api/posts', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      
-      // ⭐️ Reload lại trang hoặc callback ra ngoài để refresh list (tùy logic của bạn)
-      window.location.reload(); // Tạm thời reload để thấy post mới
-      handleClose();
+
+      // Reload để thấy bài viết mới (có thể thay bằng callback/emitter nếu muốn)
+      window.location.reload();
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error creating post:', error);
       alert('Lỗi kết nối server!');
     } finally {
       setIsLoading(false);
+      handleClose();
     }
   };
 
   const onClickPickImage = () => {
-    fileInputRef.current.click();
+    fileInputRef.current?.click();
   };
 
-  // ⭐️ Lấy tên user để hiển thị (Fallback nếu user chưa load xong)
   const userName = user ? user.fullName : 'Bạn';
   const userAvatar = user ? user.avatarUrl : '';
 
@@ -125,20 +157,25 @@ export default function CreatePost() {
         onChange={handleFileSelect}
       />
 
-      {/* PHẦN 1: TRIGGER BUTTON */}
-      <Paper 
-        elevation={0} 
-        sx={{ border: '1px solid #E0E0E0', p: 2, mb: 3, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' }}}
+      {/* TRIGGER BUTTON */}
+      <Paper
+        elevation={0}
+        sx={{
+          border: '1px solid #E0E0E0',
+          p: 2,
+          mb: 3,
+          cursor: 'pointer',
+          '&:hover': { bgcolor: 'action.hover' },
+        }}
         onClick={handleClickOpen}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-          {/* ⭐️ Hiển thị Skeleton nếu chưa load xong user */}
           {user ? (
-             <Avatar src={userAvatar} alt={userName} sx={{ mr: 1.5 }} />
+            <Avatar src={userAvatar} alt={userName} sx={{ mr: 1.5 }} />
           ) : (
-             <Skeleton variant="circular" width={40} height={40} sx={{ mr: 1.5 }} />
+            <Skeleton variant="circular" width={40} height={40} sx={{ mr: 1.5 }} />
           )}
-          
+
           <FakeInputButton fullWidth>
             {user ? `${userName} ơi, bạn đang nghĩ gì thế?` : 'Đang tải...'}
           </FakeInputButton>
@@ -154,7 +191,7 @@ export default function CreatePost() {
         </Box>
       </Paper>
 
-      {/* PHẦN 2: MODAL */}
+      {/* MODAL */}
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
         <DialogTitle>
           <Typography variant="h6" component="span" sx={{ fontWeight: 'bold', textAlign: 'center', display: 'block' }}>
@@ -168,18 +205,22 @@ export default function CreatePost() {
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        
+
         <Divider />
-        
+
         <DialogContent>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <Avatar src={userAvatar} alt={userName} />
             <Box sx={{ ml: 1.5 }}>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{userName}</Typography>
-              <Typography variant="caption" color="text.secondary">Công khai</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                {userName}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Công khai
+              </Typography>
             </Box>
           </Box>
-          
+
           <TextField
             autoFocus
             fullWidth
@@ -194,26 +235,40 @@ export default function CreatePost() {
           />
 
           {previewUrls.length > 0 && (
-            <Paper variant="outlined" sx={{ p: 1, mb: 2, maxHeight: 200, overflowY: 'auto' }}>
-                <ImageList cols={3} rowHeight={100} gap={8}>
-                    {previewUrls.map((url, index) => (
-                        <ImageListItem key={index}>
-                            <img src={url} alt={`Preview ${index}`} loading="lazy" style={{ height: '100px', objectFit: 'cover', borderRadius: 4 }} />
-                            <IconButton 
-                                size="small"
-                                sx={{ position: 'absolute', top: 0, right: 0, bgcolor: 'rgba(0,0,0,0.5)', color: 'white' }}
-                                onClick={() => handleRemoveImage(index)}
-                            >
-                                <CloseIcon fontSize="small"/>
-                            </IconButton>
-                        </ImageListItem>
-                    ))}
-                </ImageList>
+            <Paper variant="outlined" sx={{ p: 1, mb: 2, maxHeight: 400, overflowY: 'auto' }}>
+              <ImageList cols={3} rowHeight={120} gap={8}>
+                {previewUrls.map((url, index) => (
+                  <ImageListItem key={index}>
+                    <img
+                      src={url}
+                      alt={`Preview ${index + 1}`}
+                      loading="lazy"
+                      style={{ height: '120px', objectFit: 'cover', borderRadius: 4 }}
+                    />
+                    <IconButton
+                      size="small"
+                      onClick={() => handleRemoveImage(index)}
+                      sx={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        bgcolor: 'rgba(0,0,0,0.6)',
+                        color: 'white',
+                        '&:hover': { bgcolor: 'rgba(0,0,0,0.8)' },
+                      }}
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </ImageListItem>
+                ))}
+              </ImageList>
             </Paper>
           )}
 
           <Paper variant="outlined" sx={{ mt: 2, p: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="body2" sx={{ ml: 1, fontWeight: 500 }}>Thêm vào bài viết</Typography>
+            <Typography variant="body2" sx={{ ml: 1, fontWeight: 500 }}>
+              Thêm vào bài viết
+            </Typography>
             <Box>
               <Tooltip title="Ảnh/Video">
                 <IconButton sx={{ color: '#45bd62' }} onClick={onClickPickImage}>
@@ -228,15 +283,15 @@ export default function CreatePost() {
             </Box>
           </Paper>
         </DialogContent>
-        
+
         <DialogActions sx={{ p: 2 }}>
-          <Button 
-            fullWidth 
-            variant="contained" 
+          <Button
+            fullWidth
+            variant="contained"
             onClick={handlePost}
             disabled={(!postContent.trim() && selectedFiles.length === 0) || isLoading}
           >
-            {isLoading ? <CircularProgress size={24} color="inherit"/> : "Đăng"}
+            {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Đăng'}
           </Button>
         </DialogActions>
       </Dialog>

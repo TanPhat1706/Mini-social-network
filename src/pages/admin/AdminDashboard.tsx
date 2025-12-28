@@ -125,32 +125,32 @@ const AdminDashboard = () => {
       </Typography>
 
       <Grid container spacing={3}>
-        <Grid xs={12} sm={6} md={4}>
+        <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
           <StatCard
             title="TỔNG BÀI VIẾT"
             value={stats.totalPosts}
             icon={<ArticleIcon fontSize="large" />}
             color="#1976d2"
           />
-        </Grid>
+        </Box>
 
-        <Grid xs={12} sm={6} md={4}>
+        <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
           <StatCard
             title="NGƯỜI DÙNG CHỜ DUYỆT"
             value={stats.pendingUsers}
             icon={<PeopleIcon fontSize="large" />}
             color="#ed6c02"
           />
-        </Grid>
+        </Box>
 
-        <Grid xs={12} sm={6} md={4}>
+        <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
           <StatCard
             title="NGƯỜI DÙNG HOẠT ĐỘNG"
             value={stats.activeUsers}
             icon={<VerifiedUserIcon fontSize="large" />}
             color="#2e7d32"
           />
-        </Grid>
+        </Box>
       </Grid>
     </Box>
   );

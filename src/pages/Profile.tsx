@@ -5,7 +5,8 @@ import axios from 'axios';
 import { CircularProgress, Box, Typography } from '@mui/material';
 
 // Import Types & Components
-import type { User, UpdateProfileData } from '../types';
+import type { User } from '../types';
+import type { UpdateProfileData } from '../types/types';
 import PostCard from '../components/post/CardPost';
 import type { PostData } from '../components/post/CardPost';
 import FriendButton from '../components/friend/FriendButton';

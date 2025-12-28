@@ -5,7 +5,7 @@ import CloseIcon from '@mui/icons-material/Close';
 // Định nghĩa URL cơ sở 
 const BASE_URL = 'https://mini-social-network-ayab.onrender.com'; 
 
-export default function PostMediaGrid({ media }) {
+export default function PostMediaGrid({ media }: { media: any[] }) {
   const [open, setOpen] = useState(false);
 
   if (!media || media.length === 0) return null;
@@ -112,7 +112,7 @@ export default function PostMediaGrid({ media }) {
     if (count === 1) {
       return (
         <Box onClick={handleOpen} sx={{ ...imageContainerStyle, height: 400 }}>
-          <SmartImage src={getUrl(media[0].url)} alt="single" />
+          <SmartImage src={getUrl(media[0].url)} alt="single" extraCount={undefined} />
         </Box>
       );
     }
@@ -130,7 +130,7 @@ export default function PostMediaGrid({ media }) {
                     minWidth: 0 // ⭐️ QUAN TRỌNG: Cho phép co nhỏ dưới kích thước content
                 }}
              > 
-                <SmartImage src={getUrl(item.url)} alt={`img-${idx}`} />
+                <SmartImage src={getUrl(item.url)} alt={`img-${idx}`} extraCount={undefined} />
              </Box>
           ))}
         </Box>
@@ -149,7 +149,7 @@ export default function PostMediaGrid({ media }) {
                 minWidth: 0 // ⭐️ QUAN TRỌNG
             }}
           >
-             <SmartImage src={getUrl(media[0].url)} alt="img-0" />
+             <SmartImage src={getUrl(media[0].url)} alt="img-0" extraCount={undefined} />
           </Box>
           
           {/* Cột phải: 2 ảnh nhỏ */}
@@ -163,10 +163,10 @@ export default function PostMediaGrid({ media }) {
             }}
           >
             <Box sx={{ flex: 1, ...imageContainerStyle, minHeight: 0 }}>
-                <SmartImage src={getUrl(media[1].url)} alt="img-1" />
+                <SmartImage src={getUrl(media[1].url)} alt="img-1" extraCount={undefined} />
             </Box>
             <Box sx={{ flex: 1, ...imageContainerStyle, minHeight: 0 }}>
-                <SmartImage src={getUrl(media[2].url)} alt="img-2" />
+                <SmartImage src={getUrl(media[2].url)} alt="img-2" extraCount={undefined} />
             </Box>
           </Box>
         </Box>
@@ -179,7 +179,7 @@ export default function PostMediaGrid({ media }) {
         return (
           <Box sx={{ display: 'flex', gap: 0.5, height: 350, width: '100%' }}>
             <Box sx={{ flex: 2, ...imageContainerStyle, minWidth: 0 }} onClick={handleOpen}>
-              <SmartImage src={getUrl(media[0].url)} alt="img-0" />
+              <SmartImage src={getUrl(media[0].url)} alt="img-0" extraCount={undefined} />
             </Box>
     
             <Box sx={{ flex: 1, display: 'grid', gridTemplateRows: '1fr 1fr 1fr', gap: 0.5, minWidth: 0 }}>

@@ -98,7 +98,9 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
     // Cleanup khi đóng chat box hoặc đổi người chat
     return () => { 
         if (client && client.connected) {
-            client.disconnect();
+            client.disconnect(() => {
+                console.log("Disconnected from WebSocket");
+            });
         }
     };
   }, [currentUser.id, targetUser]); // Dependency chuẩn

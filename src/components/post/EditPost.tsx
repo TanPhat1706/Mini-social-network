@@ -7,15 +7,22 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 
+interface EditPostProps {
+    open: boolean;
+    onClose: () => void;
+    post: any; // Dùng any tạm thời cho nhanh
+    onUpdateSuccess: (post: any) => void;
+}
+
 export default function EditPost({ open, onClose, post, onUpdateSuccess }) {
   const [content, setContent] = useState(post.content || '');
-  const [newFiles, setNewFiles] = useState([]); // File mới chọn
-  const [previewUrls, setPreviewUrls] = useState([]); // Preview file mới
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Xử lý chọn ảnh mới
   const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files);
+    const files = Array.from(e.target.files) as File[];
     if (files.length === 0) return;
 
     setNewFiles(files); // Lưu file để upload
