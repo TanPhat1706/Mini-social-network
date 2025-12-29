@@ -62,6 +62,13 @@ public class AuthController {
         return ResponseEntity.ok(user);
     }
 
+    @GetMapping("/profile/{id}")
+    public ResponseEntity<?> getProfile(@PathVariable Long id) {
+        User user = userRepository.getReferenceById(id);
+        user.setPassword(null);
+        return ResponseEntity.ok(user);
+    }
+
     @GetMapping("/search")
     public ResponseEntity<List<UserResponse>> searchUsers(@RequestParam("name") String query) {
         if (query == null || query.trim().isEmpty()) {

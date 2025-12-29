@@ -76,4 +76,9 @@ public class FriendController {
     public ResponseEntity<?> getFriendsList() {
         return ResponseEntity.ok(friendshipService.getUserFriends(getCurrentUserId()));
     }
+
+    @GetMapping("/list/{id}")
+    public ResponseEntity<?> getFriendsList(@PathVariable Integer id) {
+        return ResponseEntity.ok(friendshipService.getUserFriends(id));
+    }
 }
