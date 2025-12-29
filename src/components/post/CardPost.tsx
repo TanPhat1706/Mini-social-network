@@ -53,6 +53,7 @@ export interface PostData {
 interface PostCardProps {
   post: PostData;
   onDeleteSuccess: (id: number) => void;
+  canDelete: boolean | null;
 }
 
 const formatDate = (dateString: string) => {
