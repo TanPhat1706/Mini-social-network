@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom'; // Import router hooks
-import axiosClient from '../api/axiosClient';
-import api from '../api/api';
+import { useParams, useNavigate } from 'react-router-dom';
+import axiosClient from '../api/axiosClient'; // Dùng cho User/Profile
+import api from '../api/api'; // Dùng cho Post/Friend (để thống nhất logic token)
 import { CircularProgress, Box, Typography } from '@mui/material';
 
 import type { User } from '../types';
@@ -12,16 +12,17 @@ import type { PostData } from '../components/post/CardPost';
 import PostCard from '../components/post/CardPost';
 import './Profile.css';
 
-// Định nghĩa các trạng thái bạn bè
+// Định nghĩa trạng thái trả về từ backend
+// Lưu ý: Backend bạn trả về object, ví dụ { "status": "FRIEND" }
 type FriendStatus = 'FRIEND' | 'PENDING_SENT' | 'PENDING_RECEIVED' | 'NONE' | 'SELF';
 
 const Profile: React.FC = () => {
-  const { id } = useParams<{ id: string }>(); // Lấy ID từ URL
+  const { id } = useParams<{ id: string }>(); 
   const navigate = useNavigate();
 
   // ===== STATE =====
-  const [profileUser, setProfileUser] = useState<User | null>(null); // User của profile đang xem
-  const [currentUser, setCurrentUser] = useState<User | null>(null); // User đang đăng nhập
+  const [profileUser, setProfileUser] = useState<User | null>(null); // Người sở hữu profile
+  const [currentUser, setCurrentUser] = useState<User | null>(null); // Người đang đăng nhập
   
   const [friends, setFriends] = useState<User[]>([]);
   const [posts, setPosts] = useState<PostData[]>([]);
@@ -34,109 +35,132 @@ const Profile: React.FC = () => {
   const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // Xác định xem đây có phải trang của mình không
-  // Là mình nếu: Không có ID trên URL HOẶC ID trên URL trùng với ID của current user
+  // Logic xác định trang của mình:
+  // 1. Không có ID trên URL (ví dụ /profile)
+  // 2. HOẶC ID trên URL trùng với ID của người đang login
   const isOwnProfile = !id || (currentUser && String(currentUser.id) === id);
 
   // ===== API CALLS =====
 
-  // 1. Fetch dữ liệu Profile
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        // Luôn lấy thông tin người đang đăng nhập trước để so sánh
+        // 1. Lấy thông tin người đang đăng nhập (để biết mình là ai)
         const resMe = await axiosClient.get('/profile');
         const myData = resMe.data;
         setCurrentUser(myData);
 
+        // Xác định ID của profile đang xem
         let targetUserId = id ? id : myData.id;
         let userData;
 
-        // Nếu là trang của mình
+        // --- FETCH USER INFO ---
         if (!id || String(myData.id) === id) {
+          // Xem trang chính mình
           userData = myData;
           setFriendStatus('SELF');
-          // Setup form edit sẵn
+          
+          // Fill dữ liệu vào form edit
           setEditFormData({
             fullName: myData.fullName,
             className: myData.className,
             bio: myData.bio,
             avatarUrl: myData.avatarUrl,
           });
-        } 
-        // Nếu là trang người khác
-        else {
-          const resUser = await axiosClient.get(`/profile/${targetUserId}`); // Cần API lấy info user theo ID
+        } else {
+          // Xem trang người khác -> Gọi API lấy info user
+          // Giả sử endpoint lấy user theo ID là /users/{id} (Check lại UserControlller của bạn)
+          const resUser = await axiosClient.get(`/users/${targetUserId}`); 
           userData = resUser.data;
           
-          // Kiểm tra trạng thái bạn bè
+          // Check trạng thái bạn bè
           try {
-            // TODO: Bạn cần backend API trả về: { status: 'FRIEND' | 'PENDING_SENT' ... }
-            const resStatus = await axiosClient.get(`/friends/status/${targetUserId}`);
-            setFriendStatus(resStatus.data.status);
+            // SỬA: Endpoint khớp với FriendController: /api/auth/friends/status/{id}
+            const resStatus = await api.get(`/api/auth/friends/status/${targetUserId}`);
+            // Backend trả về: { "status": "FRIEND", ... } hoặc chuỗi trực tiếp tùy code
+            // Giả sử trả về object { status: "..." } hoặc string
+            const statusRaw = resStatus.data.status || resStatus.data; 
+            setFriendStatus(statusRaw);
           } catch (err) {
-            console.warn("Chưa có API check status, mặc định là NONE");
+            console.warn("Lỗi check status friend", err);
             setFriendStatus('NONE'); 
           }
         }
-
         setProfileUser(userData);
 
-        // Lấy danh sách bạn bè của user này
-        const resFriends = await axiosClient.get(`/friends/list/${targetUserId}`); // Cần API list friend theo ID
+        // --- FETCH FRIEND LIST ---
+        // SỬA: Endpoint khớp với FriendController: /api/auth/friends/list/{id}
+        // Nếu là mình thì gọi /list, người khác gọi /list/{id}
+        let friendListUrl = '/api/auth/friends/list';
+        if (id && String(myData.id) !== id) {
+             friendListUrl = `/api/auth/friends/list/${targetUserId}`;
+        }
+        const resFriends = await api.get(friendListUrl);
         setFriends(resFriends.data);
 
-        // Lấy danh sách bài viết
-        fetchUserPosts(targetUserId);
+        // --- FETCH POSTS ---
+        // Gọi hàm tách riêng để xử lý logic endpoint
+        fetchPosts(targetUserId, !id || String(myData.id) === id);
 
       } catch (e) {
         console.error("Lỗi tải trang cá nhân:", e);
-        // Có thể navigate về trang 404 nếu lỗi
       }
     };
 
     fetchProfileData();
-  }, [id]); // Chạy lại mỗi khi ID trên URL thay đổi
+  }, [id]); 
 
-  const fetchUserPosts = async (userId: string | number) => {
+  // Hàm lấy bài viết (SỬA ĐỂ KHỚP VỚI PostService BẠN GỬI)
+  const fetchPosts = async (targetUserId: string | number, isMyProfile: boolean) => {
     try {
       setLoadingPosts(true);
-      // Gọi API lấy bài viết của user cụ thể
-      const res = await api.get(`/api/posts/user/${userId}`); 
+      let url = '';
+      
+      if (isMyProfile) {
+        // Post của chính mình: /api/posts/my-posts
+        url = '/api/posts/my-posts';
+      } else {
+        // Post người khác: /api/posts/my-posts/{authorId}
+        url = `/api/posts/my-posts/${targetUserId}`;
+      }
+
+      const res = await api.get(url);
+      // Backend trả về Page<PostResponse>, dữ liệu thực nằm trong content
       setPosts(res.data.content || []);
     } catch (e) {
-      console.error(e);
+      console.error("Lỗi load bài viết:", e);
     } finally {
       setLoadingPosts(false);
     }
   };
 
-  // ===== HANDLERS =====
-
+  // ===== HANDLERS FRIEND ACTION =====
   const handleFriendAction = async () => {
     if (!profileUser) return;
     try {
       const targetId = profileUser.id;
 
+      // SỬA: Các Endpoint khớp hoàn toàn với FriendController
       if (friendStatus === 'NONE') {
-        // Gửi lời mời
-        await axiosClient.post(`/friends/request/${targetId}`);
+        // /api/auth/friends/add/{targetId}
+        await api.post(`/api/auth/friends/add/${targetId}`);
         setFriendStatus('PENDING_SENT');
       } 
       else if (friendStatus === 'PENDING_RECEIVED') {
-        // Chấp nhận
-        await axiosClient.put(`/friends/accept/${targetId}`);
+        // /api/auth/friends/accept/{targetId}
+        await api.post(`/api/auth/friends/accept/${targetId}`);
         setFriendStatus('FRIEND');
       } 
       else if (friendStatus === 'FRIEND' || friendStatus === 'PENDING_SENT') {
-        // Hủy kết bạn / Hủy lời mời
         if (window.confirm("Bạn có chắc chắn muốn thực hiện thao tác này?")) {
-            await axiosClient.delete(`/friends/remove/${targetId}`);
+            // /api/auth/friends/remove/{targetId}
+            await api.delete(`/api/auth/friends/remove/${targetId}`);
             setFriendStatus('NONE');
         }
       }
     } catch (error) {
-      alert("Thao tác thất bại. Kiểm tra lại API Backend.");
+      console.error(error);
+      alert("Thao tác thất bại.");
     }
   };
 
@@ -144,7 +168,7 @@ const Profile: React.FC = () => {
     setPosts(prev => prev.filter(p => p.id !== postId));
   };
 
-  // ... (Giữ nguyên logic Edit Profile cũ của bạn) ...
+  // ... (Phần logic Edit Profile giữ nguyên) ...
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setEditFormData({ ...editFormData, [e.target.name]: e.target.value });
   };
@@ -161,6 +185,7 @@ const Profile: React.FC = () => {
     const formData = new FormData();
     formData.append('file', file);
     const token = localStorage.getItem('token');
+    // Lưu ý: Update lại URL upload nếu bạn đã chuyển sang Cloudinary hoặc endpoint khác
     const res = await axios.post(
       'https://mini-social-network-ayab.onrender.com/api/upload/avatar',
       formData,
@@ -174,8 +199,8 @@ const Profile: React.FC = () => {
       let avatarUrl = editFormData.avatarUrl;
       if (selectedFile) avatarUrl = await uploadAvatarFile(selectedFile);
       const res = await axiosClient.put('/profile', { ...editFormData, avatarUrl });
-      setProfileUser(res.data); // Update UI
-      setCurrentUser(res.data); // Update Context user
+      setProfileUser(res.data);
+      setCurrentUser(res.data);
       setIsEditing(false);
       alert('Cập nhật thành công!');
     } catch (e) {
@@ -183,7 +208,7 @@ const Profile: React.FC = () => {
     }
   };
 
-  // Render nút bấm tùy theo ngữ cảnh
+  // Render Button
   const renderActionButton = () => {
     if (isOwnProfile) {
       return (
@@ -193,12 +218,11 @@ const Profile: React.FC = () => {
       );
     }
 
-    // Logic hiển thị nút kết bạn
     switch (friendStatus) {
       case 'FRIEND':
         return <button className="friend-btn friend" onClick={handleFriendAction}>✅ Bạn bè</button>;
       case 'PENDING_SENT':
-        return <button className="friend-btn pending" onClick={handleFriendAction}>📩 Đã gửi</button>;
+        return <button className="friend-btn pending" onClick={handleFriendAction}>📩 Đã gửi lời mời</button>;
       case 'PENDING_RECEIVED':
         return <button className="friend-btn accept" onClick={handleFriendAction}>🤝 Chấp nhận</button>;
       case 'NONE':
@@ -225,7 +249,6 @@ const Profile: React.FC = () => {
               <h1>{profileUser.fullName}</h1>
               <p>{profileUser.bio || 'Người dùng MiniSocial'}</p>
             </div>
-            {/* NÚT ACTION (Sửa hoặc Kết bạn) */}
             {renderActionButton()}
           </div>
         </div>
@@ -247,7 +270,7 @@ const Profile: React.FC = () => {
                   <div 
                     key={f.id} 
                     className="friend-item"
-                    onClick={() => navigate(`/profile/${f.id}`)} // Chuyển trang khi click vào bạn
+                    onClick={() => navigate(`/profile/${f.id}`)}
                   >
                     <img src={f.avatarUrl || `https://ui-avatars.com/api/?name=${f.fullName}`} alt={f.fullName} />
                     <span>{f.fullName}</span>
@@ -267,8 +290,7 @@ const Profile: React.FC = () => {
                 <PostCard 
                   key={p.id} 
                   post={p} 
-                  onDeleteSuccess={handleRemovePost}
-                  // Chỉ cho phép xóa nếu là bài của mình (hoặc admin)
+                  onDeleteSuccess={handleRemovePost} 
                   canDelete={isOwnProfile} 
                 />
               ))
@@ -281,7 +303,7 @@ const Profile: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL EDIT (Chỉ hiện khi là trang của mình) */}
+      {/* MODAL EDIT */}
       {isOwnProfile && isEditing && (
         <div className="modal-overlay">
           <div className="modal">
