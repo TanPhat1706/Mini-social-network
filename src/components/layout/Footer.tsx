@@ -1,36 +1,29 @@
-// src/components/layout/Footer.tsx
 import React from 'react';
-import { Box, Container, Typography, Link } from '@mui/material';
+import { Box, Container, Typography, Link, Divider } from '@mui/material';
 
 export default function Footer() {
   return (
     <Box
       component="footer"
       sx={{
-        py: 3,
+        py: 4,
         px: 2,
-        mt: 'auto', // Đẩy footer xuống cuối trang
-        backgroundColor: (theme) =>
-          theme.palette.mode === 'light'
-            ? theme.palette.grey[200]
-            : theme.palette.grey[800],
+        mt: 'auto',
+        backgroundColor: '#FFFFFF',
+        borderTop: '1px solid #E4E6E9'
       }}
     >
       <Container maxWidth="lg">
-        <Typography variant="body1" align="center">
-          Mini Social Network - Đồ án của bạn
+        <Typography variant="body2" color="#65676B" align="center" sx={{ fontWeight: 500 }}>
+          Mini Social Network - Nền tảng kết nối sinh viên hiện đại
         </Typography>
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          align="center"
-        >
+        <Typography variant="caption" color="text.secondary" align="center" display="block" sx={{ mt: 1 }}>
           {'Bản quyền © '}
-          <Link color="inherit" href="#">
-            Tên của bạn
+          <Link color="inherit" href="/" sx={{ textDecoration: 'none', fontWeight: 'bold' }}>
+            MiniSocial
           </Link>{' '}
           {new Date().getFullYear()}
-          {'.'}
+          {'. Toàn bộ quyền được bảo lưu.'}
         </Typography>
       </Container>
     </Box>

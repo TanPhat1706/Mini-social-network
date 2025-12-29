@@ -1,8 +1,7 @@
 import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-
 import { 
-  Box, List, ListItem, ListItemButton, ListItemIcon, 
+  Box, List, ListItemButton, ListItemIcon, 
   ListItemText, Avatar, Divider, Typography, Paper
 } from '@mui/material';
 
@@ -11,66 +10,55 @@ import PeopleIcon from '@mui/icons-material/People';
 import GroupsIcon from '@mui/icons-material/Groups';
 import HistoryIcon from '@mui/icons-material/History';
 import EventIcon from '@mui/icons-material/Event';
+import type { User } from '../../types';
 
-// Mock data cho người dùng đang đăng nhập
-const currentUser = {
-  id: "lehonphat",
-  name: "Lê Hồng Phát",
-  avatarUrl: "https://placehold.co/40x40/EFEFEF/333?text=LHP",
-};
+interface Props {
+  user: User | null; // Nhận dữ liệu từ HomePage
+}
 
-// Danh sách các tác vụ
-const menuItems = [
+export default function LeftSidebar({ user }: Props) {
+  const menuItems = [
     { text: 'Bạn bè', icon: <PeopleIcon />, path: '/friends' },
     { text: 'Nhóm', icon: <GroupsIcon />, path: '/groups' },
     { text: 'Kỷ niệm', icon: <HistoryIcon />, path: '/history' },
     { text: 'Sự kiện', icon: <EventIcon />, path: '/events' },
   ];
 
-export default function LeftSidebar() {
   return (
-    // Box này sẽ 'dính' lại khi cuộn
-    <Box sx={{ 
-      position: 'sticky', 
-      // 64px (Header) + 24px (Container mt) = 88px
-      top: (theme) => `calc(${theme.mixins.toolbar.minHeight}px + ${theme.spacing(3)})`,
-    }}>
-      <Paper elevation={0} sx={{ border: '1px solid #E0E0E0', p: 1 }}>
+    <Box sx={{ position: 'sticky', top: 80 }}>
+      <Paper elevation={0} sx={{ border: 'none', bgcolor: 'transparent', p: 1 }}>
         <List component="nav" disablePadding>
-          {/* Link đến trang cá nhân */}
+          {/* LINK ĐẾN TRANG CÁ NHÂN VỚI DỮ LIỆU THẬT */}
           <ListItemButton 
-          component={RouterLink}
-          to={`/profile/${currentUser.id}`}
-          sx={{ borderRadius: 1.5, mb: 1 }}
-        >            
-        <ListItemIcon>
+            component={RouterLink}
+            to={`/profile`}
+            sx={{ borderRadius: 1.5, mb: 1 }}
+          >            
+            <ListItemIcon>
               <Avatar 
-                src={currentUser.avatarUrl} 
-                alt={currentUser.name} 
-                sx={{ width: 32, height: 32 }}
+                src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName}`} 
+                sx={{ width: 36, height: 36 }}
               />
             </ListItemIcon>
             <ListItemText 
-              primary={currentUser.name} 
-              primaryTypographyProps={{ fontWeight: 'bold' }} 
+              primary={user?.fullName || "Đang tải..."} 
+              primaryTypographyProps={{ fontWeight: '600', fontSize: '15px' }} 
             />
           </ListItemButton>
 
-          {/* Các menu tác vụ */}
+          {/* CÁC MENU TÁC VỤ */}
           {menuItems.map((item) => (
             <ListItemButton key={item.text} sx={{ borderRadius: 1.5 }}>
               <ListItemIcon>
-                {/* Dùng màu primary cho icon */}
-                {React.cloneElement(item.icon, { color: 'primary' })}
+                {React.cloneElement(item.icon, { sx: { color: '#1877F2', fontSize: '28px' } })}
               </ListItemIcon>
-              <ListItemText primary={item.text} />
+              <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: '15px', fontWeight: '500' }} />
             </ListItemButton>
           ))}
           
-          <Divider sx={{ my: 1 }} />
-          
+          <Divider sx={{ my: 1, mx: 2 }} />
           <Typography variant="caption" color="text.secondary" sx={{ pl: 2 }}>
-            (Các lối tắt khác...)
+            Quyền riêng tư · Điều khoản · Quảng cáo
           </Typography>
         </List>
       </Paper>

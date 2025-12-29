@@ -1,167 +1,160 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-
-/* --- 1. BIẾN MÀU ĐỒNG BỘ --- */
+/* --- BIẾN MÀU FACEBOOK --- */
 :root {
-  --primary-color: #4F46E5;   /* Indigo 600 */
-  --secondary-color: #7C3AED; /* Violet 600 */
-  --text-main: #1F2937;       /* Gray 900 */
-  --text-sub: #6B7280;        /* Gray 500 */
-  --bg-input: #F9FAFB;        /* Gray 50 */
-  --border-input: #E5E7EB;    /* Gray 200 */
-  --white: #ffffff;
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --fb-blue: #1877F2;
+  --fb-green: #42b72a;
+  --fb-bg: #f0f2f5;
+  --fb-white: #ffffff;
+  --fb-border: #dddfe2;
+  --fb-text-main: #1c1e21;
+  --fb-text-sub: #65676b;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: 'Poppins', sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-
-/* --- 2. LAYOUT & BACKGROUND --- */
-.auth-wrapper {
+.fb-login-wrapper {
+  background-color: var(--fb-bg);
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  padding: 20px;
-  /* Gradient hiện đại hơn */
-  background: linear-gradient(135deg, #4F46E5 0%, #9333EA 100%);
-  background-size: 200% 200%;
-  animation: gradientBG 15s ease infinite;
+  font-family: SFProDisplay-Regular, Helvetica, Arial, sans-serif;
 }
 
-@keyframes gradientBG {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* --- 3. CARD CONTAINER --- */
-.auth-card {
-  background: var(--white);
+.fb-login-container {
+  display: flex;
   width: 100%;
-  max-width: 420px; /* Login gọn gàng */
-  padding: 48px 40px;
-  border-radius: 24px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* Bóng đổ sâu tạo chiều sâu */
+  max-width: 980px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  gap: 32px;
+}
+
+/* CỘT TRÁI */
+.fb-login-left {
+  flex: 1;
+  padding-bottom: 112px;
+}
+
+.fb-logo {
+  color: var(--fb-blue);
+  font-size: 60px;
+  font-weight: 800;
+  margin-bottom: 0;
+  letter-spacing: -2px;
+}
+
+.fb-tagline {
+  font-size: 28px;
+  line-height: 32px;
+  color: var(--fb-text-main);
+  max-width: 500px;
+}
+
+/* CỘT PHẢI */
+.fb-login-right {
+  width: 396px;
+}
+
+.fb-login-card {
+  background: var(--fb-white);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .1), 0 8px 16px rgba(0, 0, 0, .1);
   text-align: center;
-  animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.auth-title {
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--text-main);
-  margin-bottom: 8px;
-  letter-spacing: -0.5px;
-}
-
-.auth-subtitle {
-  color: var(--text-sub);
-  margin-bottom: 32px;
-  font-size: 14px;
-  font-weight: 400;
-}
-
-/* --- 4. FORM ELEMENTS --- */
-.form-group {
-  margin-bottom: 20px;
-  text-align: left;
-}
-
-.form-input {
+.fb-input {
   width: 100%;
   padding: 14px 16px;
-  border: 1.5px solid var(--border-input);
-  background-color: var(--bg-input);
-  border-radius: 12px;
-  font-size: 15px;
-  color: var(--text-main);
-  transition: all 0.2s ease;
+  border: 1px solid var(--fb-border);
+  border-radius: 6px;
+  font-size: 17px;
+  margin-bottom: 12px;
   outline: none;
 }
 
-.form-input::placeholder {
-  color: #9CA3AF;
+.fb-input:focus {
+  border-color: var(--fb-blue);
+  box-shadow: 0 0 0 2px #e7f3ff;
 }
 
-/* Hiệu ứng Focus chuẩn UX */
-.form-input:focus {
-  background-color: var(--white);
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); /* Ring focus nhẹ */
-}
-
-/* --- 5. BUTTON --- */
-.btn-primary {
+.fb-btn-login {
   width: 100%;
-  padding: 14px;
-  margin-top: 10px;
-  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-  color: var(--white);
+  padding: 10px;
+  background-color: var(--fb-blue);
+  color: white;
   border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
+  border-radius: 6px;
+  font-size: 20px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+  margin-top: 4px;
 }
 
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
+.fb-btn-login:hover {
+  background-color: #166fe5;
 }
 
-/* Trạng thái Disabled (Loading) */
-.btn-primary:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
-  background: #9CA3AF; /* Màu xám khi disable */
+.fb-forgot-password {
+  margin: 16px 0;
 }
 
-/* --- 6. FOOTER --- */
-.auth-footer {
-  margin-top: 24px;
-  font-size: 14px;
-  color: var(--text-sub);
-}
-
-.auth-link {
-  color: var(--primary-color);
-  font-weight: 600;
+.fb-forgot-password a {
+  color: var(--fb-blue);
   text-decoration: none;
-  margin-left: 4px;
-  transition: color 0.2s;
+  font-size: 14px;
 }
 
-.auth-link:hover {
-  color: var(--secondary-color);
+.fb-forgot-password a:hover {
   text-decoration: underline;
 }
 
-/* --- 7. ANIMATION --- */
-@keyframes slideUpFade {
-  from { 
-    opacity: 0; 
-    transform: translateY(20px); 
-  }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
-  }
+.fb-divider {
+  border-bottom: 1px solid var(--fb-border);
+  margin-bottom: 20px;
 }
 
-/* Mobile Responsive */
-@media (max-width: 480px) {
-  .auth-card {
-    padding: 30px 20px;
+.fb-create-account {
+  padding-top: 6px;
+}
+
+.fb-btn-register {
+  background-color: var(--fb-green);
+  color: white;
+  padding: 0 16px;
+  line-height: 48px;
+  font-size: 17px;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 6px;
+  display: inline-block;
+  transition: background-color 0.2s;
+}
+
+.fb-btn-register:hover {
+  background-color: #36a420;
+}
+
+.fb-login-footer {
+  margin-top: 28px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--fb-text-main);
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .fb-login-container {
+    flex-direction: column;
+    text-align: center;
+    padding-top: 40px;
+  }
+  .fb-login-left {
+    padding-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .fb-tagline {
+    font-size: 24px;
   }
 }

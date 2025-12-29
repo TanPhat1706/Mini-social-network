@@ -11,7 +11,6 @@ const SuggestedFriends: React.FC<Props> = ({ currentUserId }) => {
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    // Axios tự thêm /auth -> Gọi /auth/friends/suggested
     axiosClient.get('/friends/suggested')
       .then(res => setUsers(res.data))
       .catch(err => console.error(err));
@@ -22,19 +21,24 @@ const SuggestedFriends: React.FC<Props> = ({ currentUserId }) => {
       <h3 style={{ marginBottom: '15px', color: '#65676b', fontSize: '16px', fontWeight: 'bold' }}>Gợi ý kết bạn</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         {users.map(u => (
-          <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+            {/* Vùng thông tin bên trái */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
               <img 
                 src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.fullName}`} 
-                style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} 
+                style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} 
                 alt="ava"
               />
               <div style={{overflow: 'hidden'}}>
-                <div style={{ fontWeight: 'bold', fontSize: '14px', whiteSpace:'nowrap', textOverflow:'ellipsis', maxWidth:'120px' }}>{u.fullName}</div>
+                <div style={{ fontWeight: 'bold', fontSize: '14px', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{u.fullName}</div>
                 <div style={{ fontSize: '12px', color: '#65676b' }}>{u.studentCode}</div>
               </div>
             </div>
-            <FriendButton targetUserId={u.id} currentUserId={currentUserId} />
+            
+            {/* ⭐️ Vùng nút bấm bên phải: Thêm flexShrink để không bị bóp méo */}
+            <div style={{ flexShrink: 0 }}>
+              <FriendButton targetUserId={u.id} currentUserId={currentUserId} />
+            </div>
           </div>
         ))}
         {users.length === 0 && <div style={{fontSize: '13px', color:'#888'}}>Không có gợi ý mới.</div>}
