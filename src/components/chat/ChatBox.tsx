@@ -27,25 +27,22 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
   const stompClientRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Helper: Chuẩn hóa message từ Backend (Dù trả về sender Object hay senderId đều nhận hết)
   const mapMessage = (data: any): Message => {
     return {
       id: data.id,
       content: data.content,
       timestamp: data.timestamp || data.createdAt,
-      // Ưu tiên lấy ID trực tiếp, nếu không có thì lấy từ object sender
       senderId: data.senderId || data.sender?.id,
       receiverId: data.receiverId || data.receiver?.id
     };
   };
 
-  // 1. Fetch tin nhắn cũ (API)
+  // 1. Fetch tin nhắn cũ
   useEffect(() => {
     if (targetUser) {
         setMessages([]); 
         axiosClient.get(`/messages/${currentUser.id}/${targetUser.id}`)
           .then(res => {
-             // Map dữ liệu API luôn cho chắc
              const mapped = res.data.map((m: any) => mapMessage(m));
              setMessages(mapped);
           })
@@ -58,34 +55,30 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
     const token = localStorage.getItem('token'); 
     if (!targetUser || !token) return;
 
-    // --- FIX: Tận dụng kết nối Socket chung nếu có thể, nhưng ở đây ta fix connection riêng ---
-    // Ngắt kết nối cũ nếu có để tránh duplicate tin nhắn
+    // Ngắt kết nối cũ nếu có (dùng ref để check chắc chắn)
     if (stompClientRef.current && stompClientRef.current.connected) {
-        stompClientRef.current.disconnect();
+        stompClientRef.current.disconnect(() => {
+            console.log("Disconnected old connection");
+        });
     }
 
     const socket = new SockJS('https://mini-social-network-ayab.onrender.com/ws');
     const client = Stomp.over(socket);
-    client.debug = () => {}; // Tắt log cho gọn
+    client.debug = () => {}; 
 
     const headers = { 'Authorization': `Bearer ${token}` };
 
     client.connect(headers, () => {
-      // Subscribe kênh cá nhân của mình
       client.subscribe('/user/queue/messages', (payload: any) => {
         const rawMsg = JSON.parse(payload.body);
-        console.log(">>> Raw Socket Msg:", rawMsg); // Debug xem BE trả về gì
-
-        const newMessage = mapMessage(rawMsg); // <--- QUAN TRỌNG: Map lại dữ liệu
+        const newMessage = mapMessage(rawMsg);
         
-        // Check xem tin nhắn này có thuộc cuộc hội thoại đang mở không
         const isRelated = 
             (newMessage.senderId === targetUser.id && newMessage.receiverId === currentUser.id) || 
             (newMessage.senderId === currentUser.id && newMessage.receiverId === targetUser.id);
 
         if (isRelated) {
             setMessages(prev => {
-                // Chống duplicate: Kiểm tra xem message ID đã tồn tại chưa
                 if (newMessage.id && prev.some(m => m.id === newMessage.id)) return prev;
                 return [...prev, newMessage];
             });
@@ -95,7 +88,7 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
 
     stompClientRef.current = client;
 
-    // Cleanup khi đóng chat box hoặc đổi người chat
+    // --- KHÔI PHỤC ĐOẠN DISCONNECT CỦA BẠN ---
     return () => { 
         if (client && client.connected) {
             client.disconnect(() => {
@@ -103,48 +96,31 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
             });
         }
     };
-  }, [currentUser.id, targetUser]); // Dependency chuẩn
+  }, [currentUser.id, targetUser]);
 
   // 3. Auto Scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isMinimized]);
 
-  // 4. Gửi tin nhắn
+  // 4. Send Message
   const sendMessage = () => {
     if (!input.trim() || !stompClientRef.current || !targetUser) return;
     
-    // Tạo message object chuẩn form Backend nhận
     const chatPayload = { 
-        senderId: currentUser.id, // Hoặc sender: {id: ...} tuỳ BE
+        senderId: currentUser.id, 
         receiverId: targetUser.id, 
         content: input 
     };
 
-    // Tạo message hiển thị ngay lập tức (Optimistic UI)
-    const optimisticMsg: Message = {
-        senderId: currentUser.id,
-        receiverId: targetUser.id,
-        content: input,
-        timestamp: new Date().toISOString()
-    };
-
     try {
       stompClientRef.current.send("/app/chat", {}, JSON.stringify(chatPayload));
-      
-      // Update UI ngay lập tức
-      // setMessages(prev => [...prev, optimisticMsg]);
       setInput('');
     } catch (e) { console.error("Send Error:", e); }
   };
 
   if (!targetUser) return null;
 
-  // ... (Phần render UI giữ nguyên như code cũ của em) ...
-  // LƯU Ý: Đảm bảo phần render dùng đúng field (senderId)
-  // ...
-
-  // --- MINIMIZED UI ---
   if (isMinimized) {
     return (
       <div className="chat-bubble-container" onClick={() => setIsMinimized(false)}>
@@ -157,12 +133,25 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
     );
   }
 
-  // --- FULL UI ---
   return (
     <div className="fb-chat-container">
       {/* Header */}
       <div className="fb-chat-header">
-         {/* ... code cũ ... */}
+         <div className="fb-chat-user-info">
+            <div style={{position: 'relative'}}>
+                <img 
+                    src={targetUser.avatarUrl || `https://ui-avatars.com/api/?name=${targetUser.fullName}`} 
+                    className="fb-chat-avatar-header" 
+                    alt="avatar" 
+                />
+                <span className="fb-active-status-dot"></span>
+            </div>
+            <div className="fb-chat-names">
+                <span className="fb-target-name">{targetUser.fullName}</span>
+                <span className="fb-active-status-text">Đang hoạt động</span>
+            </div>
+         </div>
+
          <div className="fb-chat-actions">
            <i className="fb-icon minimize-icon" onClick={() => setIsMinimized(true)}>─</i>
            <i className="fb-icon close-icon" onClick={closeChat}>✖</i>
@@ -172,11 +161,24 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
       {/* Body */}
       <div className="fb-chat-body">
         {messages.map((msg, index) => {
-          const isMe = msg.senderId === currentUser.id; // Check ID chuẩn
+          const isMe = msg.senderId === currentUser.id;
+          const nextMsg = messages[index + 1];
+          const isLastInGroup = !nextMsg || nextMsg.senderId !== msg.senderId;
+
           return (
             <div key={index} className={`fb-message-row ${isMe ? 'fb-my-row' : 'fb-their-row'}`}>
-               {/* Nội dung tin nhắn */}
-               <div className={`fb-message-bubble ${isMe ? 'fb-my-bubble' : 'fb-their-bubble'}`}>
+               {!isMe && (
+                   <div className="fb-avatar-spacer">
+                       {isLastInGroup && (
+                           <img 
+                               src={targetUser.avatarUrl || `https://ui-avatars.com/api/?name=${targetUser.fullName}`} 
+                               className="fb-msg-avatar-tiny" 
+                               alt="avt" 
+                           />
+                       )}
+                   </div>
+               )}
+               <div className={`fb-message-bubble ${isMe ? 'fb-my-bubble' : 'fb-their-bubble'} ${isLastInGroup ? 'last-in-group' : ''}`}>
                   {msg.content}
                </div>
             </div>
@@ -185,18 +187,22 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Footer */}
+      {/* Footer: ĐÃ TỐI GIẢN */}
       <div className="fb-chat-footer">
         <div className="fb-input-container">
           <input 
              value={input} 
              onChange={(e) => setInput(e.target.value)} 
              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-             placeholder="Aa" className="fb-chat-input" autoFocus
+             placeholder="Aa" 
+             className="fb-chat-input" 
+             autoFocus
           />
         </div>
+        
+        {/* Chỉ hiện nút Gửi (Mũi tên) */}
         <div className="fb-footer-icons-right" onClick={sendMessage}>
-           <i className="fb-send-btn">➤</i>
+           <i className={`fb-send-btn ${input.trim() ? 'active' : ''}`}>➤</i>
         </div>
       </div>
     </div>

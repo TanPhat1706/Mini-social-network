@@ -114,22 +114,16 @@
 }
 
 
-/* 4. FOOTER NHẬP LIỆU */
+/* ... Các phần Header, Body giữ nguyên ... */
+
+/* 4. FOOTER NHẬP LIỆU (Đã tối giản) */
 .fb-chat-footer {
-  padding: 12px 8px;
+  padding: 8px 12px;
   display: flex; align-items: center; gap: 8px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   background: white;
-  height: 52px;
+  min-height: 50px;
 }
-
-.fb-footer-icons-left { display: flex; gap: 4px; color: var(--messenger-blue); }
-.fb-icon-footer {
-  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  border-radius: 50%; cursor: pointer; font-style: normal; font-size: 20px;
-  transition: 0.2s;
-}
-.fb-icon-footer:hover { background-color: #f2f2f2; }
 
 .fb-input-container {
   flex: 1;
@@ -144,62 +138,28 @@
   flex: 1; border: none; background: transparent;
   outline: none; font-size: 15px;
   padding: 8px 0;
+  color: var(--messenger-text-primary);
 }
-
-.emoji-icon { color: var(--messenger-text-secondary); margin-left: 8px; cursor: pointer;}
 
 .fb-footer-icons-right {
-  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-}
-.fb-send-btn { color: var(--messenger-blue); font-size: 20px; font-style: normal;}
-.fb-like-btn { color: var(--messenger-blue); font-size: 24px; font-style: normal;}
-
-/* BỔ SUNG STYLE CHO BONG BÓNG */
-.chat-bubble-container {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  cursor: pointer;
-  z-index: 2001;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  transition: transform 0.2s;
-  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.chat-bubble-container:hover {
-  transform: scale(1.1);
-}
-
-.chat-bubble-avatar {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid white;
-}
-
-.chat-bubble-close {
-  position: absolute;
-  top: 0;
-  right: 0;
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  border-radius: 50%;
-  width: 20px; height: 20px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px;
-  font-weight: bold;
-  opacity: 0;
   transition: 0.2s;
-  border: 1px solid white;
 }
 
-.chat-bubble-container:hover .chat-bubble-close {
-  opacity: 1;
+.fb-send-btn { 
+  color: #bcc0c4; /* Màu xám khi chưa nhập gì */
+  font-size: 18px; 
+  font-style: normal; 
+  transition: color 0.2s;
 }
 
-@keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+/* Khi có text thì hiện màu xanh */
+.fb-send-btn.active {
+  color: var(--messenger-blue);
+}
+
+/* Xóa các class thừa cũ nếu không dùng nữa */
+.fb-footer-icons-left, .fb-icon-footer, .emoji-icon, .fb-like-btn {
+  display: none;
+}
