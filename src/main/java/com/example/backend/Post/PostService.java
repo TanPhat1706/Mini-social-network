@@ -42,6 +42,9 @@ public class PostService {
     private final PostLikeRepository postLikeRepository;
     private final ApplicationEventPublisher evenPublisher;
 
+    @Value("${app.base-url")
+    private String baseUrl;
+
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
 
@@ -265,14 +268,20 @@ public class PostService {
                 .build();
     }
 
-    private String storeFileToLocal(MultipartFile file) {
+    public String storeFileToLocal(MultipartFile file) {
         try {            
             String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
             Path uploadPath = Paths.get(uploadDir);
+            
             if (!Files.exists(uploadPath)) Files.createDirectories(uploadPath);
+            
             Path filePath = uploadPath.resolve(fileName);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            return "/uploads/" + fileName; 
+            
+            // 2. SỬA ĐOẠN NÀY: Ghép base URL vào trước
+            // Kết quả sẽ là: https://mini-social-network-ayab.onrender.com/uploads/xyz.jpg
+            return baseUrl + "/uploads/" + fileName; 
+            
         } catch (IOException e) {
             throw new RuntimeException("Lỗi lưu file: " + file.getOriginalFilename(), e);
         }
