@@ -70,7 +70,7 @@ const Profile: React.FC = () => {
         } else {
           // Xem trang người khác -> Gọi API lấy info user
           // Giả sử endpoint lấy user theo ID là /users/{id} (Check lại UserControlller của bạn)
-          const resUser = await axiosClient.get(`/users/${targetUserId}`); 
+          const resUser = await axiosClient.get(`/profile/${targetUserId}`); 
           userData = resUser.data;
           
           // Check trạng thái bạn bè
