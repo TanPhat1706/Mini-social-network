@@ -34,29 +34,52 @@ const Register: React.FC = () => {
   return (
     <div className="auth-wrapper">
       <div className="auth-card">
-        <h2 className="auth-title" style={{ color: '#1c1e21', fontSize: '32px' }}>Đăng ký</h2>
-        <p className="auth-subtitle" style={{ borderBottom: '1px solid #dddfe2', paddingBottom: '15px' }}>
-          Nhanh chóng và dễ dàng.
-        </p>
+        <div className="auth-header">
+            <h2 className="auth-title">Đăng ký</h2>
+            <p className="auth-subtitle">Nhanh chóng và dễ dàng.</p>
+        </div>
         
-        <div className="role-btn-group" style={{ marginTop: '15px' }}>
-          <button type="button" className={`btn-role ${role === 'STUDENT' ? 'active' : ''}`} onClick={() => setRole('STUDENT')}>Sinh viên</button>
-          <button type="button" className={`btn-role ${role === 'TEACHER' ? 'active' : ''}`} onClick={() => setRole('TEACHER')}>Giảng viên</button>
+        <div className="role-btn-group">
+          <button 
+            type="button" 
+            className={`btn-role ${role === 'STUDENT' ? 'active' : ''}`} 
+            onClick={() => setRole('STUDENT')}
+          >
+            Sinh viên
+          </button>
+          <button 
+            type="button" 
+            className={`btn-role ${role === 'TEACHER' ? 'active' : ''}`} 
+            onClick={() => setRole('TEACHER')}
+          >
+            Giảng viên
+          </button>
         </div>
 
-        <form onSubmit={handleRegister}>
+        <form onSubmit={handleRegister} className="auth-form">
           <div className="form-group">
             <input name="fullName" className="form-input" placeholder="Họ và tên" onChange={handleChange} required />
           </div>
           
-          <div style={{ display: 'flex', gap: '10px' }}>
-             <input name="studentCode" className="form-input" placeholder={role === 'STUDENT' ? "Mã SV" : "Mã GV"} onChange={handleChange} required />
+          <div className="form-row">
+             <input 
+                name="studentCode" 
+                className="form-input half" 
+                placeholder={role === 'STUDENT' ? "Mã SV" : "Mã GV"} 
+                onChange={handleChange} 
+                required 
+             />
              {role === 'STUDENT' && (
-                <input name="className" className="form-input" placeholder="Lớp" onChange={handleChange} />
+                <input 
+                    name="className" 
+                    className="form-input half" 
+                    placeholder="Lớp" 
+                    onChange={handleChange} 
+                />
              )}
           </div>
 
-          <div className="form-group" style={{ marginTop: '15px' }}>
+          <div className="form-group">
             <input name="email" type="email" className="form-input" placeholder="Email" onChange={handleChange} required />
           </div>
           
@@ -64,7 +87,11 @@ const Register: React.FC = () => {
             <input name="password" type="password" className="form-input" placeholder="Mật khẩu mới" onChange={handleChange} required />
           </div>
           
-          <button type="submit" className="btn-primary" disabled={loading} style={{ background: '#00a400', marginTop: '10px' }}>
+          <p className="policy-text">
+            Bằng cách nhấp vào Đăng ký, bạn đồng ý với Điều khoản, Chính sách dữ liệu và Chính sách cookie của chúng tôi.
+          </p>
+
+          <button type="submit" className="btn-primary btn-register" disabled={loading}>
             {loading ? "Đang tạo..." : "Đăng ký"}
           </button>
         </form>

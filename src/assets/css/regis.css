@@ -1,41 +1,147 @@
-/* Tái sử dụng các biến từ login.css */
+/* Layout chung */
 .auth-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-color: #f0f2f5;
-  padding: 20px;
+  background-color: #f0f2f5; /* Màu nền xám đặc trưng của Facebook */
+  font-family: Helvetica, Arial, sans-serif;
 }
 
+/* Card chứa form */
 .auth-card {
   background: white;
-  width: 100%;
-  max-width: 450px;
-  padding: 25px;
+  width: 432px;
+  padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 8px 16px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.1);
   text-align: center;
 }
 
-/* Các button chuyển đổi role (Student/Teacher) */
+/* Header: Title & Subtitle */
+.auth-header {
+  border-bottom: 1px solid #dadde1;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+}
+
+.auth-title {
+  color: #1c1e21;
+  font-size: 32px;
+  font-weight: bold;
+  margin: 0 0 10px 0;
+  line-height: 38px;
+}
+
+.auth-subtitle {
+  color: #606770;
+  font-size: 15px;
+  margin: 0;
+  line-height: 24px;
+}
+
+/* Nút chọn Role (Sinh viên / Giảng viên) */
 .role-btn-group {
   display: flex;
-  gap: 10px;
+  justify-content: center;
+  gap: 15px;
   margin-bottom: 20px;
 }
 
 .btn-role {
-  flex: 1;
-  padding: 10px;
+  padding: 8px 20px;
+  border: none;
   border-radius: 6px;
-  border: 1px solid #dddfe2;
   font-weight: 600;
   cursor: pointer;
+  background-color: #e4e6eb;
+  color: #050505;
+  transition: all 0.2s;
 }
 
 .btn-role.active {
-  background-color: #1877F2;
+  background-color: #1877f2; /* Xanh Facebook */
   color: white;
-  border-color: #1877F2;
+}
+
+/* Form Input */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 11px;
+  background: #f5f6f7;
+  border: 1px solid #ccd0d5;
+  border-radius: 5px;
+  font-size: 15px;
+  box-sizing: border-box; /* Quan trọng để padding không làm vỡ layout */
+  color: #1c1e21;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #1877f2;
+  box-shadow: 0 0 0 2px #e7f3ff;
+}
+
+/* Dòng chứa 2 input (Mã SV + Lớp) */
+.form-row {
+  display: flex;
+  gap: 10px;
+}
+
+.form-input.half {
+  flex: 1; /* Chia đều không gian */
+}
+
+/* Text chính sách nhỏ */
+.policy-text {
+  font-size: 11px;
+  color: #777;
+  margin: 10px 0;
+  text-align: left;
+}
+
+/* Nút Đăng ký (Màu xanh lá) */
+.btn-primary.btn-register {
+  background-color: #42b72a;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 18px;
+  line-height: 48px;
+  padding: 0 32px;
+  font-weight: bold;
+  cursor: pointer;
+  width: 60%; /* Không full width nhìn sẽ giống FB hơn */
+  margin: 10px auto;
+  transition: background-color 0.2s;
+}
+
+.btn-primary.btn-register:hover {
+  background-color: #36a420;
+}
+
+.btn-primary:disabled {
+  background-color: #9cb4d8;
+  cursor: not-allowed;
+}
+
+/* Footer Link */
+.auth-footer {
+  margin-top: 20px;
+}
+
+.auth-link {
+  color: #1877f2;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
 }
