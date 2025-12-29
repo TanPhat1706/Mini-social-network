@@ -66,7 +66,7 @@ const Profile: React.FC = () => {
         } 
         // Nếu là trang người khác
         else {
-          const resUser = await axiosClient.get(`/users/${targetUserId}`); // Cần API lấy info user theo ID
+          const resUser = await axiosClient.get(`/profile/${targetUserId}`); // Cần API lấy info user theo ID
           userData = resUser.data;
           
           // Kiểm tra trạng thái bạn bè
