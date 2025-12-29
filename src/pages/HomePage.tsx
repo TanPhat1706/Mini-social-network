@@ -105,7 +105,7 @@ export default function HomePage() {
                 <Box sx={{ textAlign: 'center', mt: 4 }}><Typography color="text.secondary">Chưa có bài đăng nào.</Typography></Box>
               ) : (
                 posts.map((post) => (
-                  <PostCard key={post.id} post={post} onDeleteSuccess={handleRemovePost} />
+                  <PostCard key={post.id} post={post} onDeleteSuccess={handleRemovePost} canDelete={null} />
                 ))
               )}
             </Box>

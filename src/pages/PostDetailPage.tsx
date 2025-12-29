@@ -76,6 +76,7 @@ export default function PostDetailPage() {
       <PostCard 
         post={post} 
         onDeleteSuccess={handleDeleteSuccess} 
+        canDelete={null}
       />
     </Container>
   );
