@@ -18,6 +18,7 @@ import type { Conversation } from '../../types/types';
 import axiosClient from '../../api/axiosClient';
 import MessengerDropdown from '../messenger/MessengerDropdown';
 import { useWebSocket } from '../../context/WebSocketContext';
+import { FaFacebookMessenger } from "react-icons/fa";
 
 // --- STYLED COMPONENTS (FACEBOOK STYLE) ---
 const Search = styled('div')(({ theme }) => ({
@@ -182,6 +183,7 @@ export default function Header() {
                 </Tooltip>
               )}
 
+<<<<<<< HEAD
               {/* MESSENGER */}
               <Box sx={{ position: 'relative' }} ref={msgRef}>
                 <Tooltip title="Tin nhắn">
@@ -191,6 +193,31 @@ export default function Header() {
                     </Badge>
                   </ActionIconButton>
                 </Tooltip>
+=======
+              {/* --- ICON MESSENGER (CÓ SỐ ĐỎ) --- */}
+              <div className="nav-icon-container" ref={msgRef}>
+  <div 
+    className={`nav-item ${showMsgDropdown ? 'active' : ''}`}
+    onClick={() => {
+      setShowMsgDropdown(!showMsgDropdown);
+      if (!showMsgDropdown) fetchUnreadCount();
+    }}
+    title="Tin nhắn"
+    style={{ fontSize: '22px', position: 'relative' }}
+  >
+    <FaFacebookMessenger />
+
+    {unreadCount > 0 && (
+      <span className="badge">
+        {unreadCount > 9 ? '9+' : unreadCount}
+      </span>
+    )}
+  </div>
+</div>
+
+                
+                {/* Dropdown Component */}
+>>>>>>> ca972e86f39c6f8df2699f5e4e10409b461eab65
                 {showMsgDropdown && (
                   <MessengerDropdown onClose={() => setShowMsgDropdown(false)} onMessageRead={handleMessageRead} />
                 )}
