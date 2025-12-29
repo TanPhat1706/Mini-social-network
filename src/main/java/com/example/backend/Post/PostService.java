@@ -42,7 +42,7 @@ public class PostService {
     private final PostLikeRepository postLikeRepository;
     private final ApplicationEventPublisher evenPublisher;
 
-    @Value("${app.base-url")
+    @Value("${app.base-url}")
     private String baseUrl;
 
     @Value("${app.upload.dir:uploads}")
