@@ -63,7 +63,7 @@ function App() {
                   <Route path="/posts/:postId" element={<PostDetailPage />} />
 
                   <Route
-                    path="/profile/:userId"
+                    path="/profile/:id"
                     element={
                       <PrivateRoute>
                         <Profile />
