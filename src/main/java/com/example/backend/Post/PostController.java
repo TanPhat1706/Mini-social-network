@@ -35,6 +35,15 @@ public class PostController {
         return ResponseEntity.ok(postService.getPostsByAuthor(page, size));
     }
 
+    @GetMapping("/my-posts/{authorId}")
+    public ResponseEntity<Page<PostResponse>> getUserPosts(
+            @PathVariable Integer authorId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok(postService.getPostsByAuthor(authorId, page, size));
+    }
+
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public PostResponse createPost(@ModelAttribute @Valid PostRequest request) {

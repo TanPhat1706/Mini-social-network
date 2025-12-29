@@ -69,6 +69,18 @@ public class AuthController {
         return ResponseEntity.ok(user);
     }
 
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@RequestBody UpdateProfileRequest req) {
+        try {
+            String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
+            User updatedUser = authService.updateProfile(studentCode, req);
+            updatedUser.setPassword(null); // Ẩn mật khẩu
+            return ResponseEntity.ok(updatedUser);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @GetMapping("/search")
     public ResponseEntity<List<UserResponse>> searchUsers(@RequestParam("name") String query) {
         if (query == null || query.trim().isEmpty()) {

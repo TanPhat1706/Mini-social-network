@@ -104,4 +104,25 @@ public class AuthService {
                 .lastLogin(user.getLastLogin())
                 .build()).collect(Collectors.toList());
     }
+
+    public User updateProfile(String studentCode, UpdateProfileRequest req) {
+        User user = userRepository.findByStudentCode(studentCode)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Chỉ cập nhật nếu dữ liệu gửi lên không bị null (có thay đổi)
+        if (req.getFullName() != null && !req.getFullName().isEmpty()) {
+            user.setFullName(req.getFullName());
+        }
+        if (req.getClassName() != null) {
+            user.setClassName(req.getClassName());
+        }
+        if (req.getBio() != null) {
+            user.setBio(req.getBio());
+        }
+        if (req.getAvatarUrl() != null) {
+            user.setAvatarUrl(req.getAvatarUrl());
+        }
+
+        return userRepository.save(user);
+    }
 }

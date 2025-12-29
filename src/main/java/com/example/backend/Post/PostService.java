@@ -221,6 +221,12 @@ public class PostService {
         return posts.map(this::mapToPostResponse);
     }
 
+    public Page<PostResponse> getPostsByAuthor(Integer authorId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<Post> posts = postRepository.findByAuthorId(authorId, pageable);
+        return posts.map(this::mapToPostResponse);
+    }
+
     public PostResponse mapToPostResponse(Post post) {
         User author = post.getAuthor();
         UserResponse authorDto = new UserResponse();
