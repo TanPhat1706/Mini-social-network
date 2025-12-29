@@ -16,6 +16,7 @@ import type { Conversation } from '../../types/types';
 import axiosClient from '../../api/axiosClient';
 import MessengerDropdown from '../messenger/MessengerDropdown';
 import { useWebSocket } from '../../context/WebSocketContext';
+import { FaFacebookMessenger } from "react-icons/fa";
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
@@ -232,24 +233,25 @@ export default function Header() {
 
               {/* --- ICON MESSENGER (CÓ SỐ ĐỎ) --- */}
               <div className="nav-icon-container" ref={msgRef}>
-                <div 
-                  className={`nav-item ${showMsgDropdown ? 'active' : ''}`}
-                  onClick={() => {
-                    setShowMsgDropdown(!showMsgDropdown);
-                    // Khi mở ra thì fetch lại để đảm bảo số liệu đúng nhất
-                    if (!showMsgDropdown) fetchUnreadCount();
-                  }}
-                  title="Tin nhắn"
-                  style={{fontSize: '22px', position: 'relative'}}
-                >
-                  💬
-                  {/* Logic hiển thị Badge số đỏ */}
-                  {unreadCount > 0 && (
-                    <span className="badge">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                </div>
+  <div 
+    className={`nav-item ${showMsgDropdown ? 'active' : ''}`}
+    onClick={() => {
+      setShowMsgDropdown(!showMsgDropdown);
+      if (!showMsgDropdown) fetchUnreadCount();
+    }}
+    title="Tin nhắn"
+    style={{ fontSize: '22px', position: 'relative' }}
+  >
+    <FaFacebookMessenger />
+
+    {unreadCount > 0 && (
+      <span className="badge">
+        {unreadCount > 9 ? '9+' : unreadCount}
+      </span>
+    )}
+  </div>
+</div>
+
                 
                 {/* Dropdown Component */}
                 {showMsgDropdown && (
