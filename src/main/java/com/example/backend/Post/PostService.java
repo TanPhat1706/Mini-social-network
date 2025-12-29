@@ -1,17 +1,13 @@
 package com.example.backend.Post;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +16,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
+// Import thư viện Cloudinary
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 
 import com.example.backend.Enum.MediaType;
 import com.example.backend.Enum.NotificationType;
@@ -41,12 +41,9 @@ public class PostService {
     private final UserRepository userRepository;
     private final PostLikeRepository postLikeRepository;
     private final ApplicationEventPublisher evenPublisher;
+    private final Cloudinary cloudinary; // Đã được inject từ Bean config
 
-    @Value("${app.base-url}")
-    private String baseUrl;
-
-    @Value("${app.upload.dir:uploads}")
-    private String uploadDir;
+    // Đã xóa các biến @Value baseUrl và uploadDir vì không dùng nữa
 
     private User getCurrentUser() {
         String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -57,7 +54,6 @@ public class PostService {
     @Transactional
     public PostResponse createPost(PostRequest request) {
         User currentUser = getCurrentUser();
-        System.out.println("Creating post for user: " + currentUser.getStudentCode());
 
         Post post = new Post();
         post.setContent(request.getContent());
@@ -66,20 +62,19 @@ public class PostService {
         post.setOriginalPost(null);
 
         // ⭐️ CHIÊU 1: CẦM CHẾ THUẬT (Kiểm soát Visibility)
-        // Nếu user chọn PUBLIC -> Ép về PENDING để Admin duyệt.
-        // Nếu user chọn CLASS/PRIVATE -> Cho phép đăng ngay.
         if (request.getVisibility() == Visibility.PUBLIC) {
             post.setVisibility(Visibility.PENDING);
         } else {
             post.setVisibility(request.getVisibility());
         }
 
-        // Xử lý lưu media files nếu có
-
+        // Xử lý lưu media files lên Cloudinary
         if (request.getMediaFiles() != null && !request.getMediaFiles().isEmpty()) {
             List<PostMedia> mediaList = new ArrayList<>();
             for (MultipartFile file : request.getMediaFiles()) {
-                String fileUrl = storeFileToLocal(file);
+                // Gọi hàm upload mới
+                String fileUrl = storeFile(file); 
+                
                 PostMedia media = new PostMedia();
                 media.setPost(post);
                 media.setMediaUrl(fileUrl);
@@ -106,7 +101,6 @@ public class PostService {
 
         post.setContent(request.getContent());
 
-        // ⭐️ CHIÊU 1 (Lặp lại): Khi sửa bài, nếu đổi sang PUBLIC cũng phải duyệt lại
         if (request.getVisibility() == Visibility.PUBLIC) {
             post.setVisibility(Visibility.PENDING);
         } else {
@@ -115,9 +109,12 @@ public class PostService {
 
         var currentMediaList = post.getMedia();
         currentMediaList.clear();
+        
+        // Xử lý lưu media files lên Cloudinary khi update
         if (request.getMediaFiles() != null && !request.getMediaFiles().isEmpty()) {
             for (MultipartFile file : request.getMediaFiles()) {
-                String fileUrl = storeFileToLocal(file);
+                String fileUrl = storeFile(file); // Gọi hàm upload mới
+                
                 PostMedia media = new PostMedia();
                 media.setPost(post);
                 media.setMediaUrl(fileUrl);
@@ -156,7 +153,7 @@ public class PostService {
     public void approvePost(Long postId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Bài viết không tồn tại!"));
-        post.setVisibility(Visibility.PUBLIC); // Admin duyệt -> Thành PUBLIC
+        post.setVisibility(Visibility.PUBLIC);
         postRepository.save(post);
     }
 
@@ -268,22 +265,29 @@ public class PostService {
                 .build();
     }
 
-    public String storeFileToLocal(MultipartFile file) {
+    // --- LOGIC MỚI: UPLOAD LÊN CLOUDINARY ---
+    // Đổi tên từ storeFileToLocal -> storeFile
+    public String storeFile(MultipartFile file) {
         try {            
-            String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-            Path uploadPath = Paths.get(uploadDir);
+            if (file.isEmpty()) {
+                throw new RuntimeException("Không thể upload file rỗng.");
+            }
+
+            // Tạo tên file ngẫu nhiên để không bị trùng trên Cloud
+            String fileName = UUID.randomUUID().toString(); 
             
-            if (!Files.exists(uploadPath)) Files.createDirectories(uploadPath);
-            
-            Path filePath = uploadPath.resolve(fileName);
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            
-            // 2. SỬA ĐOẠN NÀY: Ghép base URL vào trước
-            // Kết quả sẽ là: https://mini-social-network-ayab.onrender.com/uploads/xyz.jpg
-            return baseUrl + "/uploads/" + fileName; 
+            // Upload lên Cloudinary
+            Map uploadResult = cloudinary.uploader().upload(file.getBytes(), 
+                    ObjectUtils.asMap(
+                        "public_id", "mini_social_network/" + fileName, // Folder trên cloud
+                        "resource_type", "auto" // Tự động nhận diện ảnh/video/audio
+                    ));
+
+            // Trả về đường dẫn HTTPS (secure_url)
+            return uploadResult.get("secure_url").toString();
             
         } catch (IOException e) {
-            throw new RuntimeException("Lỗi lưu file: " + file.getOriginalFilename(), e);
+            throw new RuntimeException("Lỗi upload file lên Cloudinary: " + file.getOriginalFilename(), e);
         }
     }
 
