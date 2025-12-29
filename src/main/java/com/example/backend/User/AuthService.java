@@ -3,8 +3,9 @@ package com.example.backend.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class AuthService {
@@ -84,5 +85,23 @@ public class AuthService {
         // 5. Tạo JWT Token
         // Lưu ý: Dùng studentCode làm định danh (subject) trong Token
         return jwtUtil.generateToken(user.getStudentCode());
+    }
+
+    public List<UserResponse> searchUsers(String query) {
+        List<User> users = userRepository.searchUsers(query);
+
+        return users.stream().map(user -> UserResponse.builder()
+                .id(user.getId())
+                .studentCode(user.getStudentCode())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .className(user.getClassName())
+                .role(user.getRole())
+                .avatarUrl(user.getAvatarUrl())
+                .bio(user.getBio())
+                .active(user.getActive())
+                .createdAt(user.getCreatedAt())
+                .lastLogin(user.getLastLogin())
+                .build()).collect(Collectors.toList());
     }
 }
