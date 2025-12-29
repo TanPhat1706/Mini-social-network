@@ -10,7 +10,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import GroupsIcon from '@mui/icons-material/Groups';
 import HistoryIcon from '@mui/icons-material/History';
 import EventIcon from '@mui/icons-material/Event';
-import type { User } from '../../types';
+import type { User } from '../types';
 
 interface Props {
   user: User | null; // Nhận dữ liệu từ HomePage
