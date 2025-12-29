@@ -1,14 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  AppBar, Toolbar, Box, InputBase, 
-  IconButton, Tooltip, Button, Avatar 
+  AppBar, Toolbar, Box, InputBase, Paper, List, ListItem,
+  IconButton, Tooltip, Button, Avatar, Badge, Typography, CircularProgress
 } from '@mui/material';
 import { styled, alpha } from '@mui/material/styles';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
+
+// Import Icons
 import SearchIcon from '@mui/icons-material/Search';
 import HomeIcon from '@mui/icons-material/Home';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'; 
 import LogoutIcon from '@mui/icons-material/Logout';
+import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
+
+// Import Logic & Components
 import { useAuth } from '../../context/AuthContext';
 import NotificationBell from '../notification/NotificationBell';
 import type { User } from '../../types';
@@ -16,21 +21,17 @@ import type { Conversation } from '../../types/types';
 import axiosClient from '../../api/axiosClient';
 import MessengerDropdown from '../messenger/MessengerDropdown';
 import { useWebSocket } from '../../context/WebSocketContext';
-import { FaFacebookMessenger } from "react-icons/fa";
+import FriendButton from '../friend/FriendButton';
 
+// --- STYLED COMPONENTS (FACEBOOK STYLE) ---
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
   borderRadius: '20px', 
-  backgroundColor: alpha(theme.palette.common.white, 0.15),
-  '&:hover': {
-    backgroundColor: alpha(theme.palette.common.white, 0.25),
-  },
-  marginLeft: theme.spacing(2),
+  backgroundColor: '#F0F2F5',
+  '&:hover': { backgroundColor: '#E4E6E9' },
+  marginLeft: theme.spacing(1),
   width: '100%',
-  [theme.breakpoints.up('sm')]: {
-    marginLeft: theme.spacing(3),
-    width: 'auto',
-  },
+  [theme.breakpoints.up('sm')]: { width: 'auto' },
 }));
 
 const SearchIconWrapper = styled('div')(({ theme }) => ({
@@ -41,6 +42,7 @@ const SearchIconWrapper = styled('div')(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
+  color: '#65676B',
 }));
 
 const StyledInputBase = styled(InputBase)(({ theme }) => ({
@@ -48,62 +50,103 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   '& .MuiInputBase-input': {
     padding: theme.spacing(1, 1, 1, 0),
     paddingLeft: `calc(1em + ${theme.spacing(4)})`,
-    transition: theme.transitions.create('width'),
     width: '100%',
-    [theme.breakpoints.up('md')]: {
-      width: '20ch',
-    },
+    [theme.breakpoints.up('md')]: { width: '25ch' },
   },
 }));
 
+const SearchDropdown = styled(Paper)(({ theme }) => ({
+  position: 'absolute',
+  top: '100%',
+  left: 0,
+  right: 0,
+  marginTop: '8px',
+  maxHeight: '450px',
+  overflowY: 'auto',
+  zIndex: 1300,
+  boxShadow: '0 12px 28px 0 rgba(0, 0, 0, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.1)',
+  borderRadius: '8px',
+  width: '360px',
+  [theme.breakpoints.down('sm')]: { width: '100%' },
+}));
+
+const NavIconButton = styled(IconButton)<{ active?: boolean }>(({ theme, active }) => ({
+  borderRadius: '0px',
+  padding: '10px 30px',
+  color: active ? theme.palette.primary.main : '#65676B',
+  borderBottom: active ? `3px solid ${theme.palette.primary.main}` : '3px solid transparent',
+  '&:hover': { backgroundColor: '#F2F2F2' },
+  [theme.breakpoints.down('md')]: { padding: '10px 15px' },
+}));
+
+const ActionIconButton = styled(IconButton)(({ theme }) => ({
+  backgroundColor: '#E4E6E9',
+  color: '#050505',
+  '&:hover': { backgroundColor: '#D8DADF' },
+  width: '40px',
+  height: '40px',
+}));
 export default function Header() {
+  // --- AUTH & NAVIGATION ---
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  // --- STATE TÌM KIẾM ---
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
+  // --- STATE THÔNG BÁO & TIN NHẮN ---
   const [requests, setRequests] = useState<User[]>([]);
-  const [showNotiDropdown, setShowNotiDropdown] = useState(false);
   const [showMsgDropdown, setShowMsgDropdown] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0); // State đếm tin chưa đọc
-
-  // Refs để xử lý click ra ngoài thì đóng dropdown
-  const notiRef = useRef<HTMLDivElement>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const msgRef = useRef<HTMLDivElement>(null);
-  const isActive = (path: string) => location.pathname === path ? 'nav-item active' : 'nav-item';
+  const notiRef = useRef<HTMLDivElement>(null);
   const { notifications } = useWebSocket();
 
-  // --- THÊM LOGIC REAL-TIME CHO FRIEND REQUEST ---
+  // --- LOGIC TÌM KIẾM (DEBOUNCE 500MS) ---
   useEffect(() => {
-    // Nếu có notification mới nhất là FRIEND_REQUEST, reload lại list
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setShowSearchDropdown(false);
+      return;
+    }
+
+    const delayDebounce = setTimeout(async () => {
+      setIsSearching(true);
+      setShowSearchDropdown(true);
+      try {
+        const res = await axiosClient.get(`/search?name=${searchQuery}`);
+        setSearchResults(res.data);
+      } catch (err) {
+        console.error("Lỗi tìm kiếm:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery]);
+
+  // --- LOGIC REAL-TIME (WEBSOCKET) ---
+  useEffect(() => {
     if (notifications.length > 0) {
         const latest = notifications[0];
         if (latest.type === 'FRIEND_REQUEST' || latest.type === 'ACCEPT_FRIEND') {
-            fetchRequests(); // Gọi lại API lấy lời mời
+            fetchRequests();
         }
-        
-        // Nếu có tin nhắn mới (loại Message), cập nhật lại số lượng tin nhắn chưa đọc
-        // (Tuỳ vào backend em có bắn notification khi có tin nhắn không, 
-        // nếu không thì giữ nguyên setInterval hoặc dùng socket chat)
         fetchUnreadCount();
     }
   }, [notifications]);
 
-  // --- HÀM MỚI: Xử lý khi người dùng đọc 1 tin nhắn ---
-  const handleMessageRead = () => {
-     // Giảm số lượng đi 1, nhưng không cho âm
-     setUnreadCount(prev => Math.max(0, prev - 1));
-  };
-
-  // --- 1. HÀM LẤY SỐ TIN NHẮN CHƯA ĐỌC ---
+  // --- LOGIC FETCH DỮ LIỆU ĐỊNH KỲ ---
   const fetchUnreadCount = async () => {
     try {
       const res = await axiosClient.get('/messages/recent');
       const convs: Conversation[] = res.data;
-      // Đếm những cuộc hội thoại có isRead = false
       const count = convs.filter(c => c.isRead === false).length;
       setUnreadCount(count);
     } catch (err) {
@@ -111,204 +154,174 @@ export default function Header() {
     }
   };
 
-  // --- 2. HÀM LẤY LỜI MỜI KẾT BẠN (Giữ nguyên logic cũ của bạn) ---
   const fetchRequests = async () => {
     try {
       const res = await axiosClient.get('/friends/requests');
       setRequests(res.data);
-      console.log("DANH SACH LOI MOIIIIIIIIIIIIIIIIIIIIIIIIIIIII: ", res.data)
     } catch (err) { console.error(err); }
   };
 
-  // --- 3. USE EFFECT: CHẠY KHI MỞ APP ---
   useEffect(() => {
-    fetchRequests();
-    fetchUnreadCount();
-
-    // Tự động cập nhật số tin nhắn mỗi 5 giây (Polling đơn giản)
-    // Nếu bạn đã làm WebSocket update realtime thì có thể bỏ dòng này
-    const interval = setInterval(fetchUnreadCount, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // 4. THÊM USE EFFECT NÀY: Lắng nghe Socket để auto-reload
-  useEffect(() => {
-    // Nếu danh sách thông báo thay đổi, kiểm tra cái mới nhất
-    if (notifications.length > 0) {
-        const latest = notifications[0]; // Cái mới nhất nằm đầu mảng
-        
-        // Nếu thông báo là về kết bạn -> Reload lại danh sách lời mời ngay
-        if (latest.type === 'FRIEND_REQUEST' || latest.type === 'ACCEPT_FRIEND') {
-            console.log(">>> Có biến động bạn bè, reload list request...");
-            fetchRequests();
-        }
+    if (isAuthenticated) {
+        fetchRequests();
+        fetchUnreadCount();
+        const interval = setInterval(fetchUnreadCount, 5000);
+        return () => clearInterval(interval);
     }
-  }, [notifications]); // Chạy lại mỗi khi có thông báo mới
+  }, [isAuthenticated]);
 
-  // --- 4. USE EFFECT: XỬ LÝ CLICK RA NGOÀI (CLOSE DROPDOWN) ---
+  // --- XỬ LÝ ĐÓNG DROPDOWN KHI CLICK NGOÀI ---
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      // Đóng dropdown thông báo
-      if (notiRef.current && !notiRef.current.contains(event.target as Node)) {
-        setShowNotiDropdown(false);
-      }
-      // Đóng dropdown tin nhắn
       if (msgRef.current && !msgRef.current.contains(event.target as Node)) {
         setShowMsgDropdown(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+setShowSearchDropdown(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  return (
-    <AppBar position="sticky" sx={{ 
-      background: 'linear-gradient(90deg, #4F46E5 0%, #7C3AED 100%)', 
-      boxShadow: '0 4px 20px 0px rgba(0, 0, 0, 0.1)' 
-    }}>
-      <Toolbar sx={{ justifyContent: 'space-between' }}>
-        
-        {/* ----- CỤM BÊN TRÁI ----- */}
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Box 
-            onClick={() => navigate('/')} 
-            sx={{ 
-                cursor: 'pointer', mr: 2, fontWeight: 'bold', fontSize: '1.2rem', 
-                display: 'flex', alignItems: 'center', gap: 1 
-            }}
-          >
-            MiniSocial
-          </Box>
+  const handleLogout = () => { logout(); navigate('/login'); };
+  const handleMessageRead = () => { setUnreadCount(prev => Math.max(0, prev - 1)); };
 
+  return (
+    <AppBar position="sticky" sx={{ backgroundColor: '#FFFFFF', color: '#050505', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 1100 }}>
+      <Toolbar sx={{ justifyContent: 'space-between', minHeight: '56px !important' }}>
+        
+        {/* --- VÙNG TRÁI: LOGO & SEARCH --- */}
+        <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, position: 'relative' }} ref={searchRef}>
+          <Box onClick={() => navigate('/')} sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', mr: 1 }}>
+            <img src="/logo.png" alt="Logo" style={{ height: '40px', width: '40px' }} />
+          </Box>
+          
           <Search>
-            <SearchIconWrapper>
-              <SearchIcon />
-            </SearchIconWrapper>
-            <StyledInputBase
-              placeholder="Tìm kiếm..."
-              inputProps={{ 'aria-label': 'search' }}
+            <SearchIconWrapper><SearchIcon /></SearchIconWrapper>
+            <StyledInputBase 
+              placeholder="Tìm kiếm sinh viên..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => searchQuery && setShowSearchDropdown(true)}
             />
+
+            {/* DROPDOWN KẾT QUẢ TÌM KIẾM */}
+            {showSearchDropdown && (
+              <SearchDropdown>
+                <Box sx={{ p: 1.5, borderBottom: '1px solid #ddd' }}>
+                  <Typography variant="subtitle2" fontWeight={700} color="text.secondary">Kết quả tìm kiếm</Typography>
+                </Box>
+                <List sx={{ py: 0 }}>
+                  {isSearching ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress size={28} /></Box>
+                  ) : searchResults.length > 0 ? (
+                    searchResults.map((result) => (
+                      <ListItem 
+                        key={result.id}
+                        sx={{ 
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          gap: 1, '&:hover': { bgcolor: '#F2F2F2' }, py: 1, px: 1.5
+                        }}
+                      >
+                        <Box 
+                          sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer', flex: 1, minWidth: 0 }}
+                          onClick={() => { navigate(`/profile/${result.id}`); setShowSearchDropdown(false); }}
+                        >
+                          <Avatar src={result.avatarUrl} sx={{ width: 40, height: 40 }} />
+                          <Box sx={{ overflow: 'hidden' }}>
+                            <Typography variant="body2" fontWeight={600} noWrap>{result.fullName}</Typography>
+                            <Typography variant="caption" color="text.secondary" noWrap>{result.studentCode}</Typography>
+</Box>
+                        </Box>
+
+                        {/* HIỆN TRẠNG THÁI QUAN HỆ QUA FRIENDBUTTON */}
+                        <Box sx={{ width: '115px', flexShrink: 0 }}>
+                          {user && result.id !== user.id && (
+                            <FriendButton 
+                              targetUserId={result.id} 
+                              currentUserId={user.id} 
+                            />
+                          )}
+                        </Box>
+                      </ListItem>
+                    ))
+                  ) : (
+                    <Box sx={{ p: 4, textAlign: 'center' }}>
+                      <Typography variant="body2" color="text.secondary">Không tìm thấy sinh viên này.</Typography>
+                    </Box>
+                  )}
+                </List>
+              </SearchDropdown>
+            )}
           </Search>
         </Box>
 
-        {/* ----- CỤM Ở GIỮA ----- */}
-        <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
-          <Tooltip title="Trang chủ">
-            <IconButton 
-                component={RouterLink}
-                to="/"
-                color="inherit"
-                sx={{ 
-                    bgcolor: 'rgba(255,255,255,0.1)', 
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-            }}>
-                <HomeIcon />
-            </IconButton>
-          </Tooltip>
+        {/* --- VÙNG GIỮA: NAV ICONS --- */}
+        <Box sx={{ display: { xs: 'none', md: 'flex' }, flex: 1, justifyContent: 'center', height: '56px' }}>
+          <NavIconButton active={location.pathname === '/'} onClick={() => navigate('/')}>
+            <HomeIcon fontSize="large" />
+          </NavIconButton>
         </Box>
-        
 
-        {/* ----- CỤM BÊN PHẢI ----- */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        {/* --- VÙNG PHẢI: ACTIONS --- */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'flex-end' }}>
           {isAuthenticated ? (
             <>
-              {/* Nút Admin */}
               {user?.role === 'ADMIN' && (
-                <Tooltip title="Trang quản trị (Dashboard)">
-                  <IconButton 
-                    component={RouterLink} 
-                    to="/admin/dashboard" 
-                    color="inherit"
-                    sx={{ 
-                      bgcolor: 'rgba(236, 72, 153, 0.2)', 
-                      border: '1px solid rgba(236, 72, 153, 0.5)',
-                      '&:hover': { bgcolor: 'rgba(236, 72, 153, 0.4)' },
-                      mr: 1
-                    }}
-                  >
-                    <AdminPanelSettingsIcon sx={{ color: '#FBCFE8' }} />
-                  </IconButton>
+                <Tooltip title="Trang quản trị">
+                  <ActionIconButton onClick={() => navigate('/admin/dashboard')}>
+                    <AdminPanelSettingsIcon />
+                  </ActionIconButton>
                 </Tooltip>
               )}
 
-              {/* --- ICON MESSENGER (CÓ SỐ ĐỎ) --- */}
-              <div className="nav-icon-container" ref={msgRef}>
-  <div 
-    className={`nav-item ${showMsgDropdown ? 'active' : ''}`}
-    onClick={() => {
-      setShowMsgDropdown(!showMsgDropdown);
-      if (!showMsgDropdown) fetchUnreadCount();
-    }}
-    title="Tin nhắn"
-    style={{ fontSize: '22px', position: 'relative' }}
-  >
-    <FaFacebookMessenger />
-
-    {unreadCount > 0 && (
-      <span className="badge">
-        {unreadCount > 9 ? '9+' : unreadCount}
-      </span>
-    )}
-  </div>
-</div>
-
-                
-                {/* Dropdown Component */}
+              {/* MESSENGER DROPDOWN */}
+              <Box sx={{ position: 'relative' }} ref={msgRef}>
+                <Tooltip title="Tin nhắn">
+                  <ActionIconButton onClick={() => setShowMsgDropdown(!showMsgDropdown)}>
+                    <Badge badgeContent={unreadCount} color="error" max={9}>
+                      <ChatBubbleIcon />
+                    </Badge>
+                  </ActionIconButton>
+                </Tooltip>
                 {showMsgDropdown && (
-                  <MessengerDropdown 
-                      onClose={() => setShowMsgDropdown(false)} 
-                      onMessageRead={handleMessageRead} // <--- TRUYỀN HÀM NÀY XUỐNG
-                  />
-              )}
-              </div>
+                  <MessengerDropdown onClose={() => setShowMsgDropdown(false)} onMessageRead={handleMessageRead} />
+                )}
+              </Box>
 
-              <Tooltip title="Thông báo">
-                  <Box> 
-                     <NotificationBell />
-                  </Box>
+              {/* NOTIFICATIONS BELL */}
+              <Box ref={notiRef}>
+                <NotificationBell />
+              </Box>
+
+              {/* USER PROFILE BOX */}
+              <Tooltip title={user?.fullName || 'Tài khoản'}>
+                <Box 
+                  onClick={() => navigate('/profile')}
+                  sx={{ 
+                    display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer',
+                    ml: 1, p: '4px 8px', borderRadius: '20px', '&:hover': { bgcolor: '#F2F2F2' }
+                  }}
+                >
+<Avatar sx={{ width: 28, height: 28 }} src={user?.avatarUrl} alt={user?.fullName} />
+                  <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', lg: 'block' } }}>
+                    {user?.fullName?.split(' ').pop()}
+                  </Typography>
+                </Box>
               </Tooltip>
 
-              <Tooltip title={`Xin chào, ${user?.fullName || 'User'}`}>
-                <IconButton component={RouterLink} to="/profile" sx={{ p: 0, border: '2px solid rgba(255,255,255,0.5)' }}>
-                  <Avatar alt={user?.fullName} src={user?.avatarUrl || "/static/images/avatar/1.jpg"} />
-                </IconButton>
-              </Tooltip>
-
+              {/* LOGOUT BUTTON */}
               <Tooltip title="Đăng xuất">
-                <IconButton onClick={handleLogout} color="inherit">
-                    <LogoutIcon />
-                </IconButton>
+                <ActionIconButton onClick={handleLogout}><LogoutIcon /></ActionIconButton>
               </Tooltip>
             </>
           ) : (
-            <>
-              {/* Nút Đăng nhập/Đăng ký */}
-              <Button 
-                color="inherit" 
-                variant="text" 
-                component={RouterLink} 
-                to="/login"
-                sx={{ mr: 1, fontWeight: 600 }}
-              >
-                Đăng nhập
-              </Button>
-              <Button 
-                variant="contained" 
-                component={RouterLink} 
-                to="/register"
-                sx={{ 
-                    bgcolor: 'white', 
-                    color: '#4F46E5', 
-                    fontWeight: 'bold',
-                    '&:hover': { bgcolor: '#F3F4F6' }
-                }}
-              >
-                Đăng ký
-              </Button>
-            </>
+            <Button variant="contained" color="primary" onClick={() => navigate('/login')}>
+              Đăng nhập
+            </Button>
           )}
         </Box>
-
       </Toolbar>
     </AppBar>
   );
