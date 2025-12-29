@@ -41,7 +41,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration cfg = new CorsConfiguration();
-                    cfg.setAllowedOrigins(List.of("http://localhost:5173", "https://mini-social-network-git-vercel-tan-phats-projects-d0666fff.vercel.app/"));
+                    cfg.setAllowedOrigins(List.of("http://localhost:5173", "https://mini-social-network-git-vercel-tan-phats-projects-d0666fff.vercel.app/",
+                        "https://mini-social-network-8pfw.vercel.app/"
+                    ));
                     cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
                     cfg.setAllowedHeaders(List.of("*"));
                     cfg.setAllowCredentials(true);
