@@ -23,20 +23,67 @@
   border-radius: 50%;
   border: 5px solid white;
   object-fit: cover;
+  background-color: #fff;
 }
 
 .profile-info h1 {
   margin: 0;
+  color: #1c1e21;
 }
 
-.edit-btn {
+.profile-info p {
+    color: #65676b;
+    margin-top: 5px;
+}
+
+/* --- BUTTONS --- */
+.edit-btn, .friend-btn {
   margin-left: auto;
-  padding: 8px 14px;
+  padding: 8px 16px;
   border-radius: 8px;
   border: none;
   cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: 0.2s;
 }
 
+.edit-btn {
+  background: #e4e6eb;
+  color: #050505;
+}
+.edit-btn:hover { background: #d8dadf; }
+
+/* Các trạng thái nút kết bạn */
+.friend-btn.add {
+  background: #1877f2;
+  color: white;
+}
+.friend-btn.add:hover { background: #166fe5; }
+
+.friend-btn.friend {
+  background: #e4e6eb;
+  color: black;
+}
+.friend-btn.friend:hover { background: #d8dadf; }
+
+.friend-btn.pending {
+  background: #e4e6eb;
+  color: #65676b;
+  cursor: default;
+}
+
+.friend-btn.accept {
+  background: #42b72a;
+  color: white;
+}
+.friend-btn.accept:hover { background: #36a420; }
+
+
+/* --- BODY LAYOUT --- */
 .profile-body {
   max-width: 1050px;
   margin: 30px auto;
@@ -53,42 +100,100 @@
   padding: 16px;
   border-radius: 12px;
   margin-bottom: 20px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
+.card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.card.title {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.card.empty {
+    text-align: center;
+    padding: 30px;
+    color: #65676b;
+}
+
+/* --- FRIENDS GRID --- */
 .friends-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 12px;
 }
 
-.friends-grid img {
+.friend-item {
+    cursor: pointer;
+    transition: transform 0.2s;
+    padding: 5px;
+    border-radius: 8px;
+}
+
+.friend-item:hover {
+    background-color: #f0f2f5;
+    transform: translateY(-2px);
+}
+
+.friend-item img {
   width: 100%;
+  aspect-ratio: 1/1;
   border-radius: 8px;
+  object-fit: cover;
+}
+
+.friend-item span {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* ===== MODAL ===== */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(6px);
+  background: rgba(255,255,255,0.8);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 1000;
 }
 
 .modal {
   background: white;
-  width: 420px;
-  border-radius: 14px;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.2);
+  border: 1px solid #ddd;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid #e4e6eb;
+  padding-bottom: 15px;
+  margin-bottom: 15px;
+}
+.modal-header h2 { margin: 0; font-size: 20px; }
+.modal-header span { 
+    cursor: pointer; 
+    background: #e4e6eb;
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
 }
 
 .avatar-edit {
@@ -99,39 +204,50 @@
 }
 
 .avatar-edit img {
-  width: 110px;
-  height: 110px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #ddd;
 }
 
 .avatar-edit label {
   position: absolute;
-  bottom: 0;
+  bottom: 5px;
+  right: 35%;
   background: #e4e6eb;
-  padding: 6px;
+  padding: 8px;
   border-radius: 50%;
   cursor: pointer;
 }
+.avatar-edit label:hover { background: #d0d2d6; }
 
 .form input,
 .form textarea {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   margin-bottom: 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid #ddd;
+  font-size: 15px;
+  box-sizing: border-box;
 }
 
 .actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  margin-top: 10px;
 }
 
+.actions button {
+    padding: 8px 20px;
+    border-radius: 6px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+}
 .actions .primary {
   background: #1877f2;
   color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
 }
