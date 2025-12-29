@@ -3,8 +3,16 @@ package com.example.backend.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
+
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -18,6 +26,9 @@ public class AuthService {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private Cloudinary cloudinary;
 
     // --- ĐĂNG KÝ ---
     public User register(RegisterRequest req) {
@@ -105,11 +116,11 @@ public class AuthService {
                 .build()).collect(Collectors.toList());
     }
 
-    public User updateProfile(String studentCode, UpdateProfileRequest req) {
+    public User updateProfile(String studentCode, UpdateProfileRequest req, MultipartFile file) {
         User user = userRepository.findByStudentCode(studentCode)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Chỉ cập nhật nếu dữ liệu gửi lên không bị null (có thay đổi)
+        // 1. Cập nhật thông tin Text
         if (req.getFullName() != null && !req.getFullName().isEmpty()) {
             user.setFullName(req.getFullName());
         }
@@ -119,9 +130,30 @@ public class AuthService {
         if (req.getBio() != null) {
             user.setBio(req.getBio());
         }
-        if (req.getAvatarUrl() != null) {
-            user.setAvatarUrl(req.getAvatarUrl());
+
+        // 2. Xử lý Upload Ảnh (Nếu có gửi kèm file)
+        if (file != null && !file.isEmpty()) {
+            try {
+                // Upload lên Cloudinary
+                Map uploadResult = cloudinary.uploader().upload(file.getBytes(),
+                        ObjectUtils.asMap(
+                            "public_id", "users_avatar/" + UUID.randomUUID().toString(),
+                            "resource_type", "auto"
+                        ));
+                
+                // Lấy link ảnh từ Cloudinary trả về
+                String newAvatarUrl = uploadResult.get("secure_url").toString();
+                
+                // Lưu vào DB
+                user.setAvatarUrl(newAvatarUrl);
+                
+            } catch (IOException e) {
+                throw new RuntimeException("Lỗi upload avatar: " + e.getMessage());
+            }
         }
+        // Lưu ý: Nếu req.getAvatarUrl() có string (trường hợp user ko đổi ảnh), 
+        // ta giữ nguyên logic cũ hoặc bỏ qua tùy nghiệp vụ. 
+        // Ở đây ưu tiên File: Có File thì lấy File, không có File thì giữ nguyên ảnh cũ.
 
         return userRepository.save(user);
     }

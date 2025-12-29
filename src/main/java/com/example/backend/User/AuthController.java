@@ -1,9 +1,12 @@
 package com.example.backend.User;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,12 +72,18 @@ public class AuthController {
         return ResponseEntity.ok(user);
     }
 
-    @PutMapping("/profile")
-    public ResponseEntity<?> updateProfile(@RequestBody UpdateProfileRequest req) {
+    @PutMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateProfile(
+            @ModelAttribute UpdateProfileRequest req, // Dùng ModelAttribute để map các field text (fullName, bio...)
+            @RequestParam(value = "file", required = false) MultipartFile file // Nhận file ảnh (không bắt buộc)
+    ) {
         try {
             String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
-            User updatedUser = authService.updateProfile(studentCode, req);
-            updatedUser.setPassword(null); // Ẩn mật khẩu
+            
+            // Gọi Service với tham số file mới thêm
+            User updatedUser = authService.updateProfile(studentCode, req, file);
+            
+            updatedUser.setPassword(null); 
             return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
