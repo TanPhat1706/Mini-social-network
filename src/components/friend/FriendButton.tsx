@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axiosClient from '../../api/axiosClient';
 
-
 interface Props { 
   targetUserId: number; 
   currentUserId: number; 
-  className?: string; // Để có thể custom style từ bên ngoài nếu cần
+  className?: string; 
 }
 
 const FriendButton: React.FC<Props> = ({ targetUserId, currentUserId, className }) => {
   const [status, setStatus] = useState<string>('NONE');
   const [actionUserId, setActionUserId] = useState<number | null>(null);
-  const [isHovering, setIsHovering] = useState(false); // State để xử lý hover
+  const [isHovering, setIsHovering] = useState(false);
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -25,11 +24,9 @@ const FriendButton: React.FC<Props> = ({ targetUserId, currentUserId, className 
   }, [targetUserId]);
 
   const handleAction = async (action: 'add' | 'accept' | 'remove') => {
-    // Thêm confirm để tránh bấm nhầm khi hủy kết bạn
     if (action === 'remove' && status === 'ACCEPTED') {
        if (!window.confirm("Bạn có chắc chắn muốn hủy kết bạn không?")) return;
     }
-
     try {
       if (action === 'add') {
         await axiosClient.post(`/friends/add/${targetUserId}`);
@@ -47,11 +44,13 @@ const FriendButton: React.FC<Props> = ({ targetUserId, currentUserId, className 
   const baseStyle = { 
     padding: '8px 12px', borderRadius: '8px', border: 'none', 
     fontWeight: '600', cursor: 'pointer', fontSize: '13px', 
-    transition: 'all 0.2s', width: '100%',
+    transition: 'all 0.2s', 
+    // ⭐️ CỐ ĐỊNH KÍCH THƯỚC: Thay width: '100%' bằng giá trị cụ thể
+    width: '120px', 
+    whiteSpace: 'nowrap' as const, // Ngăn chữ bị xuống dòng
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
   };
   
-  // 1. TRƯỜNG HỢP ĐÃ LÀ BẠN BÈ (Sửa lại logic hiển thị)
   if (status === 'ACCEPTED') {
     return (
       <button 
@@ -60,8 +59,8 @@ const FriendButton: React.FC<Props> = ({ targetUserId, currentUserId, className 
         onMouseLeave={() => setIsHovering(false)}
         style={{
           ...baseStyle, 
-          background: isHovering ? '#ffebee' : '#e4e6eb', // Hover nền đỏ nhạt
-          color: isHovering ? '#d32f2f' : 'black'        // Hover chữ đỏ đậm
+          background: isHovering ? '#ffebee' : '#e4e6eb',
+          color: isHovering ? '#d32f2f' : 'black'
         }}
         className={className}
       >
@@ -70,26 +69,23 @@ const FriendButton: React.FC<Props> = ({ targetUserId, currentUserId, className 
     );
   }
 
-  // 2. TRƯỜNG HỢP ĐANG CHỜ (PENDING)
   if (status === 'PENDING') {
     if (actionUserId === currentUserId) {
-      // Mình gửi đi -> Nút Hủy lời mời
       return (
         <button onClick={() => handleAction('remove')} style={{...baseStyle, background: '#e4e6eb', color: '#65676b'}} className={className}>
            Hủy lời mời
         </button>
       );
     } 
-    // Người ta gửi đến -> Nút Chấp nhận
     return (
-      <div style={{display:'flex', gap:'8px', width: '100%'}}>
-        <button onClick={() => handleAction('accept')} style={{...baseStyle, background: '#1877F2', color: 'white', flex: 1}}>Chấp nhận</button>
-        <button onClick={() => handleAction('remove')} style={{...baseStyle, background: '#e4e6eb', color: 'black', flex: 1}}>Xóa</button>
+      // ⭐️ BỎ width: '100%' ở div bao quanh để các nút giữ size cố định
+      <div style={{display:'flex', gap:'8px'}}>
+        <button onClick={() => handleAction('accept')} style={{...baseStyle, width: '100px', background: '#1877F2', color: 'white'}}>Chấp nhận</button>
+        <button onClick={() => handleAction('remove')} style={{...baseStyle, width: '70px', background: '#e4e6eb', color: 'black'}}>Xóa</button>
       </div>
     );
   }
 
-  // 3. TRƯỜNG HỢP CHƯA KẾT BẠN
   return (
     <button onClick={() => handleAction('add')} style={{...baseStyle, background: '#e7f3ff', color: '#1877F2'}} className={className}>
       + Thêm bạn bè
