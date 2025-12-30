@@ -46,7 +46,7 @@ function App() {
               <main style={{ flexGrow: 1 }}>
                 <Routes>
                   {/* ===== PUBLIC ROUTES ===== */}
-                  <Route path="/" element={<HomePage />} />
+                  <Route path="/" element={<PrivateRoute><HomePage /></PrivateRoute>} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
 
