@@ -1,5 +1,4 @@
-package com.example.backend.Security;
-
+package com.example.backend.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -19,14 +18,21 @@ public class SecurityLoggingFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger("SECURITY");
 
-    private static final Pattern SQLI =
-            Pattern.compile("('.+--)|(--)|(\\b(select|union|insert|delete|drop)\\b)", Pattern.CASE_INSENSITIVE);
+    // ===== Detect patterns =====
+    private static final Pattern SQLI = Pattern.compile(
+            "(\\b(select|union|insert|delete|drop|or|and)\\b.*=)|(--)|(')",
+            Pattern.CASE_INSENSITIVE
+    );
 
-    private static final Pattern XSS =
-            Pattern.compile("(<script>|javascript:|onerror=)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern XSS = Pattern.compile(
+            "(<script>|javascript:|onerror=|onload=|alert\\()",
+            Pattern.CASE_INSENSITIVE
+    );
 
-    private static final Pattern PATH_TRAVERSAL =
-            Pattern.compile("(\\.\\./|\\.\\.\\\\)");
+    private static final Pattern PATH_TRAVERSAL = Pattern.compile(
+            "(\\.\\./|\\.\\.\\\\)",
+            Pattern.CASE_INSENSITIVE
+    );
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -34,31 +40,56 @@ public class SecurityLoggingFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        String ip = request.getRemoteAddr();
+        String ip = getClientIp(request);
+        String method = request.getMethod();
         String uri = request.getRequestURI();
         String query = request.getQueryString();
         String ua = request.getHeader("User-Agent");
 
-        String payload = uri + (query != null ? "?" + query : "");
+        String payload = buildPayload(uri, query);
 
-        if (payload != null) {
+        try {
+            if (payload != null && !payload.isEmpty()) {
 
-            if (SQLI.matcher(payload).find()) {
-                log.warn("SQL_INJECTION | ip={} | uri={} | query={} | ua={}",
-                        ip, uri, query, ua);
+                if (SQLI.matcher(payload).find()) {
+                    log.warn("type=SQL_INJECTION ip={} method={} uri={} query={} ua={}",
+                            ip, method, uri, safe(query), safe(ua));
+                }
+
+                if (XSS.matcher(payload).find()) {
+                    log.warn("type=XSS_ATTACK ip={} method={} uri={} query={} ua={}",
+                            ip, method, uri, safe(query), safe(ua));
+                }
+
+                if (PATH_TRAVERSAL.matcher(payload).find()) {
+                    log.warn("type=PATH_TRAVERSAL ip={} method={} uri={} query={} ua={}",
+                            ip, method, uri, safe(query), safe(ua));
+                }
             }
-
-            if (XSS.matcher(payload).find()) {
-                log.warn("XSS_ATTACK | ip={} | uri={} | query={} | ua={}",
-                        ip, uri, query, ua);
-            }
-
-            if (PATH_TRAVERSAL.matcher(payload).find()) {
-                log.warn("PATH_TRAVERSAL | ip={} | uri={} | query={} | ua={}",
-                        ip, uri, query, ua);
-            }
+        } catch (Exception ex) {
+            // Không để logging làm crash request
+            log.error("type=SECURITY_LOG_ERROR message={}", ex.getMessage());
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    // ===== Helper methods =====
+
+    private String buildPayload(String uri, String query) {
+        if (query == null) return uri;
+        return uri + "?" + query;
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value.replaceAll("[\\n\\r]", "");
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xfHeader = request.getHeader("X-Forwarded-For");
+        if (xfHeader != null && !xfHeader.isEmpty()) {
+            return xfHeader.split(",")[0];
+        }
+        return request.getRemoteAddr();
     }
 }
