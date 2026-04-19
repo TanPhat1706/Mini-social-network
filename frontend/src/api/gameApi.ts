@@ -1,7 +1,7 @@
 import axios from 'axios';
+import { getApiBaseUrl } from '../config/apiBase';
 
-// --- SỬA LỖI TẠI ĐÂY: Khai báo biến API_URL ---
-const API_URL = 'http://localhost:8080/api/games'; 
+const API_URL = `${getApiBaseUrl()}/api/games`; 
 
 // 2. Định nghĩa kiểu dữ liệu (Interfaces)
 export interface GameScore {
@@ -27,6 +27,7 @@ const getAuthHeader = () => {
         headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true',
         }
     };
 };
@@ -39,7 +40,9 @@ const gameApi = {
     getLeaderboard: async (gameKey: string): Promise<GameScore[]> => {
         try {
             // Bây giờ biến API_URL đã tồn tại, dòng này sẽ chạy đúng
-            const response = await axios.get<GameScore[]>(`${API_URL}/leaderboard/${gameKey}`);
+            const response = await axios.get<GameScore[]>(`${API_URL}/leaderboard/${gameKey}`, {
+                headers: { 'ngrok-skip-browser-warning': 'true' },
+            });
             return response.data;
         } catch (error) {
             console.error("Lỗi lấy BXH:", error);

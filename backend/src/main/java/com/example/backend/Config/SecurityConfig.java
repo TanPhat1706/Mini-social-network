@@ -1,3 +1,5 @@
+// 
+
 package com.example.backend.Config;
 
 import com.example.backend.User.JwtFilter;
@@ -20,8 +22,10 @@ import java.util.List;
 
 @Configuration
 public class SecurityConfig {
+
     @Autowired
     private JwtFilter jwtFilter;
+
     @Autowired
     private UserDetailsService userDetailsService;
 
@@ -37,38 +41,61 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         http
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(request -> {
-                    CorsConfiguration cfg = new CorsConfiguration();
-                    cfg.setAllowedOrigins(List.of("http://localhost:5173"));
-                    cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
-                    cfg.setAllowedHeaders(List.of("*"));
-                    cfg.setAllowCredentials(true);
-                    return cfg;
-                }))
-                .authorizeHttpRequests(auth -> auth
-                        // 1. Các API công khai (Không cần Token)
-                        .requestMatchers(
-                                "/api/auth/login",
-                                "/api/auth/register",
-                                "/uploads/**",
-                                "/ws/**",
-                                "/api/games/leaderboard/**")
-                        .permitAll()
+            .csrf(csrf -> csrf.disable())
 
-                        // 2. Các API cần Token để chơi game và mua đồ
-                        .requestMatchers("/api/games/score").authenticated()
-                        .requestMatchers("/api/shop/**").authenticated()
+            // ✅ FIX CORS cho localhost + ngrok
+            .cors(cors -> cors.configurationSource(request -> {
+                CorsConfiguration cfg = new CorsConfiguration();
 
-                        // 3. Các API của Admin (Nếu sau này bạn cần chặn Admin)
-                        // .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // ❗ DÙNG setAllowedOriginPatterns thay vì setAllowedOrigins
+                cfg.setAllowedOriginPatterns(List.of(
+                        "http://localhost:5173",
+                        "https://*.ngrok-free.app"
+                ));
 
-                        // 4. Mọi yêu cầu còn lại phải đăng nhập
-                        .anyRequest().authenticated())
-                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(daoAuthenticationProvider())
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                cfg.setAllowedMethods(List.of(
+                        "GET", "POST", "PUT", "DELETE", "OPTIONS"
+                ));
+
+                cfg.setAllowedHeaders(List.of("*"));
+                cfg.setAllowCredentials(true);
+
+                return cfg;
+            }))
+
+            .authorizeHttpRequests(auth -> auth
+
+                // 1. Public APIs (giữ nguyên)
+                .requestMatchers(
+                        "/api/auth/login",
+                        "/api/auth/register",
+                        "/uploads/**",
+                        "/ws/**",
+                        "/api/games/leaderboard/**",
+                        "/api/game/**"
+                ).permitAll()
+
+                // 2. Authenticated APIs (giữ nguyên)
+                .requestMatchers("/api/games/score").authenticated()
+                .requestMatchers("/api/shop/**").authenticated()
+
+                // 3. Admin (giữ nguyên - comment)
+                // .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                // 4. Tất cả request khác cần login
+                .anyRequest().authenticated()
+            )
+
+            .sessionManagement(sess ->
+                sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+
+            .authenticationProvider(daoAuthenticationProvider())
+
+            // JWT filter (giữ nguyên)
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

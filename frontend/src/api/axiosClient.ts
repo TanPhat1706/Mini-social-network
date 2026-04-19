@@ -1,9 +1,11 @@
 import axios from 'axios';
+import { getApiAuthUrl } from '../config/apiBase';
 
 const axiosClient = axios.create({
-  baseURL: 'http://localhost:8080/api/auth',
+  baseURL: getApiAuthUrl(),
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
   },
 });
 

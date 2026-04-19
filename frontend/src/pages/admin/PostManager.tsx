@@ -10,6 +10,7 @@ import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import BrokenImageIcon from '@mui/icons-material/BrokenImage';
 
 import api from '../../api/api';
+import { getApiBaseUrl } from '../../config/apiBase';
 
 interface PostMedia {
   id: number;
@@ -43,7 +44,7 @@ export const PostManager: React.FC = () => {
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
 
-  const MEDIA_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+  const MEDIA_BASE_URL = getApiBaseUrl();
 
   useEffect(() => {
     fetchPosts();

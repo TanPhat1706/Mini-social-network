@@ -16,6 +16,7 @@ import PersonIcon from '@mui/icons-material/Person';
 
 // Import API & Components
 import api from '../../api/api';
+import { getApiBaseUrl } from '../../config/apiBase';
 import { useAuth } from '../../context/AuthContext';
 import PostViewModal from './PostViewModal';
 import EditProfileDialog from './EditProfileDialog'; // Import Dialog mới
@@ -43,8 +44,8 @@ const ProfileAvatar = styled(Avatar)(({ theme }) => ({
 // Helper xử lý URL ảnh thủ công (Local)
 const getImageUrl = (url: string | undefined) => {
   if (!url) return undefined;
-  if (url.startsWith('http')) return url; // Đã là link online
-  return `http://localhost:8080${url}`; // Link local từ backend trả về
+  if (url.startsWith('http')) return url;
+  return `${getApiBaseUrl()}${url}`;
 };
 
 export default function ProfileHeader() {

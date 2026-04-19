@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { Box, Dialog, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-
-// Định nghĩa URL cơ sở 
-const BASE_URL = 'http://localhost:8080'; 
+import { getApiBaseUrl } from '../../config/apiBase'; 
 
 export default function PostMediaGrid({ media }) {
   const [open, setOpen] = useState(false);
 
   if (!media || media.length === 0) return null;
 
-  const getUrl = (url) => (url.startsWith('http') ? url : `${BASE_URL}${url}`);
+  const base = getApiBaseUrl();
+  const getUrl = (url) => (url.startsWith('http') ? url : `${base}${url}`);
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 

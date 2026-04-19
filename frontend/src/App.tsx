@@ -24,6 +24,7 @@ import ShopPage from './pages/ShopPage';
 
 // 1️⃣ IMPORT COMPONENT GAME MỚI
 import SnakeGame from './components/game/SnakeGame';
+import TicTacToePage from './components/game/TicTacToePage'; // Đổi đường dẫn cho khớp với thư mục của bạn
 import GameList from './pages/GameList';
 
 // 🔴 IMPORT COMPONENT AVATAR
@@ -74,10 +75,10 @@ const GuestRoute = ({ children }: { children: JSX.Element }) => {
 const UserRoute = ({ children }: { children: JSX.Element }) => {
   const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  
+
   // 🚫 KHÓA CHẶT ADMIN: Nếu là ADMIN cố tình vào đây -> Đá về Dashboard
   if (user?.role === 'ADMIN') return <Navigate to="/admin/dashboard" replace />;
-  
+
   return children;
 };
 
@@ -85,10 +86,10 @@ const UserRoute = ({ children }: { children: JSX.Element }) => {
 const AdminRoute = ({ children }: { children: JSX.Element }) => {
   const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  
+
   // 🚫 KHÓA CHẶT USER: Nếu là USER cố tình gõ /admin -> Đá về Trang chủ
   if (user?.role !== 'ADMIN') return <Navigate to="/" replace />;
-  
+
   return children;
 };
 
@@ -121,7 +122,7 @@ function App() {
                 <Route path="/profile" element={<UserRoute><ProfilePage /></UserRoute>} />
                 <Route path="/profile/:userId" element={<UserRoute><ProfilePage /></UserRoute>} />
                 <Route path="/posts/:postId" element={<UserRoute><PostDetailPage /></UserRoute>} />
-                
+
                 <Route path="/games" element={
                   <UserRoute>
                     <Box sx={{ py: 4 }}><GameList /></Box>
@@ -130,6 +131,11 @@ function App() {
                 <Route path="/games/snake" element={
                   <UserRoute>
                     <Box sx={{ py: 4 }}><SnakeGame /></Box>
+                  </UserRoute>
+                } />
+                <Route path="/games/tic-tac-toe/:sessionId" element={
+                  <UserRoute>
+                    <Box sx={{ py: 4 }}><TicTacToePage /></Box>
                   </UserRoute>
                 } />
                 <Route path="/shop" element={
