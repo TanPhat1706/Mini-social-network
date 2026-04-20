@@ -35,10 +35,13 @@ public class SecurityLoggingFilter extends OncePerRequestFilter {
     );
 
     @Override
+    
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
+                System.out.println(">>> SecurityLoggingFilter triggered");
+
 
         String ip = getClientIp(request);
         String method = request.getMethod();
