@@ -1,4 +1,4 @@
-package com.example.backend.security;
+package com.example.backend.Security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
