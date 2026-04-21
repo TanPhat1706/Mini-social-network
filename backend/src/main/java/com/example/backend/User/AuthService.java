@@ -79,7 +79,6 @@ public class AuthService {
         // (Truyền req.getIdentifier() vào cả 2 tham số để JPA check cả 2 cột)
         User user = userRepository.findByStudentCodeOrEmail(req.getIdentifier(), req.getIdentifier())
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
-        System.out.println("USER: " + user.getStudentCode() + " - " + user.getEmail() + " - " + user.getPassword());
 
         // 2. Kiểm tra mật khẩu (So sánh pass thô và pass đã hash trong DB)
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {

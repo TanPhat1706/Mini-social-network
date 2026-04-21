@@ -1,5 +1,6 @@
 package com.example.backend.Config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -20,6 +21,8 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 import com.example.backend.User.JwtUtil;
 import lombok.RequiredArgsConstructor;
 
+import java.util.Arrays;
+
 @Configuration
 @EnableWebSocketMessageBroker
 @Order(Ordered.HIGHEST_PRECEDENCE + 99)
@@ -27,6 +30,9 @@ import lombok.RequiredArgsConstructor;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
+
+    @Value("${cors.allowed.origins}")
+    private String corsAllowedOrigins;
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
@@ -82,8 +88,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Convert comma-separated CORS origins to array of patterns for WebSocket
+        String[] allowedPatterns = Arrays.stream(corsAllowedOrigins.split(","))
+                .map(String::trim)
+                .toArray(String[]::new);
+        
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("http://localhost:5173")
+                .setAllowedOriginPatterns(allowedPatterns)
                 .withSockJS();
     }
 }
