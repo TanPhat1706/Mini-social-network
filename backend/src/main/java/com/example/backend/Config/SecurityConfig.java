@@ -62,7 +62,12 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/uploads/**",
                                 "/ws/**",
-                                "/api/games/leaderboard/**")
+                                "/api/games/leaderboard/**",
+                                "/v3/api-docs/**",
+                                "/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                            )
                         .permitAll()
 
                         // 2. Các API cần Token để chơi game và mua đồ

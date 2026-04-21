@@ -6,6 +6,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.validation.Valid;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
@@ -22,7 +24,7 @@ public class AuthController {
     private UserRepository userRepository;
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
+    public ResponseEntity<?> register(@RequestBody @Valid RegisterRequest req) {
         try {
             return ResponseEntity.ok(authService.register(req));
         } catch (Exception e) {
@@ -32,7 +34,7 @@ public class AuthController {
 
     // ⭐️ CHIÊU THỨ 1: Sửa API Login trả về full thông tin
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest req) {
+    public ResponseEntity<?> login(@RequestBody @Valid LoginRequest req) {
         try {
             // Gọi service để lấy token
             String token = authService.login(req);
