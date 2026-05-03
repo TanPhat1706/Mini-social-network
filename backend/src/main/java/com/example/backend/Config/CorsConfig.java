@@ -24,7 +24,17 @@ public class CorsConfig {
                         .toArray(String[]::new);
                 
                 registry.addMapping("/**")
+<<<<<<< HEAD
                         .allowedOrigins(allowedOrigins)
+=======
+                        .allowedOriginPatterns(
+                                "http://localhost:5173",
+                                "http://localhost:3000",
+                                "http://127.0.0.1:5173",
+                                "https://*.ngrok-free.app",
+                                "https://*.ngrok.io"
+                        )
+>>>>>>> main
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                         .allowedHeaders("*")
                         .allowCredentials(true);

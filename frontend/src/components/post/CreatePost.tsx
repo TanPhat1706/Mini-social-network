@@ -102,8 +102,12 @@ export default function CreatePost() {
       window.location.reload(); // Tạm thời reload để thấy post mới
       handleClose();
     } catch (error) {
-      console.error('Error:', error);
-      alert('Lỗi kết nối server!');
+      console.error('Create post error:', error);
+      const serverMessage =
+        (error as any)?.response?.data?.message ||
+        (error as any)?.response?.data ||
+        'Lỗi kết nối server!';
+      alert(String(serverMessage));
     } finally {
       setIsLoading(false);
     }

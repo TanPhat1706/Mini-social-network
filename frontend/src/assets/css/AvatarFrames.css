@@ -97,3 +97,83 @@
     0% { background-position: 0% 50%; }
     100% { background-position: 100% 50%; }
 }
+/* =========================================
+   TIER 6: VIỀN DUNG NHAM (MAGMA FIRE)
+   Tên Class trong DB: css-frame-magma-fire
+   ========================================= */
+.css-frame-magma-fire {
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    /* Gradient đỏ/cam rực lửa */
+    background: conic-gradient(from 0deg, #ff4500, #ff8c00, #dc2626, #ff4500);
+    animation: spin-fast 1.5s linear infinite; /* Xoay rất nhanh */
+    z-index: 1;
+    box-shadow: 0 0 20px rgba(255, 69, 0, 0.8), inset 0 0 10px rgba(220, 38, 38, 0.8);
+}
+
+.css-frame-magma-fire::after {
+    content: '';
+    position: absolute;
+    inset: 4px; /* Khoét lỗ để hiện ảnh thật */
+    background: #fff;
+    border-radius: 50%;
+}
+
+/* =========================================
+   TIER 8: VIỀN DẢI NGÂN HÀ (COSMIC GALAXY)
+   Tên Class trong DB: css-frame-cosmic-galaxy
+   ========================================= */
+.css-frame-cosmic-galaxy {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    /* Gradient đa sắc vũ trụ */
+    background: linear-gradient(45deg, #0f2027, #2c5364, #8a2387, #e94057, #f27121);
+    background-size: 300% 300%;
+    animation: cosmic-bg 4s ease infinite; /* Hiệu ứng đổi màu loang lổ */
+    z-index: 1;
+    box-shadow: 0 0 15px #e94057, 0 0 25px #8a2387;
+}
+
+.css-frame-cosmic-galaxy::after {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    background: #fff;
+    border-radius: 50%;
+}
+
+@keyframes cosmic-bg {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* =========================================
+   MÀU TÊN ĐẠI DƯƠNG (OCEAN WAVE)
+   Tên Class trong DB: css-color-ocean-wave
+   ========================================= */
+.css-color-ocean-wave {
+    background: linear-gradient(to right, #00c6ff, #0072ff, #00c6ff);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 900 !important;
+    animation: text-flow 3s linear infinite; /* Hiệu ứng nước chảy */
+}
+
+/* =========================================
+   MÀU TÊN HUYẾT NGUYỆT (BLOOD MOON)
+   Tên Class trong DB: css-color-blood-moon
+   ========================================= */
+.css-color-blood-moon {
+    color: #ef4444;
+    text-shadow: 0 0 5px rgba(239, 68, 68, 0.6), 0 0 15px rgba(220, 38, 38, 0.9);
+    font-weight: 900 !important;
+    letter-spacing: 0.5px;
+}
+
+@keyframes text-flow {
+    to { background-position: 200% center; }
+}

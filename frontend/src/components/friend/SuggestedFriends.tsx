@@ -23,8 +23,21 @@ const SuggestedFriends: React.FC<Props> = ({ currentUserId }) => {
     axiosClient.get(`/friends/suggested?page=${page}&size=5`)
       .then(res => {
         // API Spring Data phân trang sẽ trả về mảng dữ liệu trong res.data.content
-        setUsers(res.data.content || []);
-        setTotalPages(res.data.totalPages || 1);
+        const data = res.data;
+
+        // normalize dữ liệu
+        const content =
+          data?.content ||
+          data?.data?.content ||
+          (Array.isArray(data) ? data : []);
+
+        setUsers(content);
+
+        setTotalPages(
+          data?.totalPages ||
+          data?.data?.totalPages ||
+          1
+        );
         setCurrentPage(page);
       })
       .catch(err => console.error(err));

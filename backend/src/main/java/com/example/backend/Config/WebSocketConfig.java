@@ -94,7 +94,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .toArray(String[]::new);
         
         registry.addEndpoint("/ws")
+<<<<<<< HEAD
                 .setAllowedOriginPatterns(allowedPatterns)
+=======
+                .setAllowedOriginPatterns(
+                        "http://localhost:5173",
+                        "http://127.0.0.1:5173",
+                        "https://*.ngrok-free.app",
+                        "https://*.ngrok.io"
+                )
+>>>>>>> main
                 .withSockJS();
     }
 }

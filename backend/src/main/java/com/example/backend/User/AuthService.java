@@ -143,8 +143,24 @@ public class AuthService {
         User user = userRepository.findByStudentCode(studentCode)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        if (fullName != null) {
+            fullName = fullName.trim();
+            if (fullName.isEmpty()) {
+                throw new RuntimeException("Họ và tên không được để trống");
+            }
+        }
+        if (className != null) {
+            className = className.trim();
+        }
+        if (bio != null) {
+            bio = bio.trim();
+            if (bio.length() > 500) {
+                bio = bio.substring(0, 500);
+            }
+        }
+
         // Cập nhật thông tin text nếu có
-        if (fullName != null && !fullName.isEmpty()) user.setFullName(fullName);
+        if (fullName != null) user.setFullName(fullName);
         if (bio != null) user.setBio(bio);
         if (className != null) user.setClassName(className);
 

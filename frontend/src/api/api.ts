@@ -4,12 +4,14 @@ import type {
   InternalAxiosRequestConfig,
   AxiosResponse,
 } from 'axios';
+import { getApiBaseUrl } from '../config/apiBase';
 
-// 1. Tạo instance của Axios với cấu hình cơ bản
+/** Gốc backend: các request dùng đường dẫn đầy đủ /api/admin/..., /api/posts/... */
 const api: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
+  baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
   },
   timeout: 10000,
 });

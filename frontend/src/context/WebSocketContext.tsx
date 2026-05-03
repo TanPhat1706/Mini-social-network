@@ -1,146 +1,158 @@
-// WebSocketContext.tsx
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useEffect, useState, useRef } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import type { IMessage } from '@stomp/stompjs';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom'; // 🔴 MỚI THÊM
+import type { GameSession, GameWsEvent } from '../types/game';
+import { getApiBaseUrl } from '../config/apiBase';
 
+// ... (Giữ nguyên interface WebSocketContextType)
 interface WebSocketContextType {
     notifications: any[];
     unreadCount: number;
     setUnreadCount: (count: number) => void;
     markAllAsRead: () => void;
-    refreshNotifications: () => void; // Thêm hàm này để các component khác có thể ép load lại
+    refreshNotifications: () => void;
     setNotifications: React.Dispatch<React.SetStateAction<any[]>>;
+    currentGame: GameSession | null;
+    setCurrentGame: (game: GameSession | null) => void;
+    subscribeToRoom: (sessionId: number) => void;
+    sendGameAction: (destination: string, body: any) => void;
+    isConnected: boolean;
 }
 
-const WebSocketContext = createContext<WebSocketContextType | null>(null);
+export const WebSocketContext = createContext<WebSocketContextType | null>(null);
 
 export const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
+    const navigate = useNavigate(); // 🔴 MỚI THÊM
+
     const [notifications, setNotifications] = useState<any[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
-    const clientRef = useRef<Client | null>(null);
-    const token = localStorage.getItem('token'); 
+    const [currentGame, setCurrentGame] = useState<GameSession | null>(null);
+    const [isConnected, setIsConnected] = useState(false);
 
-    // Hàm chuẩn hóa dữ liệu từ Backend (Dù là Like/Comment hay FriendRequest đều dùng được)
-    const mapNotification = (data: any) => {
-        return {
-            id: data.id || Date.now(), // Nếu không có ID thì tạo tạm
-            senderId: data.senderId,
-            senderName: data.senderName,
-            senderAvatar: data.senderAvatar,
-            message: data.message,
-            // Xử lý sự khác biệt giữa createdAt (Date) và timestamp (String)
-            createdAt: data.createdAt || data.timestamp || new Date().toISOString(),
-            // Nếu FriendshipService không gửi targetUrl, ta tự tạo
-            targetUrl: data.targetUrl || (data.type === 'FRIEND_REQUEST' ? `/profile/${data.senderId}` : '#'),
-            isRead: data.isRead || false,
-            type: data.type
-        };
-    };
+    const clientRef = useRef<Client | null>(null);
+    const roomSubscriptionRef = useRef<any>(null);
+    const token = localStorage.getItem('token');
+
+    // ... (Giữ nguyên mapNotification và fetchHistory)
+    const mapNotification = (data: any) => ({
+        id: data.id || Date.now(),
+        senderId: data.senderId,
+        senderName: data.senderName,
+        senderAvatar: data.senderAvatar,
+        message: data.message,
+        createdAt: data.createdAt || data.timestamp || new Date().toISOString(),
+        targetUrl: data.targetUrl || (data.type === 'FRIEND_REQUEST' ? `/profile/${data.senderId}` : '#'),
+        isRead: data.isRead || false,
+        type: data.type
+    });
 
     const fetchHistory = async () => {
         if (!token) return;
         try {
-            // Đảm bảo URL đúng với Controller của em
-            const response = await axios.get('http://localhost:8080/api/notifications', {
-                headers: { Authorization: `Bearer ${token}` }
+            const response = await axios.get(`${getApiBaseUrl()}/api/notifications`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'ngrok-skip-browser-warning': 'true',
+                },
             });
-            
-            console.log(">>> [API HISTORY]", response.data);
-            
-            // Map lại dữ liệu cũ từ API cho đồng bộ luôn
-            const listRaw = Array.isArray(response.data) ? response.data : [];
-            const listMapped = listRaw.map(mapNotification);
-
+            const listMapped = (Array.isArray(response.data) ? response.data : []).map(mapNotification);
             setNotifications(listMapped);
-            
-            const unread = listMapped.filter((n: any) => !n.isRead).length;
-            setUnreadCount(unread);
+            setUnreadCount(listMapped.filter((n: any) => !n.isRead).length);
         } catch (error) {
-            console.error("Lỗi fetch notification:", error);
+            console.error(">>> [API ERROR] Lỗi fetch notification:", error);
         }
     };
 
-    // Gọi API khi mới vào trang
-    useEffect(() => {
-        fetchHistory();
-    }, [token]);
-
-    // Kết nối WebSocket
-    useEffect(() => {
-        if (!token) return;
-        
-        // Ngắt kết nối cũ nếu có để tránh duplicate
-        if (clientRef.current?.active) {
-            clientRef.current.deactivate();
+    const subscribeToRoom = (sessionId: number) => {
+        if (!clientRef.current?.connected) {
+            console.warn(">>> [WS] Chưa kết nối, không thể subscribe phòng.");
+            return;
+        }
+        if (roomSubscriptionRef.current) {
+            roomSubscriptionRef.current.unsubscribe();
         }
 
-        console.log(">>> [WS INIT] Connecting...");
+        console.log(`>>> [WS] Đang lắng nghe phòng game: ${sessionId}`);
+        roomSubscriptionRef.current = clientRef.current.subscribe(`/topic/game/${sessionId}`, (message: IMessage) => {
+            const event: GameWsEvent = JSON.parse(message.body);
+            console.log(">>> [GAME UPDATE]", event);
+            if (event.session) {
+                setCurrentGame(event.session);
+            }
+        });
+    };
+
+    const sendGameAction = (destination: string, body: any) => {
+        if (clientRef.current?.connected) {
+            clientRef.current.publish({
+                destination: `/app/${destination}`,
+                body: JSON.stringify(body)
+            });
+        }
+    };
+
+    useEffect(() => {
+        if (!token) return;
+        fetchHistory();
 
         const client = new Client({
-            webSocketFactory: () => new SockJS('http://localhost:8080/ws'), 
+            webSocketFactory: () => new SockJS(`${getApiBaseUrl()}/ws`),
             connectHeaders: { Authorization: `Bearer ${token}` },
             reconnectDelay: 5000,
-            
+            heartbeatIncoming: 4000,
+            heartbeatOutgoing: 4000,
+
             onConnect: () => {
-                console.log(">>> [WS CONNECTED] Subscribing...");
-                
+                console.log(">>> [WS CONNECTED] ✅");
+                setIsConnected(true);
+
                 client.subscribe('/user/queue/notifications', (message) => {
-                    if (message.body) {
-                        try {
-                            const rawData = JSON.parse(message.body);
-                            console.log(">>> [WS RECV] Raw:", rawData);
+                    const newNoti = mapNotification(JSON.parse(message.body));
+                    setNotifications((prev) => [newNoti, ...prev]);
+                    setUnreadCount((prev) => prev + 1);
+                });
 
-                            // 1. Chuẩn hóa dữ liệu trước khi lưu vào State
-                            const newNoti = mapNotification(rawData);
+                client.subscribe('/user/queue/game-events', (message) => {
+                    const event: GameWsEvent = JSON.parse(message.body);
+                    console.log(">>> [PERSONAL GAME EVENT]", event);
 
-                            // 2. Cập nhật State
-                            setNotifications((prev) => [newNoti, ...prev]);
-                            setUnreadCount((prev) => prev + 1);
-                        } catch (e) {
-                            console.error("Lỗi parse notification:", e);
-                        }
+                    if (event.type === 'ERROR') {
+                        alert(`Lỗi: ${event.message}`);
+                    } else if (event.type === 'GAME_INVITE_ACCEPTED') {
+                       
+                        
+                        // 🔴 MỚI THÊM: CHUYỂN HƯỚNG CẢ 2 NGƯỜI VÀO PHÒNG CÙNG LÚC
+                        navigate(`/games/tic-tac-toe/${event.session.id}`);
                     }
                 });
             },
-            onStompError: (frame) => {
-                console.error('>>> [WS ERROR]:', frame.headers['message']);
+            onDisconnect: () => {
+                console.log(">>> [WS DISCONNECTED] ❌");
+                setIsConnected(false);
             }
         });
 
         client.activate();
         clientRef.current = client;
 
-        return () => { 
-            if (clientRef.current) {
-                console.log(">>> [WS CLEANUP] Deactivating...");
-                clientRef.current.deactivate();
-            }
+        return () => {
+            if (clientRef.current) clientRef.current.deactivate();
         };
     }, [token]);
 
     const markAllAsRead = () => {
         setUnreadCount(0);
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-        // TODO: Gọi API mark-all-read về Backend nếu cần
     };
 
     return (
         <WebSocketContext.Provider value={{ 
-            notifications, 
-            unreadCount, 
-            setUnreadCount, 
-            markAllAsRead,
-            refreshNotifications: fetchHistory, // Expose hàm này ra
-            setNotifications
+            notifications, unreadCount, setUnreadCount, markAllAsRead, refreshNotifications: fetchHistory, setNotifications, currentGame, setCurrentGame, subscribeToRoom, sendGameAction, isConnected
         }}>
             {children}
         </WebSocketContext.Provider>
     );
-};
-
-export const useWebSocket = () => {
-    const context = useContext(WebSocketContext);
-    if (!context) throw new Error("useWebSocket must be used within WebSocketProvider");
-    return context;
 };
