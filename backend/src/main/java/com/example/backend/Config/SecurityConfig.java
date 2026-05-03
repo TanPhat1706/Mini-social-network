@@ -4,6 +4,7 @@ import com.example.backend.User.JwtFilter;
 import com.example.backend.Security.SecurityLoggingFilter; // 👈 thêm
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -23,6 +24,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import org.springframework.web.cors.CorsConfiguration;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -37,6 +39,9 @@ public class SecurityConfig {
     @Autowired
     private UserDetailsService userDetailsService;
 
+    @Value("${cors.allowed.origins}")
+    private String corsAllowedOrigins;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -50,59 +55,51 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
+        List<String> allowedOrigins = Arrays.asList(corsAllowedOrigins.split(","));
+
         http
-            .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf.disable())
 
-            // ✅ CORS
-            .cors(cors -> cors.configurationSource(request -> {
-                CorsConfiguration cfg = new CorsConfiguration();
+                // ✅ CORS (chỉ 1 lần)
+                .cors(cors -> cors.configurationSource(request -> {
+                    CorsConfiguration cfg = new CorsConfiguration();
+                    cfg.setAllowedOrigins(allowedOrigins);
+                    cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                    cfg.setAllowedHeaders(List.of("*"));
+                    cfg.setAllowCredentials(true);
+                    return cfg;
+                }))
 
-                cfg.setAllowedOriginPatterns(List.of(
-                        "http://localhost:5173",
-                        "http://localhost:3000",
-                        "https://*.ngrok-free.app"
-                ));
+                // ✅ Authorization (chỉ 1 block)
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/uploads/**",
+                                "/ws/**",
+                                "/api/games/leaderboard/**",
+                                "/v3/api-docs/**",
+                                "/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/api/game/**")
+                        .permitAll()
 
-                cfg.setAllowedMethods(List.of(
-                        "GET", "POST", "PUT", "DELETE", "OPTIONS"
-                ));
+                        .requestMatchers("/api/games/score").authenticated()
+                        .requestMatchers("/api/shop/**").authenticated()
 
-                cfg.setAllowedHeaders(List.of("*"));
-                cfg.setAllowCredentials(true);
+                        .anyRequest().authenticated())
 
-                return cfg;
-            }))
+                // ✅ Stateless JWT
+                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-            // ✅ Authorization
-            .authorizeHttpRequests(auth -> auth
+                .authenticationProvider(daoAuthenticationProvider())
 
-                .requestMatchers(
-                        "/api/auth/login",
-                        "/api/auth/register",
-                        "/uploads/**",
-                        "/ws/**",
-                        "/api/games/leaderboard/**",
-                        "/api/game/**"
-                ).permitAll()
+                // ✅ Logging filter
+                .addFilterBefore(loggingFilter, UsernamePasswordAuthenticationFilter.class)
 
-                .requestMatchers("/api/games/score").authenticated()
-                .requestMatchers("/api/shop/**").authenticated()
-
-                .anyRequest().authenticated()
-            )
-
-            // ✅ Stateless (JWT)
-            .sessionManagement(sess ->
-                sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-
-            .authenticationProvider(daoAuthenticationProvider())
-
-            // 🔥 QUAN TRỌNG: thêm logging filter trước security
-            .addFilterBefore(loggingFilter, UsernamePasswordAuthenticationFilter.class)
-
-            // 🔐 JWT filter
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                // ✅ JWT filter
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
