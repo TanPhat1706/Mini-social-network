@@ -288,5 +288,119 @@ class AuthServiceTest {
         verify(userRepository).save(any(User.class));
         verify(spy, times(2)).saveFile(any());
     }
+    // ==========================================
+    // BỔ SUNG TEST CASE THEO LUỒNG NGHIỆP VỤ MỚI
+    // ==========================================
+
+    @Test
+    void register_withStudentRole_shouldSaveSuccessfully_AndSetInactive() {
+        // Đảm bảo user đăng ký mới dù đúng flow vẫn phải ở trạng thái chờ duyệt (active = false)
+        RegisterRequest req = new RegisterRequest();
+        req.setStudentCode("SV005");
+        req.setEmail("sv005@example.com");
+        req.setFullName("Student Five");
+        req.setPassword("raw");
+        req.setRole("STUDENT");
+
+        when(userRepository.existsByStudentCode(anyString())).thenReturn(false);
+        when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        when(passwordEncoder.encode("raw")).thenReturn("hashed");
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        when(userRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        User saved = authService.register(req);
+
+        assertNotNull(saved);
+        assertEquals("STUDENT", saved.getRole());
+        // Trạng thái bắt buộc phải là false để chờ Admin duyệt
+        assertEquals(false, saved.getActive()); 
+    }
+
+    @Test
+    void login_whenActiveIsNull_shouldThrow() {
+        // Mô phỏng user vừa đăng ký xong, cột active dưới DB đang bị null (chưa được Admin đụng tới)
+        LoginRequest req = new LoginRequest();
+        req.setIdentifier("sv_new");
+        req.setPassword("pw");
+
+        User u = new User();
+        u.setStudentCode("SV_NEW");
+        u.setPassword("hashed");
+        u.setActive(null); // Tái hiện case active bị null
+
+        when(userRepository.findByStudentCodeOrEmail("sv_new", "sv_new")).thenReturn(Optional.of(u));
+        when(passwordEncoder.matches("pw", "hashed")).thenReturn(true);
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login(req));
+        assertEquals("Tài khoản của bạn chưa được kích hoạt hoặc đã bị khóa!", ex.getMessage());
+        verify(jwtUtil, never()).generateToken(anyString());
+    }
+
+
+    @Test
+    void searchUsers_whenNoMatch_shouldReturnEmptyList() {
+        when(userRepository.searchUsers("GHOST_USER")).thenReturn(List.of());
+
+        List<UserResponse> res = authService.searchUsers("GHOST_USER");
+
+        assertNotNull(res);
+        assertTrue(res.isEmpty());
+    }
+
+    @Test
+    void saveFile_whenFileIsNull_shouldReturnNull() throws IOException {
+        String result = authService.saveFile(null);
+        assertNull(result);
+    }
+
+    @Test
+    void saveFile_whenFileIsEmpty_shouldReturnNull() throws IOException {
+        MockMultipartFile emptyFile = new MockMultipartFile("file", "", "text/plain", new byte[0]);
+        String result = authService.saveFile(emptyFile);
+        assertNull(result);
+    }
+
+    @Test
+    void saveFile_whenValidFile_shouldSaveAndReturnPath() throws IOException {
+        MockMultipartFile validFile = new MockMultipartFile(
+                "file", "test.png", "image/png", "dummy image content".getBytes(StandardCharsets.UTF_8)
+        );
+
+        String path = authService.saveFile(validFile);
+
+        assertNotNull(path);
+        assertTrue(path.startsWith("/uploads/"));
+        assertTrue(path.endsWith("_test.png"));
+    }
+
+    @Test
+    void updateProfile_whenUserNotFound_shouldThrow() {
+        when(userRepository.findByStudentCode("GHOST")).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> authService.updateProfile("GHOST", null, null, null, null, null));
+        
+        assertEquals("User not found", ex.getMessage());
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void updateProfile_whenAllFieldsNull_shouldNotUpdateAnything() throws IOException {
+        User u = new User();
+        u.setStudentCode("SV001");
+        u.setFullName("Old Name");
+        u.setBio("Old Bio");
+        
+        when(userRepository.findByStudentCode("SV001")).thenReturn(Optional.of(u));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        User saved = authService.updateProfile("SV001", null, null, null, null, null);
+
+        // Đảm bảo dữ liệu cũ được giữ nguyên và không văng lỗi
+        assertEquals("Old Name", saved.getFullName());
+        assertEquals("Old Bio", saved.getBio());
+        verify(userRepository).save(u);
+    }
 }
 
