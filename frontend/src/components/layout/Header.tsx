@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   AppBar, Toolbar, Box, InputBase, Paper, List, ListItem,
   IconButton, Tooltip, Button, Badge, Typography, CircularProgress
 } from '@mui/material';
-import { styled, alpha } from '@mui/material/styles';
-import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
+import { styled } from '@mui/material/styles';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 // Import Icons
 import SearchIcon from '@mui/icons-material/Search';
@@ -17,7 +17,6 @@ import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import { useAuth } from '../../context/AuthContext';
 import NotificationBell from '../notification/NotificationBell';
 import type { User } from '../../types';
-import type { Conversation } from '../../types/types';
 import axiosClient from '../../api/axiosClient';
 import MessengerDropdown from '../messenger/MessengerDropdown';
 import { useWebSocket } from '../../context/useWebSocket';
@@ -103,7 +102,6 @@ export default function Header() {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const [requests, setRequests] = useState<User[]>([]);
   const [showMsgDropdown, setShowMsgDropdown] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const msgRef = useRef<HTMLDivElement>(null);
@@ -112,34 +110,52 @@ export default function Header() {
   const [liveUser, setLiveUser] = useState<User | null>(null);
 
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    const trimmedQuery = searchQuery.trim();
+
+    if (!trimmedQuery) {
       setSearchResults([]);
       setShowSearchDropdown(false);
       return;
     }
 
+    let ignore = false;
     const delayDebounce = setTimeout(async () => {
       setIsSearching(true);
       setShowSearchDropdown(true);
       try {
-        const res = await axiosClient.get(`/search?name=${searchQuery}`);
-        setSearchResults(res.data);
+        const res = await axiosClient.get('/search', {
+          params: { name: trimmedQuery },
+        });
+        const data = res.data;
+        const normalizedResults =
+          data?.content ||
+          data?.data ||
+          (Array.isArray(data) ? data : []);
+
+        if (!ignore) {
+          setSearchResults(normalizedResults);
+        }
       } catch (err) {
         console.error("Lỗi tìm kiếm:", err);
+        if (!ignore) {
+          setSearchResults([]);
+        }
       } finally {
-        setIsSearching(false);
+        if (!ignore) {
+          setIsSearching(false);
+        }
       }
     }, 500);
 
-    return () => clearTimeout(delayDebounce);
+    return () => {
+      ignore = true;
+      clearTimeout(delayDebounce);
+      setIsSearching(false);
+    };
   }, [searchQuery]);
 
   useEffect(() => {
     if (notifications.length > 0) {
-      const latest = notifications[0];
-      if (latest.type === 'FRIEND_REQUEST' || latest.type === 'ACCEPT_FRIEND') {
-        fetchRequests();
-      }
       fetchUnreadCount();
     }
   }, [notifications]);
@@ -166,16 +182,8 @@ export default function Header() {
     }
   };
 
-  const fetchRequests = async () => {
-    try {
-      const res = await axiosClient.get('/friends/requests');
-      setRequests(res.data);
-    } catch (err) { console.error(err); }
-  };
-
   useEffect(() => {
     if (isAuthenticated) {
-      fetchRequests();
       fetchUnreadCount();
       axiosClient.get('/profile')
         .then(res => setLiveUser(res.data))
@@ -251,7 +259,10 @@ export default function Header() {
                           <Box sx={{ overflow: 'hidden' }}>
                             <Typography variant="body2" fontWeight={600} noWrap>
                               <ColoredName name={result.fullName} colorClass={(result as any).currentNameColor} />
-                            </Typography>                            <Typography variant="caption" color="text.secondary" noWrap>{result.studentCode}</Typography>
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" noWrap>
+                              {result.studentCode}
+                            </Typography>
                           </Box>
                         </Box>
 
@@ -328,12 +339,11 @@ export default function Header() {
                     size={28}
                   />
                   <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', lg: 'block' } }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', lg: 'block' } }}>
-                      <ColoredName
-                        name={(liveUser?.fullName || user?.fullName || '').split(' ').pop()}
-                        colorClass={(liveUser as any)?.currentNameColor || (user as any)?.currentNameColor}
-                      />
-                    </Typography>                  </Typography>
+                    <ColoredName
+                      name={(liveUser?.fullName || user?.fullName || '').split(' ').pop() || ''}
+                      colorClass={(liveUser as any)?.currentNameColor || (user as any)?.currentNameColor}
+                    />
+                  </Typography>
                 </Box>
               </Tooltip>
 
