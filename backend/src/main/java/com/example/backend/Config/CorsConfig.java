@@ -18,16 +18,21 @@ public class CorsConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                // Parse comma-separated CORS origins from environment variable
                 String[] allowedOrigins = Arrays.stream(corsAllowedOrigins.split(","))
                         .map(String::trim)
+                        .filter(origin -> !origin.isEmpty())
                         .toArray(String[]::new);
-                
-                registry.addMapping("/**")
-                        .allowedOrigins(allowedOrigins)
+
+                var registration = registry.addMapping("/**")
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                         .allowedHeaders("*")
                         .allowCredentials(true);
+
+                if (Arrays.stream(allowedOrigins).anyMatch("*"::equals)) {
+                    registration.allowedOriginPatterns(allowedOrigins);
+                } else {
+                    registration.allowedOrigins(allowedOrigins);
+                }
             }
         };
     }

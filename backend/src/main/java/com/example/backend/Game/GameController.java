@@ -1,9 +1,8 @@
 package com.example.backend.Game;
 
-import com.example.backend.Game.GameScore;
-import com.example.backend.Game.GameService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,26 +23,39 @@ public class GameController {
 
     @PostMapping("/score")
     public ResponseEntity<?> submitScore(@RequestBody ScoreRequest request) {
-        // Lưu ý: Sau này userId sẽ lấy từ Token, giờ test tạm lấy từ body
-        GameScore savedScore = gameService.saveScore(
-            request.getUserId(), 
-            request.getGameKey(), 
-            request.getScore()
-        );
-        return ResponseEntity.ok(Map.of("message", "Score saved!", "data", savedScore));
+        try {
+            // Ép kiểu chuỗi thành số nguyên
+            String tokenName = SecurityContextHolder.getContext().getAuthentication().getName();
+            Integer userId = Integer.parseInt(tokenName);
+
+            // Truyền biến userId (Integer) vào service
+            GameScore savedScore = gameService.saveScore(userId, request.getGameKey(), request.getScore());
+            return ResponseEntity.ok(Map.of("message", "Score saved!", "data", savedScore));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }
 
-// DTO chỉnh sửa ID thành Integer
+// 🟢 DTO đã được tối giản: Xóa bỏ userId vì không được phép tin tưởng ID do
+// Client gửi lên
 class ScoreRequest {
-    private Integer userId; // <-- ĐÃ SỬA
     private String gameKey;
     private int score;
 
-    public Integer getUserId() { return userId; }
-    public void setUserId(Integer userId) { this.userId = userId; }
-    public String getGameKey() { return gameKey; }
-    public void setGameKey(String gameKey) { this.gameKey = gameKey; }
-    public int getScore() { return score; }
-    public void setScore(int score) { this.score = score; }
+    public String getGameKey() {
+        return gameKey;
+    }
+
+    public void setGameKey(String gameKey) {
+        this.gameKey = gameKey;
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public void setScore(int score) {
+        this.score = score;
+    }
 }

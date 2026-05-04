@@ -55,7 +55,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-        List<String> allowedOrigins = Arrays.asList(corsAllowedOrigins.split(","));
+        List<String> allowedOrigins = Arrays.stream(corsAllowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
 
         http
                 .csrf(csrf -> csrf.disable())
@@ -63,7 +66,11 @@ public class SecurityConfig {
                 // ✅ CORS (chỉ 1 lần)
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration cfg = new CorsConfiguration();
-                    cfg.setAllowedOrigins(allowedOrigins);
+                    if (allowedOrigins.stream().anyMatch("*"::equals)) {
+                        cfg.setAllowedOriginPatterns(allowedOrigins);
+                    } else {
+                        cfg.setAllowedOrigins(allowedOrigins);
+                    }
                     cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     cfg.setAllowedHeaders(List.of("*"));
                     cfg.setAllowCredentials(true);
