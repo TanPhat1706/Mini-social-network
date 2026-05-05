@@ -1,70 +1,51 @@
 pipeline {
     agent any
 
+    // Chỉ giữ lại tên và tag của Image để build local
     environment {
-        AWS_ACCOUNT_ID = "THAY_BANG_ID_TAI_KHOAN_AWS_CUA_SEP"
-        AWS_REGION     = "ap-southeast-1"
-        ECR_REPO_NAME  = "mini-social-network-backend"
-        IMAGE_TAG      = "latest" 
-        ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-        IMAGE_URI      = "${ECR_REGISTRY}/${ECR_REPO_NAME}:${IMAGE_TAG}"
+        IMAGE_NAME = "mini-social-network-backend"
+        IMAGE_TAG  = "latest"
     }
 
     stages {
+        // 1. Kéo code mới nhất từ GitHub
         stage('Checkout Code') {
             steps {
                 checkout scm
             }
         }
 
+        // 2. Chạy bộ Unit Test
         stage('Run Unit Tests') {
             steps {
                 dir('backend') {
-                    // 🟢 ĐỔI sh -> bat
                     bat 'mvn clean test' 
                 }
             }
         }
 
+        // 3. Build Docker Image (Lưu tại máy chủ Jenkins)
         stage('Build Docker Image') {
             steps {
                 dir('backend') {
-                    echo "Building Docker image..."
-                    // 🟢 ĐỔI sh -> bat
-                    bat "docker build -t ${IMAGE_URI} ."
+                    echo "Building Docker image locally..."
+                    bat "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
         }
-
-        stage('Push to AWS ECR') {
-            steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-credentials', 
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                ]]) {
-                    echo "Logging into AWS ECR..."
-                    // 🟢 ĐỔI sh -> bat. 
-                    // Lưu ý ở Windows, dùng bat với block 1 dòng thường an toàn hơn dùng """ nhiều dòng
-                    bat "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
-                    
-                    echo "Pushing image to ECR..."
-                    bat "docker push ${IMAGE_URI}"
-                }
-            }
-        }
+        
+        // ĐÃ CẮT BỎ PHẦN PUSH LÊN AWS Ở ĐÂY
     }
 
     post {
         success {
-            echo "🎉 TUYỆT VỜI! Đã test, build và push thành công lên AWS ECR!"
+            echo "🎉 TUYỆT VỜI! Đã kéo code, test và build Docker Image thành công!"
         }
         failure {
             echo "❌ CÓ LỖI XẢY RA! Sếp vào kiểm tra lại log nhé!"
         }
         always {
-            // 🟢 ĐỔI sh -> bat
+            // Dọn dẹp image rác (Dangling images) trên server Jenkins
             bat "docker image prune -f"
         }
     }
