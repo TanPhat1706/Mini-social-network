@@ -41,7 +41,6 @@ public class SecurityLoggingFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-
         String ip = getClientIp(request);
         String method = request.getMethod();
         String uri = request.getRequestURI();
