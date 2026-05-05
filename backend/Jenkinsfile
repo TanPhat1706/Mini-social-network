@@ -1,0 +1,77 @@
+pipeline {
+    agent any
+
+    // 🟢 KHAI BÁO CÁC BIẾN MÔI TRƯỜNG CHO AWS
+    environment {
+        AWS_ACCOUNT_ID = "THAY_BANG_ID_TAI_KHOAN_AWS_CUA_SEP"
+        AWS_REGION     = "ap-southeast-1" // Thường dùng Singapore, sếp đổi nếu dùng vùng khác
+        ECR_REPO_NAME  = "mini-social-network-backend"
+        IMAGE_TAG      = "latest" // Hoặc dùng "${env.BUILD_ID}" để tag theo mỗi lần build
+        ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        IMAGE_URI      = "${ECR_REGISTRY}/${ECR_REPO_NAME}:${IMAGE_TAG}"
+    }
+
+    stages {
+        // 1. Kéo code mới nhất từ GitHub/GitLab
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+
+        // 2. Chạy lại bộ Unit Test "Bất bại" để đảm bảo code không có lỗi
+        stage('Run Unit Tests') {
+            steps {
+                dir('backend') { // Nhảy vào thư mục backend nếu dự án có cả frontend
+                    sh 'mvn clean test'
+                }
+            }
+        }
+
+        // 3. Build Docker Image (Sử dụng Dockerfile Multi-stage VIP PRO)
+        stage('Build Docker Image') {
+            steps {
+                dir('backend') {
+                    echo "Building Docker image..."
+                    sh "docker build -t ${IMAGE_URI} ."
+                }
+            }
+        }
+
+        // 4. Đăng nhập và Push Image lên AWS ECR
+        stage('Push to AWS ECR') {
+            steps {
+                // Sử dụng credentials đã lưu trong Jenkins
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-credentials', // ID này sếp sẽ tạo ở Bước 2
+                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                ]]) {
+                    echo "Logging into AWS ECR..."
+                    sh """
+                        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                    """
+                    
+                    echo "Pushing image to ECR..."
+                    sh "docker push ${IMAGE_URI}"
+                }
+            }
+        }
+    }
+
+    // 🟢 XỬ LÝ KẾT QUẢ KHI BUILD XONG
+    post {
+        success {
+            echo "🎉 TUYỆT VỜI! Đã test, build và push thành công lên AWS ECR!"
+            // Sếp có thể thêm lệnh gửi thông báo qua Slack/Telegram ở đây
+        }
+        failure {
+            echo "❌ CÓ LỖI XẢY RA! Sếp vào kiểm tra lại log nhé!"
+        }
+        always {
+            // Dọn dẹp image rác trên server Jenkins để giải phóng ổ cứng
+            sh "docker image prune -f"
+        }
+    }
+}
