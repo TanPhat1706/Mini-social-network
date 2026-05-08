@@ -22,12 +22,10 @@ public class VptlService {
     // --- CẤU HÌNH LUẬT TÍNH ĐIỂM (RULE CONFIG) ---
     // Nhóm Social (Thưởng theo ngày)
     private static final int EXP_DAILY_POST = 5;      // Đăng 1 bài đầu tiên trong ngày
-    private static final int EXP_DAILY_LIKE = 3;      // Like đủ 5 bài
-    private static final int EXP_DAILY_COMMENT = 3;   // Comment đủ 3 bài
-    private static final int EXP_DAILY_SHARE = 2;     // Share 1 bài đầu tiên
-
-    private static final int TARGET_LIKES = 5;        
-    private static final int TARGET_COMMENTS = 3;     
+    private static final int EXP_DAILY_LIKE = 3;      // Mỗi lượt like hợp lệ
+    private static final int EXP_DAILY_COMMENT = 3;   // Mỗi lượt comment hợp lệ
+    private static final int EXP_DAILY_SHARE = 2;     // Mỗi lượt share hợp lệ
+    private static final int MAX_SOCIAL_INTERACTIONS_PER_DAY = 10; // Tối đa 10 lượt like/comment/share mỗi ngày
 
     // Nhóm Game
     private static final int GAME_SCORE_DIVISOR = 10; // Điểm game / 10 = EXP & Points
@@ -59,8 +57,17 @@ public class VptlService {
 
         boolean shouldAddReward = false;
         int rewardToAdd = 0;
+        String normalizedActionType = actionType.toUpperCase();
 
-        switch (actionType.toUpperCase()) {
+        // Giới hạn tối đa số lượt tương tác social trong ngày (like/comment/share)
+        if (isInteractionAction(normalizedActionType)) {
+            int totalInteractions = stat.getLikeCount() + stat.getCommentCount() + stat.getShareCount();
+            if (totalInteractions >= MAX_SOCIAL_INTERACTIONS_PER_DAY) {
+                return;
+            }
+        }
+
+        switch (normalizedActionType) {
             case "POST":
                 if (stat.getPostCount() == 0) {
                     rewardToAdd = EXP_DAILY_POST;
@@ -70,27 +77,21 @@ public class VptlService {
                 break;
 
             case "LIKE":
-                stat.setLikeCount(stat.getLikeCount() + 1); 
-                if (stat.getLikeCount() == TARGET_LIKES) {
-                    rewardToAdd = EXP_DAILY_LIKE;
-                    shouldAddReward = true;
-                }
+                stat.setLikeCount(stat.getLikeCount() + 1);
+                rewardToAdd = EXP_DAILY_LIKE;
+                shouldAddReward = true;
                 break;
 
             case "COMMENT":
                 stat.setCommentCount(stat.getCommentCount() + 1);
-                if (stat.getCommentCount() == TARGET_COMMENTS) {
-                    rewardToAdd = EXP_DAILY_COMMENT;
-                    shouldAddReward = true;
-                }
+                rewardToAdd = EXP_DAILY_COMMENT;
+                shouldAddReward = true;
                 break;
 
             case "SHARE":
-                if (stat.getShareCount() == 0) {
-                    rewardToAdd = EXP_DAILY_SHARE;
-                    shouldAddReward = true;
-                }
                 stat.setShareCount(stat.getShareCount() + 1);
+                rewardToAdd = EXP_DAILY_SHARE;
+                shouldAddReward = true;
                 break;
         }
 
@@ -141,5 +142,9 @@ public class VptlService {
             }
         }
         return 1;
+    }
+
+    private boolean isInteractionAction(String actionType) {
+        return "LIKE".equals(actionType) || "COMMENT".equals(actionType) || "SHARE".equals(actionType);
     }
 }

@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import Header from '../components/layout/Header';
 import axiosClient from '../api/axiosClient';
-import axios from 'axios';
 import { CircularProgress, Box, Typography, Button } from '@mui/material';
 
 // Import Types & Components
 import type { User, UpdateProfileData } from '../types';
 import PostCard from '../components/post/CardPost';
 import type { PostData } from '../components/post/CardPost';
-import FriendButton from '../components/friend/FriendButton';
 import './Profile.css';
 import api from '../api/api';
 
@@ -28,6 +25,10 @@ const Profile: React.FC = () => {
   const [editFormData, setEditFormData] = useState<UpdateProfileData>({});
   const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const BIO_MAX_LENGTH = 160;
 
   // --- 1. CÁC HÀM API ---
   const fetchMyPosts = async () => {
@@ -76,47 +77,93 @@ const Profile: React.FC = () => {
 
   // --- 3. CÁC HÀM XỬ LÝ SỰ KIỆN EDIT ---
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setEditFormData({ ...editFormData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'bio') {
+      setEditFormData({ ...editFormData, bio: value.slice(0, BIO_MAX_LENGTH) });
+      return;
+    }
+    setEditFormData({ ...editFormData, [name]: value });
   };
+
+  const resetEditForm = () => {
+    if (!user) return;
+    setEditFormData({
+      fullName: user.fullName,
+      className: user.className,
+      bio: user.bio || '',
+      avatarUrl: user.avatarUrl
+    });
+    setPreviewAvatar(null);
+    setSelectedFile(null);
+    setSaveMessage(null);
+  };
+
+  const handleOpenEditModal = () => {
+    resetEditForm();
+    setIsEditing(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditing(false);
+    setSaveMessage(null);
+  };
+
+  useEffect(() => {
+    if (!isEditing) return;
+
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handleCloseEditModal();
+      }
+    };
+
+    globalThis.addEventListener('keydown', handleEsc);
+    return () => globalThis.removeEventListener('keydown', handleEsc);
+  }, [isEditing]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      setPreviewAvatar(URL.createObjectURL(file));
-    }
-  };
-
-  const uploadAvatarFile = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    const token = localStorage.getItem("token");
-
-    const res = await axios.post("http://localhost:8080/api/upload/avatar", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-        "Authorization": `Bearer ${token}`
-      }
-    });
-    return res.data.url;
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedFile(file);
+    setPreviewAvatar(URL.createObjectURL(file));
   };
 
   const handleSaveProfile = async () => {
     try {
-      let finalAvatarUrl = editFormData.avatarUrl;
-      if (selectedFile) {
-        finalAvatarUrl = await uploadAvatarFile(selectedFile);
+      setIsSavingProfile(true);
+      setSaveMessage(null);
+
+      const fullName = (editFormData.fullName || '').trim();
+      const className = (editFormData.className || '').trim();
+      const bio = (editFormData.bio || '').trim().slice(0, BIO_MAX_LENGTH);
+
+      if (!fullName) {
+        setSaveMessage({ type: 'error', text: 'Họ và tên không được để trống.' });
+        return;
       }
 
-      const updatedData = { ...editFormData, avatarUrl: finalAvatarUrl };
-      const res = await axiosClient.put('/profile', updatedData);
+      const formData = new FormData();
+      formData.append('fullName', fullName);
+      formData.append('className', className);
+      formData.append('bio', bio);
+      if (selectedFile) {
+        formData.append('avatar', selectedFile);
+      }
+
+      const res = await axiosClient.put('/profile', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
 
       setUser(res.data);
-      setIsEditing(false);
       alert("Cập nhật thành công!");
+      setIsEditing(false);
     } catch (error) {
       console.error(error);
-      alert("Lỗi cập nhật!");
+      setSaveMessage({ type: 'error', text: 'Lỗi cập nhật, vui lòng thử lại.' });
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -125,9 +172,7 @@ const Profile: React.FC = () => {
     try {
       const res = await api.put('/api/shop/items/unequip');
       // Cập nhật lại state ảo để UI mất viền ngay lập tức
-      if (user) {
-        setUser({ ...user, currentAvatarFrame: undefined } as any);
-      }
+      user && setUser({ ...user, currentAvatarFrame: undefined } as any);
       alert(res.data.message || "Đã tháo viền Avatar thành công!");
     } catch (error) {
       console.error("Lỗi tháo viền:", error);
@@ -136,6 +181,36 @@ const Profile: React.FC = () => {
   };
 
   if (!user) return <div style={{ textAlign: 'center', marginTop: 100 }}>Đang tải...</div>;
+
+  const bioLength = (editFormData.bio || '').length;
+  const disableSave = isSavingProfile || !(editFormData.fullName || '').trim();
+  let avatarPreviewSrc = `https://ui-avatars.com/api/?name=${user.fullName}`;
+  if (editFormData.avatarUrl) avatarPreviewSrc = editFormData.avatarUrl;
+  if (previewAvatar) avatarPreviewSrc = previewAvatar;
+  let postsSection: React.ReactNode;
+  if (loadingPosts) {
+    postsSection = (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  } else if (posts.length > 0) {
+    postsSection = (
+      posts.map(post => (
+        <PostCard
+          key={post.id}
+          post={post}
+          onDeleteSuccess={handleRemovePost}
+        />
+      ))
+    );
+  } else {
+    postsSection = (
+      <div className="profile-card" style={{ textAlign: 'center', padding: '40px', color: '#65676b' }}>
+        <Typography variant="body1">Bạn chưa đăng bài viết nào.</Typography>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -160,7 +235,7 @@ const Profile: React.FC = () => {
               </h1>              <div className="profile-bio">{user.bio || "Người dùng MiniSocial"}</div>
             </div>
 
-            <button className="btn-edit-profile" onClick={() => setIsEditing(true)}>
+            <button className="btn-edit-profile" onClick={handleOpenEditModal}>
               ✏️ Chỉnh sửa trang cá nhân
             </button>
           </div>
@@ -220,23 +295,7 @@ const Profile: React.FC = () => {
                 Bài viết
               </div>
 
-              {loadingPosts ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                  <CircularProgress />
-                </Box>
-              ) : posts.length > 0 ? (
-                posts.map(post => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    onDeleteSuccess={handleRemovePost}
-                  />
-                ))
-              ) : (
-                <div className="profile-card" style={{ textAlign: 'center', padding: '40px', color: '#65676b' }}>
-                  <Typography variant="body1">Bạn chưa đăng bài viết nào.</Typography>
-                </div>
-              )}
+              {postsSection}
             </div>
 
           </div>
@@ -246,15 +305,25 @@ const Profile: React.FC = () => {
       {/* --- MODAL EDIT PROFILE --- */}
       {isEditing && (
         <div className="modal-overlay">
-          <div className="modal-content">
-            <span className="close-btn" onClick={() => setIsEditing(false)}>✖</span>
-            <div className="modal-header">Chỉnh sửa trang cá nhân</div>
+          <div
+            className="modal-content profile-edit-modal"
+            aria-labelledby="edit-profile-title"
+          >
+            <button type="button" className="close-btn" onClick={handleCloseEditModal} aria-label="Đóng popup">✖</button>
+            <div className="modal-header" id="edit-profile-title">Chỉnh sửa trang cá nhân</div>
+            <div className="modal-subtitle">Cập nhật thông tin để hồ sơ của bạn nổi bật và chuyên nghiệp hơn.</div>
+
+            {saveMessage && (
+              <div className={`modal-alert modal-alert-${saveMessage.type}`}>
+                {saveMessage.text}
+              </div>
+            )}
 
             {/* 🔴 ÁP DỤNG VIỀN TRONG MODAL & THÊM NÚT GỠ VIỀN */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' }}>
               <div className="avatar-upload-box" style={{ position: 'relative', width: '100px', height: '100px', margin: '0 auto' }}>
                 <AvatarWithFrame
-                  src={previewAvatar || editFormData.avatarUrl || `https://ui-avatars.com/api/?name=${user.fullName}`}
+                  src={avatarPreviewSrc}
                   frameClass={(user as any).currentAvatarFrame}
                   size={100}
                 />
@@ -277,21 +346,33 @@ const Profile: React.FC = () => {
             </div>
 
             <div className="modal-form-group">
-              <label className="modal-label">Họ và tên</label>
-              <input name="fullName" className="modern-input" value={editFormData.fullName || ''} onChange={handleEditChange} />
+              <label className="modal-label" htmlFor="edit-fullName">Họ và tên</label>
+              <input id="edit-fullName" name="fullName" className="modern-input" value={editFormData.fullName || ''} onChange={handleEditChange} />
             </div>
             <div className="modal-form-group">
-              <label className="modal-label">Lớp</label>
-              <input name="className" className="modern-input" value={editFormData.className || ''} onChange={handleEditChange} />
+              <label className="modal-label" htmlFor="edit-className">Lớp</label>
+              <input id="edit-className" name="className" className="modern-input" value={editFormData.className || ''} onChange={handleEditChange} />
             </div>
             <div className="modal-form-group">
-              <label className="modal-label">Tiểu sử (Bio)</label>
-              <textarea name="bio" className="modern-input" style={{ height: '80px', resize: 'none', fontFamily: 'inherit' }} value={editFormData.bio || ''} onChange={handleEditChange} />
+              <label className="modal-label" htmlFor="edit-bio">Tiểu sử (Bio)</label>
+              <textarea
+                id="edit-bio"
+                name="bio"
+                className="modern-input profile-bio-textarea"
+                value={editFormData.bio || ''}
+                onChange={handleEditChange}
+                placeholder="Viết vài dòng giới thiệu về bạn..."
+              />
+              <div className={`bio-counter ${bioLength > BIO_MAX_LENGTH - 20 ? 'near-limit' : ''}`}>
+                {bioLength}/{BIO_MAX_LENGTH}
+              </div>
             </div>
 
             <div className="btn-actions">
-              <button className="btn-cancel" onClick={() => setIsEditing(false)}>Hủy</button>
-              <button className="btn-save" onClick={handleSaveProfile}>Lưu thay đổi</button>
+              <button className="btn-cancel" onClick={handleCloseEditModal} disabled={isSavingProfile}>Hủy</button>
+              <button className="btn-save" onClick={handleSaveProfile} disabled={disableSave}>
+                {isSavingProfile ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </button>
             </div>
           </div>
         </div>

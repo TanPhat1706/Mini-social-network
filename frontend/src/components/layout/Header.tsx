@@ -20,7 +20,7 @@ import type { User } from '../../types';
 import type { Conversation } from '../../types/types';
 import axiosClient from '../../api/axiosClient';
 import MessengerDropdown from '../messenger/MessengerDropdown';
-import { useWebSocket } from '../../context/WebSocketContext';
+import { useWebSocket } from '../../context/useWebSocket';
 import FriendButton from '../friend/FriendButton';
 
 // 🔴 IMPORT COMPONENT AVATAR MA THUẬT
@@ -147,8 +147,19 @@ export default function Header() {
   const fetchUnreadCount = async () => {
     try {
       const res = await axiosClient.get('/messages/recent');
-      const convs: Conversation[] = res.data;
-      const count = convs.filter(c => c.isRead === false).length;
+
+      const data = res.data;
+
+      const convs =
+        data?.content ||
+        data?.data ||
+        data?.conversations ||
+        (Array.isArray(data) ? data : []);
+
+      const count = Array.isArray(convs)
+        ? convs.filter(c => c.isRead === false).length
+        : 0;
+
       setUnreadCount(count);
     } catch (err) {
       console.error("Lỗi lấy tin nhắn:", err);

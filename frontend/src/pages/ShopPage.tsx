@@ -8,9 +8,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import api from '../api/api';
 import type { User } from '../types';
 
-import AvatarWithFrame from '../components/AvatarWithFrame'; // (Nhớ điều chỉnh lại đường dẫn nếu file nằm ở assets/css)
-// 🔴 IMPORT MA THUẬT MÀU TÊN VÀO ĐÂY
-import ColoredName from '../components/ColoredName'; // (Nhớ điều chỉnh lại đường dẫn cho đúng vị trí file ColoredName)
+import AvatarWithFrame from '../components/AvatarWithFrame'; 
+import ColoredName from '../components/ColoredName'; 
 
 interface ShopItem {
   id: number;
@@ -73,6 +72,18 @@ export default function ShopPage() {
     }
   };
 
+  // 🟢 HÀM MỚI: XỬ LÝ THÁO TRANG BỊ
+  const handleUnequip = async (itemId: number) => {
+    try {
+      // 🛑 CHÚ Ý: Đường dẫn API này đang là giả định, chờ bạn cung cấp Controller để fix lại cho chuẩn 100%
+      const res = await api.put(`/api/shop/items/unequip`); 
+      showToast(res.data.message || "Đã tháo trang bị!", 'success');
+      fetchData(); 
+    } catch (error: any) {
+      showToast(error.response?.data?.error || "Lỗi khi tháo trang bị", 'error');
+    }
+  };
+
   const isOwned = (itemId: number) => inventory.some(item => item.id === itemId);
 
   return (
@@ -104,7 +115,6 @@ export default function ShopPage() {
           {(tabValue === 0 ? shopItems : inventory).map((item) => {
             const owned = isOwned(item.id);
             
-            // 🟢 LOGIC KIỂM TRA TRANG BỊ ĐƯỢC FIX CỰC CHUẨN
             const isEquipped = item.type === 'NAME_COLOR' 
                 ? (user as any)?.currentNameColor === item.imageUrl 
                 : (user as any)?.currentAvatarFrame === item.imageUrl;
@@ -113,12 +123,10 @@ export default function ShopPage() {
                 <Card key={item.id} sx={{ borderRadius: '16px', transition: '0.3s', '&:hover': { transform: 'translateY(-5px)', boxShadow: '0 10px 20px rgba(0,0,0,0.1)' } }}>
                   <Box sx={{ height: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6', position: 'relative' }}>
                     
-                    {/* 🟢 PREVIEW THÔNG MINH: Tách biệt hiển thị Viền và hiển thị Màu Tên */}
                     {item.type === 'NAME_COLOR' ? (
                         <>
                             <AvatarWithFrame src={user?.avatarUrl} name={user?.fullName} size={60} />
                             <Typography variant="h6" sx={{ mt: 1.5, fontWeight: 'bold' }}>
-                                {/* Mặc thử Màu tên */}
                                 <ColoredName name={user?.fullName?.split(' ').pop() || 'Tên'} colorClass={item.imageUrl} />
                             </Typography>
                         </>
@@ -144,8 +152,9 @@ export default function ShopPage() {
                         </Button>
                       )
                     ) : (
+                      /* 🟢 UPDATE: Đổi nút Đã Trang Bị (disabled) thành nút Tháo Trang Bị (Clickable, màu đỏ) */
                       isEquipped ? (
-                        <Button fullWidth variant="outlined" color="success" disabled sx={{ borderRadius: '50px', fontWeight: 'bold' }}>Đã Trang Bị</Button>
+                        <Button fullWidth variant="outlined" color="error" onClick={() => handleUnequip(item.id)} sx={{ borderRadius: '50px', fontWeight: 'bold' }}>Tháo Trang Bị</Button>
                       ) : (
                         <Button fullWidth variant="contained" color="primary" onClick={() => handleEquip(item.id)} sx={{ borderRadius: '50px', fontWeight: 'bold' }}>Trang Bị Lên Người</Button>
                       )

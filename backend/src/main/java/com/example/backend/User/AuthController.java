@@ -78,25 +78,8 @@ public class AuthController {
         String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByStudentCode(studentCode)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        // Trả về DTO thay vì Entity để an toàn và đầy đủ
-        UserResponse res = UserResponse.builder()
-            .id(user.getId())
-            .studentCode(user.getStudentCode())
-            .fullName(user.getFullName())
-            .avatarUrl(user.getAvatarUrl())
-            .coverPhotoUrl(user.getCoverPhotoUrl()) // Mới
-            .bio(user.getBio())
-            .className(user.getClassName())
-            .role(user.getRole())
-            .level(user.getLevel())
-            .exp(user.getExp())
-            .vptlPoints(user.getVptlPoints())
-            .currentAvatarFrame(user.getCurrentAvatarFrame())
-            .currentNameColor(user.getCurrentNameColor())
-            .build();
-            
-        return ResponseEntity.ok(res);
+
+        return ResponseEntity.ok(toUserResponse(user));
     }
 
     // --- MỚI: API CẬP NHẬT THÔNG TIN & ẢNH ---
@@ -115,10 +98,32 @@ public class AuthController {
             
             User updatedUser = authService.updateProfile(studentCode, fullName, bio, className, avatar, cover);
             
-            return ResponseEntity.ok(updatedUser);
+            return ResponseEntity.ok(toUserResponse(updatedUser));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body("Lỗi cập nhật: " + e.getMessage());
         }
+    }
+
+    private UserResponse toUserResponse(User user) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .studentCode(user.getStudentCode())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .avatarUrl(user.getAvatarUrl())
+                .coverPhotoUrl(user.getCoverPhotoUrl())
+                .bio(user.getBio())
+                .className(user.getClassName())
+                .role(user.getRole())
+                .active(user.getActive())
+                .createdAt(user.getCreatedAt())
+                .lastLogin(user.getLastLogin())
+                .level(user.getLevel())
+                .exp(user.getExp())
+                .vptlPoints(user.getVptlPoints())
+                .currentAvatarFrame(user.getCurrentAvatarFrame())
+                .currentNameColor(user.getCurrentNameColor())
+                .build();
     }
 }

@@ -1,40 +1,54 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-    Box, Grid, Card, CardContent, CardMedia, Typography, Button, Container, Chip 
+import axios from 'axios';
+import {
+    Box, Grid, Card, CardContent, CardMedia, Typography, Button, Container, Chip, CircularProgress
 } from '@mui/material';
 import { SportsEsports, VideogameAsset } from '@mui/icons-material';
 
-// Dữ liệu giả lập các game (Sau này có thể lấy từ API)
 const GAMES = [
     {
         id: 'snake',
         title: 'Rắn Săn Mồi',
         description: 'Trò chơi kinh điển. Điều khiển rắn ăn mồi và tránh va chạm!',
-        image: 'https://images.unsplash.com/photo-1628277613967-6bc520d95e78?q=80&w=600&auto=format&fit=crop', // Ảnh minh họa
+        image: 'https://images.unsplash.com/photo-1628277613967-6bc520d95e78?q=80&w=600&auto=format&fit=crop',
         path: '/games/snake',
         category: 'Arcade',
         status: 'Active'
     },
     {
-        id: 'coming-soon',
-        title: 'Game Mới Sắp Ra Mắt',
-        description: 'Chúng tôi đang phát triển thêm nhiều trò chơi thú vị khác.',
-        image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=600&auto=format&fit=crop',
-        path: '#',
-        category: 'Future',
-        status: 'Coming Soon'
-    }
+        id: 'tictactoe',
+        title: 'Tic Tac Toe Online',
+        description: 'Thách đấu bạn bè trong trận chiến cờ ca-rô 3x3 kinh điển, thời gian thực!',
+        image: 'https://images.unsplash.com/photo-1611996598518-87593b2173d2?q=80&w=600&auto=format&fit=crop',
+        path: '/games/tic-tac-toe', // Đây là tiền tố đường dẫn
+        category: 'Multiplayer',
+        status: 'Active'
+    },
+    // ... coming soon
 ];
 
 const GameList: React.FC = () => {
     const navigate = useNavigate();
+    const [loadingId, setLoadingId] = useState<string | null>(null);
+    const token = localStorage.getItem('token');
+
+    const handlePlayGame = async (game: typeof GAMES[0]) => {
+        if (game.id === 'tictactoe') {
+            // Cách 1: Hiện thông báo và chuyển hướng sang trang Chat
+            alert("Trò chơi này cần 2 người! Hãy vào khung Chat để gửi lời mời cho bạn bè nhé.");
+            navigate('/chat'); // Thay bằng route trang chat của bạn
+
+            // Cách 2 (Nâng cao): Mở một Modal popup hiển thị danh sách bạn bè online để chọn mời ngay tại đây.
+        } else {
+            navigate(game.path);
+        }
+    };
 
     return (
         <Container maxWidth="lg" sx={{ py: 4 }}>
-            {/* Header */}
             <Box sx={{ mb: 4, textAlign: 'center' }}>
-                <Typography variant="h3" component="h1" sx={{ fontWeight: 'bold', color: '#16a34a', mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                <Typography variant="h3" sx={{ fontWeight: 'bold', color: '#16a34a', mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
                     <SportsEsports fontSize="large" /> Game Center
                 </Typography>
                 <Typography variant="subtitle1" color="text.secondary">
@@ -42,54 +56,28 @@ const GameList: React.FC = () => {
                 </Typography>
             </Box>
 
-            {/* Danh sách Game */}
             <Grid container spacing={4}>
                 {GAMES.map((game) => (
                     <Grid item key={game.id} xs={12} sm={6} md={4}>
-                        <Card 
-                            sx={{ 
-                                height: '100%', 
-                                display: 'flex', 
-                                flexDirection: 'column',
-                                transition: 'transform 0.2s',
-                                '&:hover': {
-                                    transform: 'translateY(-5px)',
-                                    boxShadow: 6
-                                }
-                            }}
-                        >
-                            <CardMedia
-                                component="img"
-                                height="200"
-                                image={game.image}
-                                alt={game.title}
-                            />
+                        <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-5px)', boxShadow: 6 } }}>
+                            <CardMedia component="img" height="200" image={game.image} alt={game.title} />
                             <CardContent sx={{ flexGrow: 1 }}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                    <Typography gutterBottom variant="h5" component="h2" fontWeight="bold">
-                                        {game.title}
-                                    </Typography>
-                                    <Chip 
-                                        label={game.category} 
-                                        size="small" 
-                                        color={game.status === 'Active' ? 'success' : 'default'} 
-                                        variant="outlined" 
-                                    />
+                                    <Typography gutterBottom variant="h5" fontWeight="bold">{game.title}</Typography>
+                                    <Chip label={game.category} size="small" color={game.status === 'Active' ? 'success' : 'default'} variant="outlined" />
                                 </Box>
-                                <Typography variant="body2" color="text.secondary" paragraph>
-                                    {game.description}
-                                </Typography>
+                                <Typography variant="body2" color="text.secondary">{game.description}</Typography>
                             </CardContent>
                             <Box sx={{ p: 2, pt: 0 }}>
-                                <Button 
-                                    variant="contained" 
+                                <Button
+                                    variant="contained"
                                     fullWidth
                                     color={game.status === 'Active' ? 'success' : 'inherit'}
-                                    disabled={game.status !== 'Active'}
-                                    onClick={() => game.status === 'Active' && navigate(game.path)}
-                                    startIcon={<VideogameAsset />}
+                                    disabled={game.status !== 'Active' || loadingId === game.id}
+                                    onClick={() => handlePlayGame(game)}
+                                    startIcon={loadingId === game.id ? <CircularProgress size={20} color="inherit" /> : <VideogameAsset />}
                                 >
-                                    {game.status === 'Active' ? 'Chơi Ngay' : 'Sắp Ra Mắt'}
+                                    {loadingId === game.id ? 'Đang tạo phòng...' : (game.status === 'Active' ? 'Chơi Ngay' : 'Sắp Ra Mắt')}
                                 </Button>
                             </Box>
                         </Card>

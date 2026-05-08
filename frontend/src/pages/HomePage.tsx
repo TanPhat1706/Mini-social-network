@@ -44,11 +44,21 @@ export default function HomePage() {
     };
 
     const fetchFriends = async () => {
-        try {
-            const res = await api.get('/api/auth/friends/list');
-            setFriends(res.data);
-        } catch (error) { console.error(error); }
-    };
+  try {
+    const res = await api.get('/api/auth/friends/list');
+
+    const data = res.data;
+
+    const normalized =
+      data?.content ||
+      data?.data ||
+      (Array.isArray(data) ? data : []);
+
+    setFriends(normalized);
+  } catch (error) {
+    console.error(error);
+  }
+};
 
     fetchPosts(); fetchProfile(); fetchFriends();
   }, []);

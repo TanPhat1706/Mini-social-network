@@ -19,6 +19,7 @@ import com.example.backend.Post.PostRepository;
 import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import com.example.backend.User.UserResponse;
+import com.example.backend.VPTLpoint.VptlService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
@@ -30,6 +31,7 @@ public class CommentService {
     private final UserRepository userRepository;
     private final CommentLikeRepository commentLikeRepository;
     private final ApplicationEventPublisher evenPublisher;
+    private final VptlService vptlService;
 
     private User getCurrentUser() {
         String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -62,6 +64,7 @@ public class CommentService {
         
         Comment savedComment = commentRepository.save(comment);
         postRepository.incrementCommentCount(post.getId());
+        vptlService.trackSocialActivity(currentUser.getId(), "COMMENT");
 
         evenPublisher.publishEvent(new NotificationEvent(
                 currentUser, post.getAuthor(), NotificationType.COMMENT_POST, post.getId(), "COMMENT", "đã thích bài viết của bạn"
@@ -161,6 +164,7 @@ public class CommentService {
             CommentLike like = CommentLike.builder().comment(comment).user(user).build();
             commentLikeRepository.save(like);
             commentRepository.incrementLikeCount(commentId);
+            vptlService.trackSocialActivity(currentUser.getId(), "LIKE");
         }
     }
 

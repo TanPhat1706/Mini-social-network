@@ -1,11 +1,17 @@
 import axios from 'axios';
+import { getApiAuthUrl } from '../config/apiBase';
 
 const baseURL = `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_API_AUTH_ENDPOINT}`;
 
 const axiosClient = axios.create({
+<<<<<<< HEAD
   baseURL: baseURL,
+=======
+  baseURL: getApiAuthUrl(),
+>>>>>>> main
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
   },
 });
 

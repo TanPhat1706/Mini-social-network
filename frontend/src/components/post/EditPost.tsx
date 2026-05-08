@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
+import { getApiBaseUrl } from '../../config/apiBase';
 
 export default function EditPost({ open, onClose, post, onUpdateSuccess }) {
   const [content, setContent] = useState(post.content || '');
@@ -35,10 +36,11 @@ export default function EditPost({ open, onClose, post, onUpdateSuccess }) {
       // Chỉ append file nếu có file mới
       newFiles.forEach(file => formData.append('mediaFiles', file));
 
-      const response = await fetch(`http://localhost:8080/api/posts/${post.id}`, {
-        method: 'PUT', // Spring Boot dùng PUT để update
-        // headers: { 'Authorization': ... }, 
-        body: formData
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${getApiBaseUrl()}/api/posts/${post.id}`, {
+        method: 'PUT',
+        headers: token ? { Authorization: `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' } : { 'ngrok-skip-browser-warning': 'true' },
+        body: formData,
       });
 
       if (response.ok) {

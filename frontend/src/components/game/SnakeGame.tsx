@@ -10,7 +10,7 @@ const START_SNAKE: number[][] = [[8, 8], [8, 9]];
 const START_DIR: number[] = [0, -1];
 
 // 🔴 ĐỔI THÀNH TRUE KHI DEPLOY LÊN SERVER ĐỂ BẬT GIỚI HẠN 🔴
-const ENABLE_DAILY_LIMIT = false; 
+const ENABLE_DAILY_LIMIT = true; 
 const MAX_PLAYS_PER_DAY = 2;
 
 const SnakeGame: React.FC = () => {
@@ -135,7 +135,7 @@ const SnakeGame: React.FC = () => {
     };
 
     const checkDailyLimit = (): boolean => {
-        if (!ENABLE_DAILY_LIMIT) return true; // Nếu chưa bật flag thì cho chơi thoải mái
+        if (!ENABLE_DAILY_LIMIT) return true; // Nếu chưa bật flag thì cho chơi thoải mái (không giới hạn)
 
         const userStr = localStorage.getItem('user');
         const userId = userStr ? JSON.parse(userStr).id : 'guest';

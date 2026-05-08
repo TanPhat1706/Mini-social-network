@@ -8,16 +8,17 @@ export interface User {
   fullName: string;
   className: string;
   role: string;
+  
   avatarUrl?: string; // Có dấu ? vì có thể user chưa có ảnh
+  coverPhotoUrl?: string; // 🟢 ĐÃ THÊM: Ảnh bìa (Cover Photo)
+  
   bio?: string;
   active: boolean;
   
-  // 🟢 Đã sửa thành vptlPoints cho khớp với ShopPage
+  // 🟢 Điểm và Gamification
   vptlPoints?: number; 
-  
-  // 🟢 Viền Avatar hiện tại
   currentAvatarFrame?: string | null; 
-  currentNameColor?: string | null; // Màu tên hiện tại
+  currentNameColor?: string | null; 
   
   createdAt: string;
   lastLogin: string;
@@ -27,6 +28,7 @@ export interface UserSummary {
   id: number;
   fullName: string;
   avatarUrl?: string;
+  coverPhotoUrl?: string; // 🟢 ĐÃ THÊM: Đề phòng UI cần hiển thị
   studentCode: string;
 }
 
@@ -35,6 +37,7 @@ export interface UpdateProfileData {
   className?: string;
   bio?: string;
   avatarUrl?: string;
+  coverPhotoUrl?: string; // 🟢 ĐÃ THÊM: Dữ liệu ảnh bìa khi update
 }
 
 export interface AuthResponse {

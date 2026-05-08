@@ -1,20 +1,27 @@
 package com.example.backend.Config;
 
 import com.example.backend.User.JwtFilter;
+import com.example.backend.Security.SecurityLoggingFilter; // 👈 thêm
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
 import org.springframework.web.cors.CorsConfiguration;
 
 import java.util.Arrays;
@@ -22,8 +29,13 @@ import java.util.List;
 
 @Configuration
 public class SecurityConfig {
+
     @Autowired
     private JwtFilter jwtFilter;
+
+    @Autowired
+    private SecurityLoggingFilter loggingFilter; // 👈 thêm
+
     @Autowired
     private UserDetailsService userDetailsService;
 
@@ -70,18 +82,26 @@ public class SecurityConfig {
                             )
                         .permitAll()
 
-                        // 2. Các API cần Token để chơi game và mua đồ
-                        .requestMatchers("/api/games/score").authenticated()
-                        .requestMatchers("/api/shop/**").authenticated()
+        
 
-                        // 3. Các API của Admin (Nếu sau này bạn cần chặn Admin)
-                        // .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/games/score").authenticated()
+                .requestMatchers("/api/shop/**").authenticated()
 
-                        // 4. Mọi yêu cầu còn lại phải đăng nhập
-                        .anyRequest().authenticated())
-                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(daoAuthenticationProvider())
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .anyRequest().authenticated()
+            )
+
+            // ✅ Stateless (JWT)
+            .sessionManagement(sess ->
+                sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+
+            .authenticationProvider(daoAuthenticationProvider())
+
+            // 🔥 QUAN TRỌNG: thêm logging filter trước security
+            .addFilterBefore(loggingFilter, UsernamePasswordAuthenticationFilter.class)
+
+            // 🔐 JWT filter
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
