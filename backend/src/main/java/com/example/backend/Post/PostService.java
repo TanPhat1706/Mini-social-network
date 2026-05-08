@@ -1,17 +1,10 @@
 package com.example.backend.Post;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,6 +20,7 @@ import com.example.backend.Enum.Visibility;
 import com.example.backend.Event.NotificationEvent;
 import com.example.backend.PostMedia.MediaResponse;
 import com.example.backend.PostMedia.PostMedia;
+import com.example.backend.Storage.FileStorageService;
 import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import com.example.backend.User.UserResponse;
@@ -41,9 +35,7 @@ public class PostService {
     private final UserRepository userRepository;
     private final PostLikeRepository postLikeRepository;
     private final ApplicationEventPublisher evenPublisher;
-
-    @Value("${app.upload.dir:uploads}")
-    private String uploadDir;
+    private final FileStorageService fileStorageService;
 
     private User getCurrentUser() {
         String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -76,7 +68,7 @@ public class PostService {
         if (request.getMediaFiles() != null && !request.getMediaFiles().isEmpty()) {
             List<PostMedia> mediaList = new ArrayList<>();
             for (MultipartFile file : request.getMediaFiles()) {
-                String fileUrl = storeFileToLocal(file);
+                String fileUrl = fileStorageService.storeFile(file);
                 PostMedia media = new PostMedia();
                 media.setPost(post);
                 media.setMediaUrl(fileUrl);
@@ -114,7 +106,7 @@ public class PostService {
         currentMediaList.clear();
         if (request.getMediaFiles() != null && !request.getMediaFiles().isEmpty()) {
             for (MultipartFile file : request.getMediaFiles()) {
-                String fileUrl = storeFileToLocal(file);
+                String fileUrl = fileStorageService.storeFile(file);
                 PostMedia media = new PostMedia();
                 media.setPost(post);
                 media.setMediaUrl(fileUrl);
@@ -221,6 +213,10 @@ public class PostService {
         return posts.map(this::mapToPostResponse);
     }
 
+    public String uploadFileToS3(MultipartFile file) {
+        return fileStorageService.storeFile(file);
+    }
+
     public PostResponse mapToPostResponse(Post post) {
         User author = post.getAuthor();
         UserResponse authorDto = new UserResponse();
@@ -267,19 +263,6 @@ public class PostService {
                 .isLikedByCurrentUser(false)
                 .originalPost(originalPostResponse)
                 .build();
-    }
-
-    private String storeFileToLocal(MultipartFile file) {
-        try {            
-            String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-            Path uploadPath = Paths.get(uploadDir);
-            if (!Files.exists(uploadPath)) Files.createDirectories(uploadPath);
-            Path filePath = uploadPath.resolve(fileName);
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            return "/uploads/" + fileName; 
-        } catch (IOException e) {
-            throw new RuntimeException("Lỗi lưu file: " + file.getOriginalFilename(), e);
-        }
     }
 
     private MediaType detectMediaType(MultipartFile file) {

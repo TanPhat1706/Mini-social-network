@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import com.example.backend.User.User;
 import lombok.RequiredArgsConstructor;
 import jakarta.validation.Valid;
@@ -39,6 +40,12 @@ public class PostController {
     @ResponseStatus(HttpStatus.CREATED)
     public PostResponse createPost(@ModelAttribute @Valid PostRequest request) {
         return postService.createPost(request);
+    }
+
+    @PostMapping(value = "/upload-media", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> uploadMedia(@RequestParam("file") MultipartFile file) {
+        String fileUrl = postService.uploadFileToS3(file);
+        return ResponseEntity.status(HttpStatus.CREATED).body(fileUrl);
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
