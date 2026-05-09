@@ -12,15 +12,16 @@ import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/s3")
+@RequestMapping("/api/storage")
 @RequiredArgsConstructor
 public class S3Controller {
 
-    private final S3StorageService s3StorageService;
+    // Inject interface — tự động chọn Local hoặc S3 tùy cấu hình STORAGE_TYPE
+    private final FileStorageService fileStorageService;
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
-        String fileUrl = s3StorageService.storeFile(file);
+        String fileUrl = fileStorageService.storeFile(file);
         return ResponseEntity.status(HttpStatus.CREATED).body(fileUrl);
     }
 }

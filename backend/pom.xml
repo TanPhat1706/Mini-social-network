@@ -18,7 +18,6 @@
         <java.version>17</java.version>
         <jjwt.version>0.11.5</jjwt.version>
         <lombok.version>1.18.30</lombok.version>
-        <!-- Thêm version cho JaCoCo -->
         <jacoco.version>0.8.11</jacoco.version>
     </properties>
     <dependencyManagement>

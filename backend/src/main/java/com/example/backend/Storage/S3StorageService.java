@@ -5,8 +5,6 @@ import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -16,7 +14,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
-@Service
+// Không dùng @Service ở đây — Bean được tạo bởi StorageConfig (theo điều kiện STORAGE_TYPE=s3)
 public class S3StorageService implements FileStorageService {
 
     private final S3Client s3Client;
@@ -24,10 +22,10 @@ public class S3StorageService implements FileStorageService {
     private final String region;
 
     public S3StorageService(
-            @Value("${aws.access-key-id}") String accessKey,
-            @Value("${aws.secret-access-key}") String secretKey,
-            @Value("${aws.region}") String region,
-            @Value("${aws.bucket-name}") String bucketName) {
+            String accessKey,
+            String secretKey,
+            String region,
+            String bucketName) {
         this.bucketName = bucketName;
         this.region = region;
         this.s3Client = S3Client.builder()
