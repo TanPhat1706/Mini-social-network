@@ -65,6 +65,8 @@ class AuthControllerTest extends BaseControllerTest {
     void register_shouldReturn200() throws Exception {
         RegisterRequest req = new RegisterRequest();
         req.setStudentCode("1412");
+        req.setFullName("Le Hong Phat");
+        req.setEmail("phat@student.com");
         req.setPassword("password123");
 
         when(authService.register(any(RegisterRequest.class))).thenReturn(mockUser);

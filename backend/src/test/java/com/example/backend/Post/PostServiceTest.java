@@ -5,6 +5,8 @@ import com.example.backend.Event.NotificationEvent;
 import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import com.example.backend.VPTLpoint.VptlService;
+import com.example.backend.Storage.FileStorageService;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,11 +20,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.util.ReflectionTestUtils;
+//import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
+//import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.io.IOException;
@@ -31,8 +33,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
+    @Mock
+    private FileStorageService fileStorageService;
 
     @Mock
     private PostRepository postRepository;
@@ -54,12 +59,12 @@ class PostServiceTest {
 
     private User currentUser;
 
-    @org.junit.jupiter.api.io.TempDir
-    Path tempDir;
+    // @org.junit.jupiter.api.io.TempDir
+    // Path tempDir;
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(postService, "uploadDir", tempDir.toString());
+        // ReflectionTestUtils.setField(postService, "uploadDir", tempDir.toString());
         currentUser = new User();
         currentUser.setId(1);
         currentUser.setStudentCode("SV001");
@@ -116,6 +121,9 @@ class PostServiceTest {
         );
         req.setMediaFiles(List.of(file));
 
+        // Mock S3 upload trả về URL
+        when(fileStorageService.storeFile(any())).thenReturn("https://bucket.s3.ap-southeast-1.amazonaws.com/uuid_a.png");
+
         ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
         when(postRepository.save(captor.capture())).thenAnswer(inv -> {
             Post p = inv.getArgument(0);
@@ -130,7 +138,9 @@ class PostServiceTest {
         assertNotNull(saved.getMedia());
         assertEquals(1, saved.getMedia().size());
         assertNotNull(saved.getMedia().get(0).getMediaUrl());
-        assertTrue(saved.getMedia().get(0).getMediaUrl().startsWith("/uploads/"));
+        // Kiểm tra URL trả về từ S3 (không còn dùng /uploads/ local)
+        assertTrue(saved.getMedia().get(0).getMediaUrl().startsWith("https://"));
+        assertTrue(saved.getMedia().get(0).getMediaUrl().contains(".s3."));
         assertEquals(99L, res.getId());
     }
 
@@ -162,6 +172,8 @@ class PostServiceTest {
 
         when(postRepository.findById(10L)).thenReturn(Optional.of(post));
         when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
+        // Mock S3 upload trả về URL
+        when(fileStorageService.storeFile(any())).thenReturn("https://bucket.s3.ap-southeast-1.amazonaws.com/uuid_a.png");
 
         PostRequest req = new PostRequest();
         req.setContent("  new  ");
@@ -175,7 +187,9 @@ class PostServiceTest {
         assertEquals("new", res.getContent());
         assertEquals(Visibility.PENDING, res.getVisibility());
         assertEquals(1, post.getMedia().size());
-        assertTrue(post.getMedia().get(0).getMediaUrl().startsWith("/uploads/"));
+        // Kiểm tra URL trả về từ S3 (không còn dùng /uploads/ local)
+        assertTrue(post.getMedia().get(0).getMediaUrl().startsWith("https://"));
+        assertTrue(post.getMedia().get(0).getMediaUrl().contains(".s3."));
     }
 
     @Test
@@ -436,15 +450,17 @@ class PostServiceTest {
         req.setContent("Test IO");
         req.setVisibility(Visibility.PRIVATE);
         
-        // Mock một MultipartFile ném lỗi khi lấy InputStream
+        // Mock FileStorageService ném lỗi khi upload lên S3
         org.springframework.web.multipart.MultipartFile badFile = mock(org.springframework.web.multipart.MultipartFile.class);
-        when(badFile.getOriginalFilename()).thenReturn("bad.png");
-        when(badFile.getInputStream()).thenThrow(new IOException("Disk error"));
+        when(fileStorageService.storeFile(any()))
+        .thenThrow(new RuntimeException("S3 upload failed"));
         
         req.setMediaFiles(List.of(badFile));
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.createPost(req));
-        assertTrue(ex.getMessage().contains("Lỗi lưu file: bad.png"));
+        RuntimeException ex = assertThrows(RuntimeException.class,
+        () -> postService.createPost(req));
+
+assertEquals("S3 upload failed", ex.getMessage());
     }
 }
 
