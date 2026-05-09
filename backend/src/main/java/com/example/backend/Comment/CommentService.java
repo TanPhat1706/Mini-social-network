@@ -67,7 +67,7 @@ public class CommentService {
         vptlService.trackSocialActivity(currentUser.getId(), "COMMENT");
 
         evenPublisher.publishEvent(new NotificationEvent(
-                currentUser, post.getAuthor(), NotificationType.COMMENT_POST, post.getId(), "COMMENT", "đã thích bài viết của bạn"
+                currentUser, post.getAuthor(), NotificationType.COMMENT_POST, post.getId(), "COMMENT", "đã bình luận của bạn"
         ));
 
         return mapToResponse(savedComment, false);

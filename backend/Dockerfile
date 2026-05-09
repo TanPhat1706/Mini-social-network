@@ -1,18 +1,25 @@
-# STAGE 1: Dùng Maven để build code thành file .jar
+# STAGE 1: Build code
 FROM maven:3.8.5-openjdk-17-slim AS build
 WORKDIR /app
-# Copy file cấu hình maven và source code vào
+
+# 🟢 TỐI ƯU 1: Copy pom.xml trước và tải thư viện (để Docker cache lại layer này)
 COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# Sau đó mới copy source code vào và build
 COPY src ./src
-# Chạy lệnh build ra file .jar (bỏ qua bước test để build nhanh hơn)
 RUN mvn clean package -DskipTests
 
-# STAGE 2: Chạy file .jar bằng JRE siêu nhẹ (Tối ưu tài nguyên Cloud)
+# STAGE 2: Run app
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
-# Copy file .jar từ Stage 1 sang Stage 2
+
+# 🟢 TỐI ƯU 2: Thiết lập múi giờ Việt Nam để không bị lệch giờ đăng bài, thông báo
+ENV TZ=Asia/Ho_Chi_Minh
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 COPY --from=build /app/target/backend-0.0.1-SNAPSHOT.jar app.jar
-# Mở port mặc định của Spring Boot
 EXPOSE 8080
-# Lệnh khởi chạy ứng dụng Java
+
+# Chạy ứng dụng Java
 ENTRYPOINT ["java", "-jar", "app.jar"]

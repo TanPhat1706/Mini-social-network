@@ -1,0 +1,48 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "mini-social-network-frontend"
+        IMAGE_TAG  = "latest"
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+
+        // Kiểm tra xem có ai viết code lỗi cú pháp không (Linting)
+        stage('Run Linter (Optional)') {
+            steps {
+                dir('frontend') { // Thay 'frontend' bằng tên thư mục chứa code của sếp nếu có
+                    bat 'npm ci' // 🟢 Tải thư viện an toàn, sạch sẽ
+                    // bat 'npm run lint' // Mở comment nếu sếp có setup Eslint
+                }
+            }
+        }
+
+        // Đóng gói Frontend với Nginx vào Docker
+        stage('Build Docker Image') {
+            steps {
+                dir('frontend') {
+                    echo "Building Frontend Docker image locally..."
+                    bat "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "🎉 TUYỆT VỜI! Giao diện đã được đóng gói thành công!"
+        }
+        failure {
+            echo "❌ CÓ LỖI XẢY RA ở Frontend! Sếp check log nha!"
+        }
+        always {
+            bat "docker image prune -f"
+        }
+    }
+}

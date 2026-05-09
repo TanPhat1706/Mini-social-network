@@ -1,7 +1,7 @@
 package com.example.backend.Config;
 
+import com.example.backend.Security.SecurityLoggingFilter;
 import com.example.backend.User.JwtFilter;
-import com.example.backend.Security.SecurityLoggingFilter; // 👈 thêm
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,7 +34,7 @@ public class SecurityConfig {
     private JwtFilter jwtFilter;
 
     @Autowired
-    private SecurityLoggingFilter loggingFilter; // 👈 thêm
+    private SecurityLoggingFilter loggingFilter;
 
     @Autowired
     private UserDetailsService userDetailsService;
@@ -54,21 +54,45 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // Parse CORS allowed origins from environment variable
-        List<String> allowedOrigins = Arrays.asList(corsAllowedOrigins.split(","));
-        
+
+        // Parse CORS origins from .env
+        List<String> allowedOrigins = Arrays.stream(corsAllowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
+
         http
                 .csrf(csrf -> csrf.disable())
+
+                // ✅ CORS
                 .cors(cors -> cors.configurationSource(request -> {
+
                     CorsConfiguration cfg = new CorsConfiguration();
-                    cfg.setAllowedOrigins(allowedOrigins);
-                    cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
+
+                    // Support wildcard origins safely
+                    if (allowedOrigins.stream().anyMatch("*"::equals)) {
+                        cfg.setAllowedOriginPatterns(allowedOrigins);
+                    } else {
+                        cfg.setAllowedOrigins(allowedOrigins);
+                    }
+
+                    cfg.setAllowedMethods(List.of(
+                            "GET",
+                            "POST",
+                            "PUT",
+                            "DELETE",
+                            "OPTIONS",
+                            "PATCH"));
+
                     cfg.setAllowedHeaders(List.of("*"));
                     cfg.setAllowCredentials(true);
+
                     return cfg;
                 }))
+
+                // ✅ Authorization
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Các API công khai (Không cần Token)
+
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/api/auth/register",
@@ -78,39 +102,39 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html"
-                            )
+                                "/swagger-ui.html",
+                                "/api/game/**")
                         .permitAll()
 
-        
+                        .requestMatchers("/api/games/score").authenticated()
 
-                .requestMatchers("/api/games/score").authenticated()
-                .requestMatchers("/api/shop/**").authenticated()
+                        .requestMatchers("/api/shop/**").authenticated()
 
-                .anyRequest().authenticated()
-            )
+                        .anyRequest().authenticated())
 
-            // ✅ Stateless (JWT)
-            .sessionManagement(sess ->
-                sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
+                // ✅ Stateless JWT
+                .sessionManagement(sess ->
+                        sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-            .authenticationProvider(daoAuthenticationProvider())
+                .authenticationProvider(daoAuthenticationProvider())
 
-            // 🔥 QUAN TRỌNG: thêm logging filter trước security
-            .addFilterBefore(loggingFilter, UsernamePasswordAuthenticationFilter.class)
+                // ✅ Logging filter
+                .addFilterBefore(loggingFilter, UsernamePasswordAuthenticationFilter.class)
 
-            // 🔐 JWT filter
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                // ✅ JWT filter
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     @Bean
     public DaoAuthenticationProvider daoAuthenticationProvider() {
+
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+
         provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
+
         return provider;
     }
 }

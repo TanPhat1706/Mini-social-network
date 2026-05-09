@@ -40,8 +40,6 @@ public class SecurityLoggingFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
-                System.out.println(">>> SecurityLoggingFilter triggered");
-
 
         String ip = getClientIp(request);
         String method = request.getMethod();

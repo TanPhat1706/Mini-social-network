@@ -25,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -318,6 +319,132 @@ class PostServiceTest {
 
         assertEquals(1, result.getTotalElements());
         verify(postRepository).findByAuthorId(eq(1), any());
+    }
+    // ==========================================
+    // BỔ SUNG CÁC TEST CASE CÒN THIẾU
+    // ==========================================
+
+    @Test
+    void getAllPostsForAdmin_shouldReturnMappedList() {
+        Post p1 = Post.builder().id(1L).author(currentUser).media(new java.util.ArrayList<>()).build();
+        Post p2 = Post.builder().id(2L).author(currentUser).media(new java.util.ArrayList<>()).build();
+        
+        when(postRepository.findAllWithAuthorAndMedia()).thenReturn(List.of(p1, p2));
+
+        List<PostResponse> result = postService.getAllPostsForAdmin();
+
+        assertEquals(2, result.size());
+        assertEquals(1L, result.get(0).getId());
+        assertEquals(2L, result.get(1).getId());
+        verify(postRepository).findAllWithAuthorAndMedia();
+    }
+
+    @Test
+    void deletePost_whenIsAuthor_shouldDeleteSuccessfully() {
+        // Test luồng tác giả tự xóa bài của mình
+        Post post = Post.builder().id(10L).author(currentUser).build();
+        when(postRepository.findById(10L)).thenReturn(Optional.of(post));
+
+        String msg = postService.deletePost(10L);
+
+        assertEquals("Xóa bài viết thành công", msg);
+        verify(postRepository).delete(post);
+    }
+
+    @Test
+    void sharePost_whenSharingASharedPost_shouldMapToRootPost() {
+        // Giả lập Root Post (Bài gốc)
+        User rootAuthor = new User();
+        rootAuthor.setId(2);
+        Post rootPost = Post.builder()
+                .id(5L)
+                .author(rootAuthor)
+                .visibility(Visibility.PUBLIC)
+                .shareCount(10L)
+                .media(new java.util.ArrayList<>())
+                .build();
+
+        // Giả lập Shared Post (Bài đã được share từ Root Post)
+        User sharer = new User();
+        sharer.setId(3);
+        Post sharedPost = Post.builder()
+                .id(10L)
+                .author(sharer)
+                .visibility(Visibility.PUBLIC)
+                .originalPost(rootPost) // Bài này trỏ về bài gốc
+                .media(new java.util.ArrayList<>())
+                .build();
+
+        when(postRepository.findById(10L)).thenReturn(Optional.of(sharedPost));
+        when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PostRequest req = new PostRequest();
+        req.setContent("Share lại bài của người đã share");
+
+        PostResponse res = postService.sharePost(10L, req);
+
+        // Đảm bảo bài viết mới được trỏ thẳng về rootPost (id 5L), không trỏ về bài trung gian (id 10L)
+        assertNotNull(res);
+        verify(postRepository).save(rootPost); // Đảm bảo shareCount của root được cập nhật
+        assertEquals(11L, rootPost.getShareCount());
+    }
+
+    // ==========================================
+    // CÁC NHÁNH EXCEPTION (NOT FOUND / IO)
+    // ==========================================
+
+    @Test
+    void updatePost_whenPostNotFound_shouldThrow() {
+        when(postRepository.findById(999L)).thenReturn(Optional.empty());
+        
+        PostRequest req = new PostRequest();
+        // Thêm nội dung giả để vượt qua hàm validatePostPayload
+        req.setContent("Nội dung hợp lệ để pass validation"); 
+        
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.updatePost(999L, req));
+        assertEquals("Bài viết không tồn tại!", ex.getMessage());
+    }
+
+    @Test
+    void deletePost_whenPostNotFound_shouldThrow() {
+        when(postRepository.findById(999L)).thenReturn(Optional.empty());
+        
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.deletePost(999L));
+        assertEquals("Bài viết không tồn tại!", ex.getMessage());
+    }
+
+    @Test
+    void approvePost_whenPostNotFound_shouldThrow() {
+        when(postRepository.findById(999L)).thenReturn(Optional.empty());
+        
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.approvePost(999L));
+        assertEquals("Bài viết không tồn tại!", ex.getMessage());
+    }
+
+    @Test
+    void sharePost_whenOriginalPostNotFound_shouldThrow() {
+        when(postRepository.findById(999L)).thenReturn(Optional.empty());
+        PostRequest req = new PostRequest();
+        
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.sharePost(999L, req));
+        assertEquals("Bài viết gốc không tồn tại", ex.getMessage());
+    }
+
+    @Test
+    void createPost_whenMediaUploadFails_shouldThrowRuntimeException() throws IOException {
+        PostRequest req = new PostRequest();
+        req.setContent("Test IO");
+        req.setVisibility(Visibility.PRIVATE);
+        
+        // Mock một MultipartFile ném lỗi khi lấy InputStream
+        org.springframework.web.multipart.MultipartFile badFile = mock(org.springframework.web.multipart.MultipartFile.class);
+        when(badFile.getOriginalFilename()).thenReturn("bad.png");
+        when(badFile.getInputStream()).thenThrow(new IOException("Disk error"));
+        
+        req.setMediaFiles(List.of(badFile));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.createPost(req));
+        assertTrue(ex.getMessage().contains("Lỗi lưu file: bad.png"));
     }
 }
 

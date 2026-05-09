@@ -1,0 +1,52 @@
+pipeline {
+    agent any
+
+    // Chỉ giữ lại tên và tag của Image để build local
+    environment {
+        IMAGE_NAME = "mini-social-network-backend"
+        IMAGE_TAG  = "latest"
+    }
+
+    stages {
+        // 1. Kéo code mới nhất từ GitHub
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+
+        // 2. Chạy bộ Unit Test
+        stage('Run Unit Tests') {
+            steps {
+                dir('backend') {
+                    bat 'mvn clean test' 
+                }
+            }
+        }
+
+        // 3. Build Docker Image (Lưu tại máy chủ Jenkins)
+        stage('Build Docker Image') {
+            steps {
+                dir('backend') {
+                    echo "Building Docker image locally..."
+                    bat "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                }
+            }
+        }
+        
+        // ĐÃ CẮT BỎ PHẦN PUSH LÊN AWS Ở ĐÂY
+    }
+
+    post {
+        success {
+            echo "🎉 TUYỆT VỜI! Đã kéo code, test và build Docker Image thành công!"
+        }
+        failure {
+            echo "❌ CÓ LỖI XẢY RA! Sếp vào kiểm tra lại log nhé!"
+        }
+        always {
+            // Dọn dẹp image rác (Dangling images) trên server Jenkins
+            bat "docker image prune -f"
+        }
+    }
+}
