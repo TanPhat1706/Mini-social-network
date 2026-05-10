@@ -1,47 +1,73 @@
 pipeline {
     agent any
 
+    // 🟢 CẤU HÌNH BIẾN MÔI TRƯỜNG AWS CHO FRONTEND
     environment {
-        IMAGE_NAME = "mini-social-network-frontend"
-        IMAGE_TAG  = "latest"
+        AWS_ACCOUNT_ID = "295662439915" // nhớ thay bằng dãy 12 số nhé!
+        AWS_REGION     = "ap-southeast-1"
+        ECR_REPO_NAME  = "minisocial-frontend"       // 👈 Chú ý: Tên repo ECR dành cho Frontend
+        IMAGE_TAG      = "latest" 
+        ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        IMAGE_URI      = "${ECR_REGISTRY}/${ECR_REPO_NAME}:${IMAGE_TAG}"
     }
 
     stages {
+        // 1. Kéo code mới nhất từ nhánh main
         stage('Checkout Code') {
             steps {
                 checkout scm
             }
         }
 
-        // Kiểm tra xem có ai viết code lỗi cú pháp không (Linting)
-        stage('Run Linter (Optional)') {
+        // 2. Chạy Linter hoặc Test (Tùy chọn, để đảm bảo code không lỗi cú pháp trước khi build)
+        stage('Install & Verify (Optional)') {
             steps {
-                dir('frontend') { // Thay 'frontend' bằng tên thư mục chứa code của sếp nếu có
-                    bat 'npm ci' // 🟢 Tải thư viện an toàn, sạch sẽ
-                    // bat 'npm run lint' // Mở comment nếu sếp có setup Eslint
+                dir('frontend') { // Nếu code nằm ở thư mục gốc thì xóa block dir('frontend') {} này đi nhé
+                    bat 'npm ci'
+                    // bat 'npm run lint' // Mở comment dòng này nếu có dùng Eslint
                 }
             }
         }
 
-        // Đóng gói Frontend với Nginx vào Docker
+        // 3. Build Docker Image (Sử dụng Multi-stage siêu nhẹ vừa viết)
         stage('Build Docker Image') {
             steps {
                 dir('frontend') {
-                    echo "Building Frontend Docker image locally..."
-                    bat "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                    echo "Building Frontend Docker image..."
+                    bat "docker build -t ${IMAGE_URI} ."
+                }
+            }
+        }
+
+        // 4. Kết nối AWS và "Bắn" Image lên mây
+        stage('Push to AWS ECR') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-credentials', // Phải khớp với ID đã tạo trong Jenkins
+                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                ]]) {
+                    echo "Logging into AWS ECR..."
+                    bat "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
+                    
+                    echo "Pushing frontend image to ECR..."
+                    bat "docker push ${IMAGE_URI}"
                 }
             }
         }
     }
 
+    // 🟢 DỌN DẸP CHIẾN TRƯỜNG SAU KHI XONG VIỆC
     post {
         success {
-            echo "🎉 TUYỆT VỜI! Giao diện đã được đóng gói thành công!"
+            echo "🎉 XUẤT SẮC! Giao diện (Frontend) đã được build và đẩy lên mây thành công rực rỡ!"
         }
         failure {
-            echo "❌ CÓ LỖI XẢY RA ở Frontend! Sếp check log nha!"
+            echo "❌ ÁI CHÀ! Có lỗi xảy ra ở luồng Frontend rồi, hãy vào xem log nhé!"
         }
         always {
+            // Xóa image rác trên máy Jenkins để tránh đầy ổ cứng
             bat "docker image prune -f"
         }
     }
