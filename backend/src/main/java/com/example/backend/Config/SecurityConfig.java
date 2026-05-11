@@ -99,6 +99,7 @@ public class SecurityConfig {
                                 "/uploads/**",
                                 "/ws/**",
                                 "/api/games/leaderboard/**",
+                                "/api/health/**",
                                 "/v3/api-docs/**",
                                 "/api-docs/**",
                                 "/swagger-ui/**",
