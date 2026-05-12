@@ -25,6 +25,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
@@ -39,8 +40,11 @@ public class SecurityConfig {
     @Autowired
     private UserDetailsService userDetailsService;
 
-    @Value("${cors.allowed.origins}")
+    @Value("${cors.allowed.origins:http://localhost:5173,http://localhost:3000}")
     private String corsAllowedOrigins;
+
+    @Value("${frontend.url:http://localhost:5173,http://localhost:3000}")
+    private String frontendUrl;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -55,11 +59,21 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
+        // Kết hợp FRONTEND_URL với các CORS origins khác
+        List<String> allowedOrigins = new ArrayList<>();
+
+        // Thêm FRONTEND_URL (S3)
+        if (frontendUrl != null && !frontendUrl.isEmpty()) {
+            allowedOrigins.add(frontendUrl);
+        }
+
         // Parse CORS origins from .env
-        List<String> allowedOrigins = Arrays.stream(corsAllowedOrigins.split(","))
-                .map(String::trim)
-                .filter(origin -> !origin.isEmpty())
-                .toList();
+        if (corsAllowedOrigins != null && !corsAllowedOrigins.isEmpty()) {
+            Arrays.stream(corsAllowedOrigins.split(","))
+                    .map(String::trim)
+                    .filter(origin -> !origin.isEmpty())
+                    .forEach(allowedOrigins::add);
+        }
 
         http
                 .csrf(csrf -> csrf.disable())
