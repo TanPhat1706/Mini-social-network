@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +24,12 @@ public class AuthController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private SecurityHistoryRepository securityHistoryRepository;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody @Valid RegisterRequest req) {
         try {
@@ -34,14 +41,31 @@ public class AuthController {
 
     // ⭐️ CHIÊU THỨ 1: Sửa API Login trả về full thông tin
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody @Valid LoginRequest req) {
+    public ResponseEntity<?> login(@RequestBody @Valid LoginRequest req, HttpServletRequest request) { // 🟢 THÊM
+                                                                                                       // HttpServletRequest
+                                                                                                       // Ở ĐÂY
         try {
-            // Gọi service để lấy token
-            String token = authService.login(req);
-            
+            // Lấy IP từ Request (đề phòng chạy qua Nginx/Proxy)
+            String ipAddress = request.getHeader("X-Forwarded-For");
+            if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+                ipAddress = request.getRemoteAddr();
+            }
+
+            // Lấy chuỗi User-Agent để dành phân tích Browser/Device
+            String userAgentString = request.getHeader("User-Agent");
+
+            /// 🟢 SINH RA MỘT MÃ SESSION ĐỘC NHẤT
+            String sessionId = java.util.UUID.randomUUID().toString();
+
+            // Truyền sessionId vào
+            String token = authService.login(req, sessionId);
+
             // Tìm lại user để lấy thông tin chi tiết
             User user = userRepository.findByStudentCodeOrEmail(req.getIdentifier(), req.getIdentifier())
                     .orElseThrow(() -> new RuntimeException("User not found"));
+
+            // 🟢 MỚI: GỌI SERVICE ĐỂ LƯU LỊCH SỬ BẢO MẬT SAU KHI LOGIN THÀNH CÔNG
+            authService.saveSecurityHistory(user, ipAddress, userAgentString, "SUCCESS", sessionId);
 
             // Đóng gói kết quả trả về
             Map<String, Object> response = new HashMap<>();
@@ -49,9 +73,8 @@ public class AuthController {
             response.put("id", user.getId());
             response.put("studentCode", user.getStudentCode());
             response.put("fullName", user.getFullName());
-            response.put("role", user.getRole()); // Quan trọng nhất cái này
+            response.put("role", user.getRole());
             response.put("avatarUrl", user.getAvatarUrl());
-            // 🟢 MỚI: TRẢ VỀ ĐIỂM VÀ LEVEL NGAY KHI LOGIN
             response.put("level", user.getLevel());
             response.put("exp", user.getExp());
             response.put("vptlPoints", user.getVptlPoints());
@@ -59,10 +82,11 @@ public class AuthController {
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            // Tùy chọn: Nếu muốn lưu cả lịch sử đăng nhập thất bại thì gọi
+            // saveSecurityHistory ở đây với status "FAILED"
             return ResponseEntity.status(401).body(e.getMessage());
         }
     }
-
 
     // API phục vụ thanh tìm kiếm trên Header
     @GetMapping("/search")
@@ -72,6 +96,7 @@ public class AuthController {
         }
         return ResponseEntity.ok(authService.searchUsers(query));
     }
+
     // --- CẬP NHẬT: LẤY PROFILE ĐẦY ĐỦ (BAO GỒM ẢNH BÌA) ---
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile() {
@@ -90,14 +115,13 @@ public class AuthController {
             @RequestParam(value = "bio", required = false) String bio,
             @RequestParam(value = "className", required = false) String className,
             @RequestParam(value = "avatar", required = false) MultipartFile avatar,
-            @RequestParam(value = "cover", required = false) MultipartFile cover
-    ) {
+            @RequestParam(value = "cover", required = false) MultipartFile cover) {
         try {
             // Lấy user hiện tại từ Token
             String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
-            
+
             User updatedUser = authService.updateProfile(studentCode, fullName, bio, className, avatar, cover);
-            
+
             return ResponseEntity.ok(toUserResponse(updatedUser));
         } catch (Exception e) {
             e.printStackTrace();
@@ -125,5 +149,68 @@ public class AuthController {
                 .currentAvatarFrame(user.getCurrentAvatarFrame())
                 .currentNameColor(user.getCurrentNameColor())
                 .build();
+    }
+
+    // 2. CẬP NHẬT API GET LỊCH SỬ (Thêm cờ nhận diện thiết bị hiện tại)
+    @GetMapping("/security-history")
+    public ResponseEntity<?> getSecurityHistory(HttpServletRequest request) {
+        try {
+            String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
+            User user = userRepository.findByStudentCode(studentCode).orElseThrow();
+            List<SecurityHistory> historyList = securityHistoryRepository
+                    .findByUserIdOrderByLoginTimeDesc(user.getId());
+
+            // Lấy sessionId của Token hiện tại đang gọi API
+            String authHeader = request.getHeader("Authorization");
+            String currentSessionId = null;
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                currentSessionId = jwtUtil.extractSessionId(authHeader.substring(7));
+            }
+
+            // Đóng gói lại dữ liệu để gửi lên Frontend
+            List<Map<String, Object>> responseList = new java.util.ArrayList<>();
+            for (SecurityHistory h : historyList) {
+                Map<String, Object> map = new java.util.HashMap<>();
+                map.put("id", h.getId());
+                map.put("ipAddress", h.getIpAddress());
+                map.put("browser", h.getBrowser());
+                map.put("device", h.getDevice());
+                map.put("loginTime", h.getLoginTime());
+                map.put("status", h.getStatus());
+                map.put("isActive", h.getIsActive()); // Còn đăng nhập hay không
+                // 🟢 Đánh dấu thiết bị đang dùng để hiển thị chữ "Đang hoạt động" trên UI
+                map.put("isCurrentDevice", h.getSessionId() != null && h.getSessionId().equals(currentSessionId));
+                responseList.add(map);
+            }
+
+            return ResponseEntity.ok(responseList);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Lỗi lấy lịch sử bảo mật: " + e.getMessage());
+        }
+    }
+
+    // 3. 🟢 MỚI: API ÉP ĐĂNG XUẤT THIẾT BỊ KHÁC
+    @PostMapping("/security-history/{id}/revoke")
+    public ResponseEntity<?> revokeSession(@PathVariable Integer id) {
+        try {
+            String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
+
+            SecurityHistory history = securityHistoryRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy lịch sử"));
+
+            // Kiểm tra bảo mật: Tránh trường hợp user này revoke session của user khác
+            if (!history.getUser().getStudentCode().equals(studentCode)) {
+                return ResponseEntity.status(403).body("Không có quyền thực hiện");
+            }
+
+            // ĐÁNH ĐẦU BẰNG FALSE -> FILTER SẼ CHẶN THIẾT BỊ NÀY Ở REQUEST TIẾP THEO
+            history.setIsActive(false);
+            securityHistoryRepository.save(history);
+
+            return ResponseEntity.ok("Đã đăng xuất thiết bị thành công");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi: " + e.getMessage());
+        }
     }
 }

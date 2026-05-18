@@ -15,13 +15,25 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(SECRET.getBytes());
     }
 
-    public String generateToken(String studentCode) {
+    // 🟢 SỬA: Nhận thêm tham số sessionId và nhét vào Token
+    public String generateToken(String studentCode, String sessionId) {
         return Jwts.builder()
                 .setSubject(studentCode)
+                .claim("sessionId", sessionId) // <-- NHÉT SESSION ID VÀO ĐÂY
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // 1 ngày
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    // 🟢 MỚI: Hàm giải mã để lấy sessionId ra khỏi Token
+    public String extractSessionId(String token) {
+        try {
+            return Jwts.parserBuilder().setSigningKey(getSignKey()).build()
+                    .parseClaimsJws(token).getBody().get("sessionId", String.class);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public String extractUsername(String token) {

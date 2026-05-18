@@ -12,10 +12,12 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -35,8 +37,14 @@ class AuthControllerTest extends BaseControllerTest {
     @MockBean
     private UserRepository userRepository;
 
+    // 🟢 THÊM 2 MOCK BEAN NÀY ĐỂ TRÁNH LỖI CONTEXT VÌ AUTH CONTROLLER ĐANG CẦN
+    @MockBean
+    private SecurityHistoryRepository securityHistoryRepository;
+
+
     private User mockUser;
     private UserResponse mockUserResponse;
+    private SecurityHistory mockHistory;
 
     @BeforeEach
     void setUp() {
@@ -56,6 +64,17 @@ class AuthControllerTest extends BaseControllerTest {
                 .role("STUDENT")
                 .level(10)
                 .build();
+                
+        mockHistory = new SecurityHistory();
+        mockHistory.setId(100);
+        mockHistory.setUser(mockUser);
+        mockHistory.setIpAddress("127.0.0.1");
+        mockHistory.setBrowser("Chrome");
+        mockHistory.setDevice("Windows");
+        mockHistory.setLoginTime(LocalDateTime.now());
+        mockHistory.setStatus("SUCCESS");
+        mockHistory.setSessionId("mock-session-id");
+        mockHistory.setIsActive(true);
     }
 
     // ==========================================
@@ -86,7 +105,8 @@ class AuthControllerTest extends BaseControllerTest {
         req.setIdentifier("1412");
         req.setPassword("password123");
 
-        when(authService.login(any(LoginRequest.class))).thenReturn("fake-jwt-token");
+        // 🟢 ĐÃ SỬA: Thêm anyString() cho tham số sessionId
+        when(authService.login(any(LoginRequest.class), anyString())).thenReturn("fake-jwt-token");
         when(userRepository.findByStudentCodeOrEmail(anyString(), anyString()))
                 .thenReturn(Optional.of(mockUser));
 
@@ -137,7 +157,6 @@ class AuthControllerTest extends BaseControllerTest {
         when(authService.updateProfile(eq("1412"), anyString(), any(), any(), any(), any()))
                 .thenReturn(mockUser);
 
-        // Chú ý: Multipart PUT cần dùng .with(request -> { request.setMethod("PUT"); return request; })
         mockMvc.perform(MockMvcRequestBuilders.multipart("/api/auth/profile")
                         .file(avatar)
                         .param("fullName", "Lê Hồng Phát Updated")
@@ -146,5 +165,49 @@ class AuthControllerTest extends BaseControllerTest {
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.fullName").exists());
+    }
+
+    // ==========================================
+    // 6. 🟢 MỚI: TEST LẤY LỊCH SỬ BẢO MẬT
+    // ==========================================
+    @Test
+    @WithMockUser(username = "1412")
+    void getSecurityHistory_shouldReturnHistoryList() throws Exception {
+        when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(mockUser));
+        when(securityHistoryRepository.findByUserIdOrderByLoginTimeDesc(1))
+                .thenReturn(List.of(mockHistory));
+        when(jwtUtil.extractSessionId(anyString())).thenReturn("mock-session-id");
+
+        mockMvc.perform(get("/api/auth/security-history")
+                        .header("Authorization", "Bearer fake-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].ipAddress").value("127.0.0.1"))
+                .andExpect(jsonPath("$[0].isCurrentDevice").value(true)); // Test cờ thiết bị hiện tại
+    }
+
+    // ==========================================
+    // 7. 🟢 MỚI: TEST ÉP ĐĂNG XUẤT (REVOKE)
+    // ==========================================
+    @Test
+    @WithMockUser(username = "1412")
+    void revokeSession_shouldReturnOk_whenUserOwnsHistory() throws Exception {
+        when(securityHistoryRepository.findById(100)).thenReturn(Optional.of(mockHistory));
+
+        mockMvc.perform(post("/api/auth/security-history/100/revoke"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Đã đăng xuất thiết bị thành công"));
+
+        // Kiểm tra xem cờ isActive đã được set thành false trước khi save chưa
+        verify(securityHistoryRepository).save(argThat(history -> !history.getIsActive()));
+    }
+    
+    @Test
+    @WithMockUser(username = "HACKER_CODE")
+    void revokeSession_shouldReturn403_whenUserDoesNotOwnHistory() throws Exception {
+        when(securityHistoryRepository.findById(100)).thenReturn(Optional.of(mockHistory));
+
+        mockMvc.perform(post("/api/auth/security-history/100/revoke"))
+                .andExpect(status().isForbidden())
+                .andExpect(content().string("Không có quyền thực hiện"));
     }
 }

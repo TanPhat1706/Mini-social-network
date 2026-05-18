@@ -1,12 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   AppBar, Toolbar, Box, InputBase, Paper, List, ListItem,
-  IconButton, Tooltip, Button, Badge, Typography, CircularProgress
+  IconButton, Tooltip, Button, Badge, Typography, CircularProgress,
+  Menu, MenuItem, ListItemIcon, Divider
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 // Import Icons
+import SettingsIcon from '@mui/icons-material/Settings';
+import SecurityIcon from '@mui/icons-material/Security';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
 import SearchIcon from '@mui/icons-material/Search';
 import HomeIcon from '@mui/icons-material/Home';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
@@ -21,6 +25,7 @@ import axiosClient from '../../api/axiosClient';
 import MessengerDropdown from '../messenger/MessengerDropdown';
 import { useWebSocket } from '../../context/useWebSocket';
 import FriendButton from '../friend/FriendButton';
+import api from '../../api/api';
 
 // 🔴 IMPORT COMPONENT AVATAR MA THUẬT
 import AvatarWithFrame from '../AvatarWithFrame';
@@ -206,7 +211,25 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => { logout(); navigate('/login'); };
+  // 🟢 THÊM STATE SETTINGS MENU
+  const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
+
+  const openSettings = Boolean(settingsAnchorEl);
+
+  const handleSettingsClick = (event: React.MouseEvent<HTMLElement>) => {
+    setSettingsAnchorEl(event.currentTarget);
+  };
+
+  const handleSettingsClose = () => {
+    setSettingsAnchorEl(null);
+  };
+
+  // 🟢 GỘP LOGOUT
+  const handleLogout = () => {
+    handleSettingsClose();
+    logout();
+    navigate('/login');
+  };
   const handleMessageRead = () => { setUnreadCount(prev => Math.max(0, prev - 1)); };
 
   return (
@@ -306,6 +329,7 @@ export default function Header() {
                 </Tooltip>
               )}
 
+              {/* Messenger */}
               <Box sx={{ position: 'relative' }} ref={msgRef}>
                 <Tooltip title="Tin nhắn">
                   <ActionIconButton onClick={() => setShowMsgDropdown(!showMsgDropdown)}>
@@ -314,45 +338,129 @@ export default function Header() {
                     </Badge>
                   </ActionIconButton>
                 </Tooltip>
+
                 {showMsgDropdown && (
-                  <MessengerDropdown onClose={() => setShowMsgDropdown(false)} onMessageRead={handleMessageRead} />
+                  <MessengerDropdown
+                    onClose={() => setShowMsgDropdown(false)}
+                    onMessageRead={handleMessageRead}
+                  />
                 )}
               </Box>
 
+              {/* Notification */}
               <Box ref={notiRef}>
                 <NotificationBell />
               </Box>
 
+              {/* Avatar */}
               <Tooltip title={liveUser?.fullName || user?.fullName || 'Tài khoản'}>
                 <Box
                   onClick={() => navigate('/profile')}
                   sx={{
-                    display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer',
-                    ml: 1, p: '4px 8px', borderRadius: '20px', '&:hover': { bgcolor: '#F2F2F2' }
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    cursor: 'pointer',
+                    ml: 1,
+                    p: '4px 8px',
+                    borderRadius: '20px',
+                    '&:hover': { bgcolor: '#F2F2F2' }
                   }}
                 >
-                  {/* 🟢 ĐÃ SỬA: Đã thêm prop "name" để đồng bộ chữ LP, xóa ảnh U đi */}
                   <AvatarWithFrame
                     src={liveUser?.avatarUrl || user?.avatarUrl}
                     name={liveUser?.fullName || user?.fullName}
-                    frameClass={(liveUser as any)?.currentAvatarFrame || (user as any)?.currentAvatarFrame}
+                    frameClass={
+                      (liveUser as any)?.currentAvatarFrame ||
+                      (user as any)?.currentAvatarFrame
+                    }
                     size={28}
                   />
-                  <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', lg: 'block' } }}>
+
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 600,
+                      display: { xs: 'none', lg: 'block' }
+                    }}
+                  >
                     <ColoredName
-                      name={(liveUser?.fullName || user?.fullName || '').split(' ').pop() || ''}
-                      colorClass={(liveUser as any)?.currentNameColor || (user as any)?.currentNameColor}
+                      name={(liveUser?.fullName || user?.fullName || '')
+                        .split(' ')
+                        .pop() || ''}
+                      colorClass={
+                        (liveUser as any)?.currentNameColor ||
+                        (user as any)?.currentNameColor
+                      }
                     />
                   </Typography>
                 </Box>
               </Tooltip>
 
-              <Tooltip title="Đăng xuất">
-                <ActionIconButton onClick={handleLogout}><LogoutIcon /></ActionIconButton>
+              {/* 🟢 SETTINGS */}
+              <Tooltip title="Cài đặt & Quyền riêng tư">
+                <ActionIconButton
+                  onClick={handleSettingsClick}
+                  aria-controls={openSettings ? 'settings-menu' : undefined}
+                  aria-haspopup="true"
+                  aria-expanded={openSettings ? 'true' : undefined}
+                >
+                  <SettingsIcon />
+                </ActionIconButton>
               </Tooltip>
+
+              {/* 🟢 SETTINGS MENU */}
+              <Menu
+                id="settings-menu"
+                anchorEl={settingsAnchorEl}
+                open={openSettings}
+                onClose={handleSettingsClose}
+                PaperProps={{
+                  elevation: 0,
+                  sx: {
+                    overflow: 'visible',
+                    filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.15))',
+                    mt: 1.5,
+                    width: 280,
+                    borderRadius: 2,
+                  },
+                }}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              >
+                <MenuItem onClick={() => navigate('/settings/security')}>
+                  <ListItemIcon>
+                    <SecurityIcon fontSize="small" />
+                  </ListItemIcon>
+                  Lịch sử đăng nhập
+                </MenuItem>
+
+                <MenuItem onClick={() => { }}>
+                  <ListItemIcon>
+                    <DarkModeIcon fontSize="small" />
+                  </ListItemIcon>
+                  Giao diện (Sắp ra mắt)
+                </MenuItem>
+
+                <Divider />
+
+                <MenuItem
+                  onClick={handleLogout}
+                  sx={{ color: 'error.main' }}
+                >
+                  <ListItemIcon>
+                    <LogoutIcon fontSize="small" color="error" />
+                  </ListItemIcon>
+                  Đăng xuất
+                </MenuItem>
+              </Menu>
             </>
           ) : (
-            <Button variant="contained" color="primary" onClick={() => navigate('/login')}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => navigate('/login')}
+            >
               Đăng nhập
             </Button>
           )}

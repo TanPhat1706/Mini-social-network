@@ -13,12 +13,17 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
+import com.example.backend.User.SecurityHistoryRepository; 
+import com.example.backend.User.SecurityHistory;
+
 @Component
 public class JwtFilter extends OncePerRequestFilter {
     @Autowired
     private JwtUtil jwtUtil;
     @Autowired
     private CustomUserDetailsService userDetailsService;
+    @Autowired
+    private SecurityHistoryRepository securityHistoryRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -38,11 +43,30 @@ public class JwtFilter extends OncePerRequestFilter {
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            
             if (jwtUtil.validateToken(token)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                // 🟢 MỚI: BÓC SESSION ID VÀ KIỂM TRA TRONG DATABASE
+                String sessionId = jwtUtil.extractSessionId(token);
+                boolean isSessionActive = true;
+
+                if (sessionId != null) {
+                    SecurityHistory history = securityHistoryRepository.findBySessionId(sessionId).orElse(null);
+                    // Nếu không tìm thấy session, hoặc session đã bị set isActive = false -> Khóa!
+                    if (history == null || !Boolean.TRUE.equals(history.getIsActive())) {
+                        isSessionActive = false;
+                    }
+                }
+
+                // CHỈ CHO PHÉP ĐI TIẾP NẾU SESSION CÒN ACTIVE
+                if (isSessionActive) {
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                } else {
+                    logger.warn("Từ chối truy cập: Session đã bị vô hiệu hóa đối với user " + username);
+                    // Tùy chọn: Có thể cấu hình trả về lỗi 401 thẳng ở đây
+                }
             }
         }
         filterChain.doFilter(request, response);

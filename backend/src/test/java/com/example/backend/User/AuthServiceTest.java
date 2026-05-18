@@ -29,6 +29,9 @@ class AuthServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private SecurityHistoryRepository securityHistoryRepository; // 🟢 THÊM MOCK NÀY
+
+    @Mock
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Mock
@@ -46,6 +49,7 @@ class AuthServiceTest {
         ReflectionTestUtils.setField(authService, "uploadDir", tempDir.toString());
     }
 
+    // ... (Các test case register giữ nguyên vì không bị ảnh hưởng) ...
     @Test
     void register_whenStudentCodeExists_shouldThrowAndNotSave() {
         RegisterRequest req = new RegisterRequest();
@@ -127,6 +131,33 @@ class AuthServiceTest {
 
         assertEquals("STUDENT", captor.getValue().getRole());
     }
+    
+    @Test
+    void register_withStudentRole_shouldSaveSuccessfully_AndSetInactive() {
+        RegisterRequest req = new RegisterRequest();
+        req.setStudentCode("SV005");
+        req.setEmail("sv005@example.com");
+        req.setFullName("Student Five");
+        req.setPassword("raw");
+        req.setRole("STUDENT");
+
+        when(userRepository.existsByStudentCode(anyString())).thenReturn(false);
+        when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        when(passwordEncoder.encode("raw")).thenReturn("hashed");
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        when(userRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        User saved = authService.register(req);
+
+        assertNotNull(saved);
+        assertEquals("STUDENT", saved.getRole());
+        assertEquals(false, saved.getActive()); 
+    }
+
+    // ==========================================
+    // 🟢 SỬA LẠI CÁC TEST CASE CHO LOGIN
+    // ==========================================
 
     @Test
     void login_whenUserNotFound_shouldThrow() {
@@ -136,9 +167,12 @@ class AuthServiceTest {
 
         when(userRepository.findByStudentCodeOrEmail("x", "x")).thenReturn(Optional.empty());
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login(req));
+        // 🟢 Sửa: Thêm tham số sessionId
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login(req, "test-session-id"));
         assertEquals("Tài khoản không tồn tại!", ex.getMessage());
-        verify(jwtUtil, never()).generateToken(anyString());
+        
+        // 🟢 Sửa: verify generateToken(anyString(), anyString())
+        verify(jwtUtil, never()).generateToken(anyString(), anyString());
     }
 
     @Test
@@ -156,9 +190,12 @@ class AuthServiceTest {
         when(userRepository.findByStudentCodeOrEmail("sv", "sv")).thenReturn(Optional.of(u));
         when(passwordEncoder.matches("wrong", "hashed")).thenReturn(false);
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login(req));
+        // 🟢 Sửa: Thêm tham số sessionId
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login(req, "test-session-id"));
         assertEquals("Mật khẩu không đúng!", ex.getMessage());
-        verify(jwtUtil, never()).generateToken(anyString());
+        
+        // 🟢 Sửa: verify
+        verify(jwtUtil, never()).generateToken(anyString(), anyString());
         verify(userRepository, never()).save(any(User.class));
     }
 
@@ -176,10 +213,31 @@ class AuthServiceTest {
         when(userRepository.findByStudentCodeOrEmail("sv", "sv")).thenReturn(Optional.of(u));
         when(passwordEncoder.matches("pw", "hashed")).thenReturn(true);
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login(req));
+        // 🟢 Sửa: Thêm tham số sessionId
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login(req, "test-session-id"));
         assertEquals("Tài khoản của bạn chưa được kích hoạt hoặc đã bị khóa!", ex.getMessage());
-        verify(jwtUtil, never()).generateToken(anyString());
+        verify(jwtUtil, never()).generateToken(anyString(), anyString());
         verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void login_whenActiveIsNull_shouldThrow() {
+        LoginRequest req = new LoginRequest();
+        req.setIdentifier("sv_new");
+        req.setPassword("pw");
+
+        User u = new User();
+        u.setStudentCode("SV_NEW");
+        u.setPassword("hashed");
+        u.setActive(null); 
+
+        when(userRepository.findByStudentCodeOrEmail("sv_new", "sv_new")).thenReturn(Optional.of(u));
+        when(passwordEncoder.matches("pw", "hashed")).thenReturn(true);
+
+        // 🟢 Sửa: Thêm tham số sessionId
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login(req, "test-session-id"));
+        assertEquals("Tài khoản của bạn chưa được kích hoạt hoặc đã bị khóa!", ex.getMessage());
+        verify(jwtUtil, never()).generateToken(anyString(), anyString());
     }
 
     @Test
@@ -187,6 +245,7 @@ class AuthServiceTest {
         LoginRequest req = new LoginRequest();
         req.setIdentifier("sv");
         req.setPassword("pw");
+        String sessionId = "test-session-id"; // Mock ID
 
         User u = new User();
         u.setStudentCode("SV001");
@@ -195,17 +254,66 @@ class AuthServiceTest {
 
         when(userRepository.findByStudentCodeOrEmail("sv", "sv")).thenReturn(Optional.of(u));
         when(passwordEncoder.matches("pw", "hashed")).thenReturn(true);
-        when(jwtUtil.generateToken("SV001")).thenReturn("token123");
+        // 🟢 Sửa: Mock generateToken với 2 tham số
+        when(jwtUtil.generateToken("SV001", sessionId)).thenReturn("token123");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        String token = authService.login(req);
+        // 🟢 Sửa: Gọi login với 2 tham số
+        String token = authService.login(req, sessionId);
 
         assertEquals("token123", token);
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
         assertNotNull(captor.getValue().getLastLogin());
-        verify(jwtUtil).generateToken("SV001");
+        // 🟢 Sửa: verify
+        verify(jwtUtil).generateToken("SV001", sessionId);
     }
+
+    // ==========================================
+    // 🟢 THÊM TEST CASE MỚI CHO TÍNH NĂNG SECURITY HISTORY
+    // ==========================================
+    @Test
+    void saveSecurityHistory_shouldParseAgentAndSave() {
+        User u = new User();
+        u.setStudentCode("SV001");
+        
+        String ip = "127.0.0.1";
+        String ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+        String status = "SUCCESS";
+        String sessionId = "session-123";
+
+        ArgumentCaptor<SecurityHistory> captor = ArgumentCaptor.forClass(SecurityHistory.class);
+        when(securityHistoryRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        authService.saveSecurityHistory(u, ip, ua, status, sessionId);
+
+        SecurityHistory saved = captor.getValue();
+        assertEquals(u, saved.getUser());
+        assertEquals("127.0.0.1", saved.getIpAddress());
+        assertEquals("SUCCESS", saved.getStatus());
+        assertEquals("session-123", saved.getSessionId());
+        assertTrue(saved.getIsActive());
+        
+        // Kiểm tra xem uap-java có parse đúng Chrome và Windows không
+        assertTrue(saved.getBrowser().contains("Chrome"));
+        assertTrue(saved.getDevice().contains("Windows"));
+    }
+
+    @Test
+    void saveSecurityHistory_withNullAgent_shouldFallback() {
+        User u = new User();
+        authService.saveSecurityHistory(u, null, null, "FAILED", "session-123");
+        
+        ArgumentCaptor<SecurityHistory> captor = ArgumentCaptor.forClass(SecurityHistory.class);
+        verify(securityHistoryRepository).save(captor.capture());
+        
+        SecurityHistory saved = captor.getValue();
+        assertEquals("Unknown IP", saved.getIpAddress());
+        assertEquals("Unknown Browser", saved.getBrowser());
+        assertEquals("Unknown Device", saved.getDevice());
+    }
+
+    // ... (Các test case dưới này giữ nguyên vì không liên quan) ...
 
     @Test
     void searchUsers_shouldMapToUserResponse() {
@@ -236,107 +344,6 @@ class AuthServiceTest {
         assertEquals("frame1", r.getCurrentAvatarFrame());
         assertEquals("#fff", r.getCurrentNameColor());
     }
-
-    @Test
-    void updateProfile_whenFullNameBlankAfterTrim_shouldThrow() {
-        when(userRepository.findByStudentCode("SV001")).thenReturn(Optional.of(new User()));
-
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> authService.updateProfile("SV001", "   ", null, null, null, null));
-        assertEquals("Họ và tên không được để trống", ex.getMessage());
-        verify(userRepository, never()).save(any(User.class));
-    }
-
-    @Test
-    void updateProfile_shouldTrimAndTruncateBio_andSave() throws IOException {
-        User u = new User();
-        u.setStudentCode("SV001");
-        when(userRepository.findByStudentCode("SV001")).thenReturn(Optional.of(u));
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        String longBio = "x".repeat(600);
-        User saved = authService.updateProfile("SV001", "  Name  ", "  " + longBio + "  ", "  K17  ", null, null);
-
-        assertEquals("Name", saved.getFullName());
-        assertEquals("K17", saved.getClassName());
-        assertNotNull(saved.getBio());
-        assertEquals(500, saved.getBio().length());
-        verify(userRepository).save(any(User.class));
-    }
-
-    @Test
-    void updateProfile_withAvatarAndCover_shouldUseSaveFile_andPersistPaths() throws IOException {
-        User u = new User();
-        u.setStudentCode("SV001");
-        when(userRepository.findByStudentCode("SV001")).thenReturn(Optional.of(u));
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        AuthService spy = Mockito.spy(authService);
-        doReturn("/uploads/avatar.png", "/uploads/cover.png").when(spy).saveFile(any());
-
-        MockMultipartFile avatar = new MockMultipartFile(
-                "avatar", "a.png", "image/png", "a".getBytes(StandardCharsets.UTF_8)
-        );
-        MockMultipartFile cover = new MockMultipartFile(
-                "cover", "c.png", "image/png", "c".getBytes(StandardCharsets.UTF_8)
-        );
-
-        User saved = spy.updateProfile("SV001", null, null, null, avatar, cover);
-
-        assertEquals("/uploads/avatar.png", saved.getAvatarUrl());
-        assertEquals("/uploads/cover.png", saved.getCoverPhotoUrl());
-        verify(userRepository).save(any(User.class));
-        verify(spy, times(2)).saveFile(any());
-    }
-    // ==========================================
-    // BỔ SUNG TEST CASE THEO LUỒNG NGHIỆP VỤ MỚI
-    // ==========================================
-
-    @Test
-    void register_withStudentRole_shouldSaveSuccessfully_AndSetInactive() {
-        // Đảm bảo user đăng ký mới dù đúng flow vẫn phải ở trạng thái chờ duyệt (active = false)
-        RegisterRequest req = new RegisterRequest();
-        req.setStudentCode("SV005");
-        req.setEmail("sv005@example.com");
-        req.setFullName("Student Five");
-        req.setPassword("raw");
-        req.setRole("STUDENT");
-
-        when(userRepository.existsByStudentCode(anyString())).thenReturn(false);
-        when(userRepository.existsByEmail(anyString())).thenReturn(false);
-        when(passwordEncoder.encode("raw")).thenReturn("hashed");
-
-        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
-        when(userRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
-
-        User saved = authService.register(req);
-
-        assertNotNull(saved);
-        assertEquals("STUDENT", saved.getRole());
-        // Trạng thái bắt buộc phải là false để chờ Admin duyệt
-        assertEquals(false, saved.getActive()); 
-    }
-
-    @Test
-    void login_whenActiveIsNull_shouldThrow() {
-        // Mô phỏng user vừa đăng ký xong, cột active dưới DB đang bị null (chưa được Admin đụng tới)
-        LoginRequest req = new LoginRequest();
-        req.setIdentifier("sv_new");
-        req.setPassword("pw");
-
-        User u = new User();
-        u.setStudentCode("SV_NEW");
-        u.setPassword("hashed");
-        u.setActive(null); // Tái hiện case active bị null
-
-        when(userRepository.findByStudentCodeOrEmail("sv_new", "sv_new")).thenReturn(Optional.of(u));
-        when(passwordEncoder.matches("pw", "hashed")).thenReturn(true);
-
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login(req));
-        assertEquals("Tài khoản của bạn chưa được kích hoạt hoặc đã bị khóa!", ex.getMessage());
-        verify(jwtUtil, never()).generateToken(anyString());
-    }
-
 
     @Test
     void searchUsers_whenNoMatch_shouldReturnEmptyList() {
@@ -386,6 +393,33 @@ class AuthServiceTest {
     }
 
     @Test
+    void updateProfile_whenFullNameBlankAfterTrim_shouldThrow() {
+        when(userRepository.findByStudentCode("SV001")).thenReturn(Optional.of(new User()));
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> authService.updateProfile("SV001", "   ", null, null, null, null));
+        assertEquals("Họ và tên không được để trống", ex.getMessage());
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void updateProfile_shouldTrimAndTruncateBio_andSave() throws IOException {
+        User u = new User();
+        u.setStudentCode("SV001");
+        when(userRepository.findByStudentCode("SV001")).thenReturn(Optional.of(u));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        String longBio = "x".repeat(600);
+        User saved = authService.updateProfile("SV001", "  Name  ", "  " + longBio + "  ", "  K17  ", null, null);
+
+        assertEquals("Name", saved.getFullName());
+        assertEquals("K17", saved.getClassName());
+        assertNotNull(saved.getBio());
+        assertEquals(500, saved.getBio().length());
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
     void updateProfile_whenAllFieldsNull_shouldNotUpdateAnything() throws IOException {
         User u = new User();
         u.setStudentCode("SV001");
@@ -397,10 +431,33 @@ class AuthServiceTest {
 
         User saved = authService.updateProfile("SV001", null, null, null, null, null);
 
-        // Đảm bảo dữ liệu cũ được giữ nguyên và không văng lỗi
         assertEquals("Old Name", saved.getFullName());
         assertEquals("Old Bio", saved.getBio());
         verify(userRepository).save(u);
     }
-}
 
+    @Test
+    void updateProfile_withAvatarAndCover_shouldUseSaveFile_andPersistPaths() throws IOException {
+        User u = new User();
+        u.setStudentCode("SV001");
+        when(userRepository.findByStudentCode("SV001")).thenReturn(Optional.of(u));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AuthService spy = Mockito.spy(authService);
+        doReturn("/uploads/avatar.png", "/uploads/cover.png").when(spy).saveFile(any());
+
+        MockMultipartFile avatar = new MockMultipartFile(
+                "avatar", "a.png", "image/png", "a".getBytes(StandardCharsets.UTF_8)
+        );
+        MockMultipartFile cover = new MockMultipartFile(
+                "cover", "c.png", "image/png", "c".getBytes(StandardCharsets.UTF_8)
+        );
+
+        User saved = spy.updateProfile("SV001", null, null, null, avatar, cover);
+
+        assertEquals("/uploads/avatar.png", saved.getAvatarUrl());
+        assertEquals("/uploads/cover.png", saved.getCoverPhotoUrl());
+        verify(userRepository).save(any(User.class));
+        verify(spy, times(2)).saveFile(any());
+    }
+}

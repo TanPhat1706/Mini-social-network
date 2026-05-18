@@ -5,6 +5,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import ua_parser.Parser;
+import ua_parser.Client;
+
 import java.util.List;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -28,6 +31,9 @@ public class AuthService {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private SecurityHistoryRepository securityHistoryRepository;
 
     // Lấy đường dẫn thư mục uploads từ file config (mặc định là "uploads")
     @Value("${app.upload.dir:uploads}")
@@ -74,31 +80,24 @@ public class AuthService {
     }
 
     // --- ĐĂNG NHẬP ---
-    public String login(LoginRequest req) {
-        // 1. Tìm user bằng StudentCode HOẶC Email
-        // (Truyền req.getIdentifier() vào cả 2 tham số để JPA check cả 2 cột)
+public String login(LoginRequest req, String sessionId) { // Thêm tham số sessionId
         User user = userRepository.findByStudentCodeOrEmail(req.getIdentifier(), req.getIdentifier())
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
 
-        // 2. Kiểm tra mật khẩu (So sánh pass thô và pass đã hash trong DB)
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
             throw new RuntimeException("Mật khẩu không đúng!");
         }
-
-        // 3. Kiểm tra trạng thái hoạt động (Active)
-        // Dùng Boolean.TRUE.equals để tránh lỗi NullPointerException nếu active bị null
         if (!Boolean.TRUE.equals(user.getActive())) {
             throw new RuntimeException("Tài khoản của bạn chưa được kích hoạt hoặc đã bị khóa!");
         }
 
-        // 4. Cập nhật thời gian đăng nhập lần cuối
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
 
-        // 5. Tạo JWT Token
-        // Lưu ý: Dùng studentCode làm định danh (subject) trong Token
-        return jwtUtil.generateToken(user.getStudentCode());
+        // Truyền sessionId vào khi sinh Token
+        return jwtUtil.generateToken(user.getStudentCode(), sessionId);
     }
+
     public List<UserResponse> searchUsers(String query) {
         List<User> users = userRepository.searchUsers(query);
         
@@ -177,5 +176,55 @@ public class AuthService {
         }
 
         return userRepository.save(user);
+    }
+    // --- MỚI: LƯU LỊCH SỬ BẢO MẬT (ĐĂNG NHẬP) ---
+    public void saveSecurityHistory(User user, String ipAddress, String userAgentString, String status, String sessionId) {
+        SecurityHistory history = new SecurityHistory();
+        history.setUser(user);
+        history.setIpAddress(ipAddress != null ? ipAddress : "Unknown IP");
+        history.setStatus(status);
+        history.setSessionId(sessionId);
+        history.setIsActive(true); // Mặc định là true khi mới đăng nhập
+
+        if (userAgentString != null && !userAgentString.isEmpty()) {
+            try {
+                // Khởi tạo Parser để bóc tách chuỗi User-Agent
+                Parser uaParser = new Parser();
+                Client c = uaParser.parse(userAgentString);
+
+                // 1. Lấy thông tin Trình duyệt (Ví dụ: Chrome 120)
+                String browser = c.userAgent.family;
+                if (c.userAgent.major != null) {
+                    browser += " " + c.userAgent.major;
+                }
+                history.setBrowser(browser);
+
+                // 2. Lấy thông tin Hệ điều hành & Thiết bị (Ví dụ: Windows 10, iOS - iPhone)
+                String os = c.os.family;
+                if (c.os.major != null) {
+                    os += " " + c.os.major;
+                }
+                
+                String device = c.device.family;
+                
+                // Gom chung lại cho đẹp UI. Nếu là máy tính thường device sẽ báo "Other"
+                if ("Other".equalsIgnoreCase(device) || device.equals(os)) {
+                    history.setDevice(os);
+                } else {
+                    history.setDevice(os + " (" + device + ")");
+                }
+
+            } catch (Exception e) {
+                // Fallback nếu thư viện không parse được
+                history.setBrowser("Unknown Browser");
+                history.setDevice("Unknown Device");
+            }
+        } else {
+            history.setBrowser("Unknown Browser");
+            history.setDevice("Unknown Device");
+        }
+
+        // Lưu xuống Database
+        securityHistoryRepository.save(history);
     }
 }

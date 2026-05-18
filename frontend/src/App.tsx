@@ -21,43 +21,15 @@ import { WebSocketProvider } from './context/WebSocketContext';
 import { ChatProvider } from './context/ChatContext';
 import PostDetailPage from './pages/PostDetailPage';
 import ShopPage from './pages/ShopPage';
+import SecurityPage from './pages/settings/SecurityPage';
 
 // 1️⃣ IMPORT COMPONENT GAME MỚI
 import SnakeGame from './components/game/SnakeGame';
 import TicTacToePage from './components/game/TicTacToePage'; // Đổi đường dẫn cho khớp với thư mục của bạn
 import GameList from './pages/GameList';
 
-// 🔴 IMPORT COMPONENT AVATAR
-import AvatarWithFrame from './components/AvatarWithFrame';
 
-/* ================= COMPONENT TEST (TẠM THỜI) ================= */
-const TestAvatarPreview = () => (
-  <Box sx={{
-    display: 'flex', gap: '40px', padding: '50px',
-    backgroundColor: '#1f2937', minHeight: '60vh',
-    justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap'
-  }}>
-    <div style={{ textAlign: 'center', color: 'white' }}>
-      <p>Mộc mạc</p>
-      <AvatarWithFrame src="https://i.pravatar.cc/150?img=11" size={100} />
-    </div>
 
-    <div style={{ textAlign: 'center', color: 'white' }}>
-      <p>Rắn Lục (Tier 1)</p>
-      <AvatarWithFrame src="https://i.pravatar.cc/150?img=12" frameClass="css-frame-snake-green" size={100} />
-    </div>
-
-    <div style={{ textAlign: 'center', color: 'white' }}>
-      <p>Tím Neon (Tier 5)</p>
-      <AvatarWithFrame src="https://i.pravatar.cc/150?img=33" frameClass="css-frame-neon-purple" size={100} />
-    </div>
-
-    <div style={{ textAlign: 'center', color: 'white' }}>
-      <p>Hoàng Kim (Tier 7)</p>
-      <AvatarWithFrame src="https://i.pravatar.cc/150?img=13" frameClass="css-frame-golden-glow" size={100} />
-    </div>
-  </Box>
-);
 
 /* ================= 🛡️ HỆ THỐNG LÍNH CANH ROUTE 🛡️ ================= */
 
@@ -115,14 +87,17 @@ function App() {
                 {/* ===== PUBLIC / GUEST ROUTES ===== */}
                 <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
                 <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
-                <Route path="/test-avatar" element={<TestAvatarPreview />} />
 
                 {/* ===== PROTECTED USER ROUTES (CẤM ADMIN) ===== */}
                 <Route path="/" element={<UserRoute><HomePage /></UserRoute>} />
                 <Route path="/profile" element={<UserRoute><ProfilePage /></UserRoute>} />
                 <Route path="/profile/:userId" element={<UserRoute><ProfilePage /></UserRoute>} />
                 <Route path="/posts/:postId" element={<UserRoute><PostDetailPage /></UserRoute>} />
-
+                <Route path="/settings/security" element={
+                  <UserRoute>
+                    <Box sx={{ py: 4 }}><SecurityPage /></Box>
+                  </UserRoute>
+                } />
                 <Route path="/games" element={
                   <UserRoute>
                     <Box sx={{ py: 4 }}><GameList /></Box>
