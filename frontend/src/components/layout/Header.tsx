@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useColorMode } from '../../styles/theme';
 
 // Import Icons
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -96,10 +97,12 @@ const ActionIconButton = styled(IconButton)(({ theme }) => ({
   height: '40px',
 }));
 
+
 export default function Header() {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { toggleColorMode, mode } = useColorMode();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -435,11 +438,9 @@ export default function Header() {
                   Lịch sử đăng nhập
                 </MenuItem>
 
-                <MenuItem onClick={() => { }}>
-                  <ListItemIcon>
-                    <DarkModeIcon fontSize="small" />
-                  </ListItemIcon>
-                  Giao diện (Sắp ra mắt)
+                <MenuItem onClick={() => { toggleColorMode(); handleSettingsClose(); }}>
+                  <ListItemIcon><DarkModeIcon fontSize="small" /></ListItemIcon>
+                  {mode === 'light' ? 'Giao diện tối' : 'Giao diện sáng'}
                 </MenuItem>
 
                 <Divider />

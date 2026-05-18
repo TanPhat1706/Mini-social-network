@@ -8,7 +8,7 @@ import type { CommentData } from '../../types/types';
 
 interface CommentSectionProps {
     postId: number;
-    currentUserAvatar?: string; // Để hiện avatar cạnh ô input
+    currentUserAvatar?: string;
 }
 
 export default function CommentSection({ postId, currentUserAvatar }: CommentSectionProps) {
@@ -17,14 +17,12 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     
-    // State cho Input
     const [content, setContent] = useState('');
     const [replyTo, setReplyTo] = useState<{ name: string; parentId: number } | null>(null);
     const [submitting, setSubmitting] = useState(false);
     
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Fetch comments khi component mount
     useEffect(() => {
         fetchComments(0);
     }, [postId]);
@@ -33,7 +31,6 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
         try {
             const res = await api.get(`/api/comments/post/${postId}?page=${pageNum}&size=5`);
             const newComments = res.data.content;
-            console.log("Fetched comments:", newComments);
             
             if (pageNum === 0) {
                 setComments(newComments);
@@ -41,7 +38,6 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
                 setComments(prev => [...prev, ...newComments]);
             }
             
-            // Check nếu hết data
             setHasMore(!res.data.last);
             setLoading(false);
         } catch (error) {
@@ -56,20 +52,13 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
         fetchComments(nextPage);
     };
 
-    // Callback khi ấn "Phản hồi" ở CommentItem
     const handleReplyClick = (name: string, parentId: number) => {
         setReplyTo({ name, parentId });
-        // Focus vào ô input
-        if (inputRef.current) {
-            inputRef.current.focus();
-        }
+        if (inputRef.current) inputRef.current.focus();
     };
 
-    const handleCancelReply = () => {
-        setReplyTo(null);
-    };
+    const handleCancelReply = () => setReplyTo(null);
 
-    // Gửi Comment
     const handleSubmit = async () => {
         if (!content.trim()) return;
         setSubmitting(true);
@@ -78,20 +67,16 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
             const payload = {
                 content: content,
                 postId: postId,
-                parentCommentId: replyTo?.parentId || null // Backend lo phần logic
+                parentCommentId: replyTo?.parentId || null
             };
 
             const res = await api.post('/api/comments', payload);
             const newComment = res.data;
 
             if (replyTo) {
-                // Nếu là reply, logic phức tạp hơn chút: 
-                // Cách đơn giản nhất: reload lại comment cha hoặc thông báo user
-                // Ở đây mình alert nhẹ, hoặc bạn có thể tìm comment cha trong list và add vào replies của nó
                 alert("Đã gửi câu trả lời! Hãy mở mục phản hồi để xem.");
                 handleCancelReply();
             } else {
-                // Nếu là comment gốc, thêm vào đầu list
                 setComments(prev => [newComment, ...prev]);
             }
 
@@ -126,12 +111,9 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
                             ))
                         )}
                         
-                        {/* Nút Load More */}
                         {hasMore && (
                             <Typography 
-                                variant="body2" 
-                                color="primary" 
-                                align="center" 
+                                variant="body2" color="primary" align="center" 
                                 sx={{ cursor: 'pointer', mt: 1, fontWeight: 'bold' }}
                                 onClick={handleLoadMore}
                             >
@@ -143,36 +125,33 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
             </Box>
 
             {/* KHUNG INPUT */}
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', pt: 1, borderTop: '1px solid #eee' }}>
+            {/* 🟢 ĐÃ SỬA: Thay viền #eee bằng biến divider */}
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', pt: 1, borderTop: 1, borderColor: 'divider' }}>
                 <Avatar src={currentUserAvatar} sx={{ mr: 1, width: 32, height: 32 }} />
                 
                 <Box sx={{ flexGrow: 1 }}>
-                    {/* HIỂN THỊ TRẠNG THÁI ĐANG REPLY */}
                     {replyTo && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5, bgcolor: '#e3f2fd', p: 0.5, borderRadius: 1 }}>
-                            <Typography variant="caption" sx={{ mr: 1 }}>
+                        /* 🟢 ĐÃ SỬA: Thay nền #e3f2fd bằng action.hover để nó chìm nhẹ vào nền tối */
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5, bgcolor: 'action.hover', p: 0.5, borderRadius: 1 }}>
+                            <Typography variant="caption" sx={{ mr: 1, color: 'text.primary' }}>
                                 Đang trả lời <b>{replyTo.name}</b>
                             </Typography>
                             <IconButton size="small" onClick={handleCancelReply}>
-                                <CloseIcon fontSize="small" />
+                                <CloseIcon fontSize="small" sx={{ color: 'text.primary' }} />
                             </IconButton>
                         </Box>
                     )}
 
                     <TextField
-                        fullWidth
-                        multiline
-                        maxRows={4}
+                        fullWidth multiline maxRows={4}
                         placeholder={replyTo ? "Viết câu trả lời..." : "Viết bình luận..."}
-                        variant="outlined"
-                        size="small"
-                        value={content}
-                        inputRef={inputRef}
+                        variant="outlined" size="small"
+                        value={content} inputRef={inputRef}
                         onChange={(e) => setContent(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        disabled={submitting}
+                        onKeyDown={handleKeyDown} disabled={submitting}
                         sx={{ 
-                            '& .MuiOutlinedInput-root': { borderRadius: '20px', bgcolor: '#f0f2f5' },
+                            /* 🟢 ĐÃ SỬA: Đổi màu nền input thành background.default */
+                            '& .MuiOutlinedInput-root': { borderRadius: '20px', bgcolor: 'background.default' },
                             '& fieldset': { border: 'none' } 
                         }}
                         InputProps={{

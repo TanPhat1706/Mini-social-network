@@ -3,29 +3,47 @@ import { Box, Dialog, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { getApiBaseUrl } from '../../config/apiBase'; 
 
-export default function PostMediaGrid({ media }) {
+// 🟢 1. ĐỊNH NGHĨA KIỂU DỮ LIỆU CHO BỨC ẢNH VÀ PROPS
+interface MediaItem {
+  id?: number;
+  url: string;
+  type?: string;
+}
+
+interface PostMediaGridProps {
+  media: MediaItem[];
+}
+
+interface SmartImageProps {
+  src: string;
+  alt: string;
+  extraCount?: number; // Dấu "?" nghĩa là không bắt buộc phải có
+}
+
+// 🟢 2. GẮN TYPE VÀO COMPONENT CHÍNH
+export default function PostMediaGrid({ media }: PostMediaGridProps) {
   const [open, setOpen] = useState(false);
 
   if (!media || media.length === 0) return null;
 
   const base = getApiBaseUrl();
-  const getUrl = (url) => (url.startsWith('http') ? url : `${base}${url}`);
+  // 🟢 GẮN TYPE CHO HÀM getUrl
+  const getUrl = (url: string) => (url.startsWith('http') ? url : `${base}${url}`);
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
   // --- COMPONENT CON: Ô ẢNH THÔNG MINH ---
-  // Tách ra để tái sử dụng logic Blurred Background
-  const SmartImage = ({ src, alt, extraCount }) => (
+  // 🟢 3. GẮN TYPE CHO COMPONENT CON (Gán extraCount = 0 mặc định nếu không truyền)
+  const SmartImage = ({ src, alt, extraCount = 0 }: SmartImageProps) => (
     <Box 
       sx={{ 
         width: '100%', 
         height: '100%', 
         position: 'relative', 
         overflow: 'hidden',
-        backgroundColor: '#f0f2f5' // Màu nền dự phòng nhẹ nhàng
+        backgroundColor: 'background.default' 
       }}
     >
-      {/* LỚP 1: NỀN MỜ (Luôn cover hết khung) */}
       <img 
         src={src} 
         alt="" 
@@ -33,26 +51,24 @@ export default function PostMediaGrid({ media }) {
           position: 'absolute',
           top: 0, left: 0,
           width: '100%', height: '100%',
-          objectFit: 'cover',   // Lấp đầy khung
-          filter: 'blur(20px)', // Làm mờ
-          transform: 'scale(1.1)', // Phóng to nhẹ để che viền mờ
-          opacity: 0.8 // Làm nhạt bớt cho đỡ gắt
+          objectFit: 'cover',   
+          filter: 'blur(20px)', 
+          transform: 'scale(1.1)', 
+          opacity: 0.8 
         }} 
       />
 
-      {/* LỚP 2: ẢNH CHÍNH (Hiển thị đầy đủ nội dung) */}
       <img 
         src={src} 
         alt={alt} 
         style={{
           position: 'relative',
           width: '100%', height: '100%',
-          objectFit: 'contain', // Quan trọng: Giữ nguyên tỉ lệ ảnh gốc
-          zIndex: 2 // Nổi lên trên
+          objectFit: 'contain', 
+          zIndex: 2 
         }} 
       />
 
-      {/* LỚP 3: Overlay số lượng (nếu có) */}
       {extraCount > 0 && (
         <Box
           sx={{
@@ -74,59 +90,39 @@ export default function PostMediaGrid({ media }) {
     </Box>
   );
 
-  // CSS chung cho tất cả các ô chứa ảnh
   const imageContainerStyle = {
     width: '100%',
     height: '100%',
     position: 'relative',
     cursor: 'pointer',
     overflow: 'hidden',
-    
-    // // ⭐️ THÊM MỚI:
-    // backgroundColor: '#000', // Nền đen để lấp vào khoảng trống
-    // display: 'flex',         // Dùng Flexbox để căn giữa ảnh trong khoảng đen
-    // alignItems: 'center',    // Căn giữa dọc
-    // justifyContent: 'center' // Căn giữa ngang
-  };
-
-  const imgStyle = {
-    width: '100%',      
-    height: '100%',     
-    
-    // ⭐️ THAY ĐỔI QUAN TRỌNG:
-    objectFit: 'contain', // Co giãn ảnh để hiển thị TOÀN BỘ nội dung, không cắt
-    
-    display: 'block',
   };
 
   const maxDisplay = 4;
-  const remainingCount = media.length - maxDisplay;
-
-  // --- LOGIC RENDER GRID --- //
 
   const renderGridLayout = () => {
     const count = media.length;
 
-    // TRƯỜNG HỢP 1 ẢNH: (Không đổi)
     if (count === 1) {
       return (
         <Box onClick={handleOpen} sx={{ ...imageContainerStyle, height: 400 }}>
+          {/* 🟢 KHÔNG CẦN TRUYỀN extraCount NỮA VÌ ĐÃ CÓ DẤU ? Ở TYPE */}
           <SmartImage src={getUrl(media[0].url)} alt="single" />
         </Box>
       );
     }
 
-    // ⭐️ TRƯỜNG HỢP 2 ẢNH: Fix Overflow
     if (count === 2) {
       return (
         <Box onClick={handleOpen} sx={{ display: 'flex', gap: 0.5, height: 300, width: '100%' }}> 
-          {media.map((item, idx) => (
+          {/* 🟢 4. GẮN TYPE CHO BIẾN MAP */}
+          {media.map((item: MediaItem, idx: number) => (
              <Box 
                 key={idx} 
                 sx={{ 
                     flex: 1, 
                     ...imageContainerStyle, 
-                    minWidth: 0 // ⭐️ QUAN TRỌNG: Cho phép co nhỏ dưới kích thước content
+                    minWidth: 0 
                 }}
              > 
                 <SmartImage src={getUrl(item.url)} alt={`img-${idx}`} />
@@ -136,31 +132,13 @@ export default function PostMediaGrid({ media }) {
       );
     }
 
-    // ⭐️ TRƯỜNG HỢP 3 ẢNH: Fix Overflow (Đây là chỗ bạn đang thiếu minWidth)
     if (count === 3) {
       return (
         <Box onClick={handleOpen} sx={{ display: 'flex', gap: 0.5, height: 350, width: '100%' }}>
-          {/* Cột trái: Ảnh to */}
-          <Box 
-            sx={{ 
-                flex: 2, 
-                ...imageContainerStyle, 
-                minWidth: 0 // ⭐️ QUAN TRỌNG
-            }}
-          >
+          <Box sx={{ flex: 2, ...imageContainerStyle, minWidth: 0 }}>
              <SmartImage src={getUrl(media[0].url)} alt="img-0" />
           </Box>
-          
-          {/* Cột phải: 2 ảnh nhỏ */}
-          <Box 
-            sx={{ 
-                flex: 1, 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: 0.5,
-                minWidth: 0 // ⭐️ QUAN TRỌNG: Cần thêm cả ở container cột phải
-            }}
-          >
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 0 }}>
             <Box sx={{ flex: 1, ...imageContainerStyle, minHeight: 0 }}>
                 <SmartImage src={getUrl(media[1].url)} alt="img-1" />
             </Box>
@@ -172,7 +150,6 @@ export default function PostMediaGrid({ media }) {
       );
     }
 
-    // 4+ ẢNH (Grid CSS thường ít bị lỗi này hơn Flex, nhưng nên thêm minWidth cho an toàn)
     if (count >= 4) {
         const extraCount = count - 4;
         return (
@@ -182,7 +159,7 @@ export default function PostMediaGrid({ media }) {
             </Box>
     
             <Box sx={{ flex: 1, display: 'grid', gridTemplateRows: '1fr 1fr 1fr', gap: 0.5, minWidth: 0 }}>
-              {media.slice(1, 4).map((item, idx) => {
+              {media.slice(1, 4).map((item: MediaItem, idx: number) => {
                 const isLast = idx === 2 && extraCount > 0;
                 return (
                   <Box key={idx} sx={{ ...imageContainerStyle, position: 'relative' }} onClick={handleOpen}>
@@ -191,11 +168,6 @@ export default function PostMediaGrid({ media }) {
                         alt={`img-${idx+1}`} 
                         extraCount={isLast ? extraCount : 0} 
                     />
-                    {isLast && (
-                      <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 600 }}>
-                        +{extraCount}
-                      </Box>
-                    )}
                   </Box>
                 );
               })}
@@ -206,10 +178,8 @@ export default function PostMediaGrid({ media }) {
   };
 
   return (
-    // Wrapper ngoài cùng giữ nguyên
     <Box sx={{ mt: 1, mb: 1, width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
         {renderGridLayout()}
-        {/* ... Dialog code ... */}
         <Dialog 
             open={open} 
             onClose={handleClose} 
@@ -218,8 +188,9 @@ export default function PostMediaGrid({ media }) {
             <Box sx={{ position: 'relative', bgcolor: 'black', minHeight: '500px', p: 0 }}>
                 <IconButton onClick={handleClose} sx={{ position: 'absolute', top: 10, right: 10, color: 'white', zIndex: 999, bgcolor: 'rgba(0,0,0,0.3)' }}><CloseIcon /></IconButton>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2, alignItems: 'center' }}>
-                    {media.map((item) => (
-                        <img key={item.id} src={getUrl(item.url)} alt="detail" style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 4 }} />
+                    {/* 🟢 GẮN THÊM TYPE Ở ĐÂY NỮA */}
+                    {media.map((item: MediaItem) => (
+                        <img key={item.id || item.url} src={getUrl(item.url)} alt="detail" style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 4 }} />
                     ))}
                 </Box>
             </Box>

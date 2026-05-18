@@ -71,10 +71,12 @@ const formatDate = (dateString: string) => {
 };
 
 // ⭐️ COMPONENT CON: HIỂN THỊ NỘI DUNG BÀI GỐC (BÀI ĐƯỢC SHARE)
+// ⭐️ COMPONENT CON: HIỂN THỊ NỘI DUNG BÀI GỐC (BÀI ĐƯỢC SHARE)
 const SharedPostContent = ({ originalPost }: { originalPost: PostData }) => {
     if (!originalPost) {
       return (
-        <Box sx={{ p: 2, bgcolor: '#F0F2F5', border: '1px solid #ddd', borderRadius: 2 }}>
+        // 🟢 ĐÃ SỬA: Dùng bgcolor: 'background.default' và borderColor: 'divider'
+        <Box sx={{ p: 2, bgcolor: 'background.default', border: 1, borderColor: 'divider', borderRadius: 2 }}>
           <Typography variant="body2" color="text.secondary" fontStyle="italic">
             Bài viết này không còn khả dụng.
           </Typography>
@@ -83,8 +85,10 @@ const SharedPostContent = ({ originalPost }: { originalPost: PostData }) => {
     }
   
     return (
-      <Box sx={{ mt: 2, border: '1px solid #ddd', borderRadius: 2, overflow: 'hidden' }}>
-          <Box sx={{ p: 1.5, display: 'flex', alignItems: 'center', bgcolor: '#F7F8FA', borderBottom: '1px solid #eee' }}>
+      // 🟢 ĐÃ SỬA: Dùng borderColor: 'divider'
+      <Box sx={{ mt: 2, border: 1, borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
+          {/* 🟢 ĐÃ SỬA: Dùng bgcolor: 'background.default' và borderColor: 'divider' */}
+          <Box sx={{ p: 1.5, display: 'flex', alignItems: 'center', bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider' }}>
               
               {/* 🔴 AVATAR CỦA TÁC GIẢ BÀI GỐC */}
               <Box sx={{ mr: 1.5 }}>

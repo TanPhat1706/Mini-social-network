@@ -5,19 +5,31 @@ import './index.css';
 
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import theme from './styles/theme.ts'; // Đảm bảo đây là file .ts
-
-// 1. Import BrowserRouter
 import { BrowserRouter } from 'react-router-dom';
+
+// 🟢 IMPORT 2 THỨ MỚI TỪ FILE THEME
+import { ColorModeContext, useThemeConfig } from './styles/theme.ts';
+
+// 🟢 TẠO COMPONENT BỌC THEME ĐỂ DÙNG ĐƯỢC HOOK
+const ThemeWrapper = ({ children }: { children: React.ReactNode }) => {
+  const { theme, toggleColorMode, mode } = useThemeConfig();
+
+  return (
+    <ColorModeContext.Provider value={{ toggleColorMode, mode }}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        {children}
+      </ThemeProvider>
+    </ColorModeContext.Provider>
+  );
+};
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      {/* 2. Bọc toàn bộ App trong BrowserRouter */}
+    <ThemeWrapper>
       <BrowserRouter>
         <App />
       </BrowserRouter>
-    </ThemeProvider>
+    </ThemeWrapper>
   </React.StrictMode>
 );
