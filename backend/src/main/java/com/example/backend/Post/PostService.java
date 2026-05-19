@@ -185,7 +185,7 @@ public class PostService {
             postRepository.incrementLikeCount(postId);
             vptlService.trackSocialActivity(currentUser.getId(), "LIKE");
             evenPublisher.publishEvent(new NotificationEvent(
-                currentUser, author, NotificationType.LIKE_POST, postId, "POST", "đã thích bài viết của bạn"
+                currentUser, author, NotificationType.LIKE_POST, postId, "POST", "đã thích bài viết của bạn", false
             ));
         }
     }
@@ -215,7 +215,8 @@ public class PostService {
             NotificationType.SHARE_POST,
             rootPost.getId(), 
             "POST", 
-            "đã chia sẻ bài viết của bạn."
+            "đã chia sẻ bài viết của bạn.",
+            false
         ));
         return mapToPostResponse(savedShare);
     }

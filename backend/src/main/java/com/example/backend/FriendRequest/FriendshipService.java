@@ -55,7 +55,8 @@ public class FriendshipService {
                 NotificationType.FRIEND_REQUEST,
                 Long.valueOf(sender.getId()), // EntityID (Click vào sẽ dẫn tới trang cá nhân người gửi)
                 "USER",          // EntityType
-                "đã gửi lại lời mời kết bạn." // Message
+                "đã gửi lại lời mời kết bạn.", // Message
+                false            // isAnonymous
             ));
             
             return "Đã gửi lại lời mời";
@@ -76,7 +77,8 @@ public class FriendshipService {
             NotificationType.FRIEND_REQUEST,
             Long.valueOf(sender.getId()), 
             "USER",
-            "đã gửi lời mời kết bạn."
+            "đã gửi lời mời kết bạn.",
+            false
         ));
 
         return "Đã gửi lời mời";
@@ -105,7 +107,8 @@ public class FriendshipService {
             NotificationType.ACCEPT_FRIEND,
             Long.valueOf(me.getId()), 
             "USER",
-            "đã chấp nhận lời mời kết bạn."
+            "đã chấp nhận lời mời kết bạn.",
+            false
         ));
 
         return "Đã trở thành bạn bè";

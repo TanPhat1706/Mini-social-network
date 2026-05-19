@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, TextField, IconButton, CircularProgress, Typography, Avatar, InputAdornment, Button } from '@mui/material';
+// 🟢 ĐÃ THÊM: Import Switch và FormControlLabel từ MUI
+import { Box, TextField, IconButton, CircularProgress, Typography, Avatar, InputAdornment, Switch, FormControlLabel } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
 import api from '../../api/api';
@@ -20,6 +21,9 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
     const [content, setContent] = useState('');
     const [replyTo, setReplyTo] = useState<{ name: string; parentId: number } | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    
+    // 🟢 STATE MỚI: Quản lý trạng thái bật/tắt Bình luận ẩn danh
+    const [isAnonymous, setIsAnonymous] = useState(false);
     
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -67,7 +71,9 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
             const payload = {
                 content: content,
                 postId: postId,
-                parentCommentId: replyTo?.parentId || null
+                parentCommentId: replyTo?.parentId || null,
+                // 🟢 GỬI CỜ ẨN DANH LÊN BACKEND
+                isAnonymous: isAnonymous 
             };
 
             const res = await api.post('/api/comments', payload);
@@ -81,6 +87,8 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
             }
 
             setContent('');
+            // Lưu ý: Tui cố tình không set isAnonymous(false) ở đây, 
+            // để nếu user đang thích chat ẩn danh thì họ gõ tiếp luôn không cần bật lại.
         } catch (error) {
             console.error("Failed to post comment", error);
         } finally {
@@ -125,13 +133,11 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
             </Box>
 
             {/* KHUNG INPUT */}
-            {/* 🟢 ĐÃ SỬA: Thay viền #eee bằng biến divider */}
             <Box sx={{ display: 'flex', alignItems: 'flex-start', pt: 1, borderTop: 1, borderColor: 'divider' }}>
                 <Avatar src={currentUserAvatar} sx={{ mr: 1, width: 32, height: 32 }} />
                 
                 <Box sx={{ flexGrow: 1 }}>
                     {replyTo && (
-                        /* 🟢 ĐÃ SỬA: Thay nền #e3f2fd bằng action.hover để nó chìm nhẹ vào nền tối */
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5, bgcolor: 'action.hover', p: 0.5, borderRadius: 1 }}>
                             <Typography variant="caption" sx={{ mr: 1, color: 'text.primary' }}>
                                 Đang trả lời <b>{replyTo.name}</b>
@@ -150,7 +156,6 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
                         onChange={(e) => setContent(e.target.value)}
                         onKeyDown={handleKeyDown} disabled={submitting}
                         sx={{ 
-                            /* 🟢 ĐÃ SỬA: Đổi màu nền input thành background.default */
                             '& .MuiOutlinedInput-root': { borderRadius: '20px', bgcolor: 'background.default' },
                             '& fieldset': { border: 'none' } 
                         }}
@@ -160,7 +165,7 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
                                     <IconButton 
                                         onClick={handleSubmit} 
                                         disabled={!content.trim() || submitting}
-                                        color="primary"
+                                        color={isAnonymous ? "warning" : "primary"} // 🟢 Đổi màu nút gửi nếu đang ẩn danh
                                     >
                                         {submitting ? <CircularProgress size={20} /> : <SendIcon />}
                                     </IconButton>
@@ -168,9 +173,37 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
                             )
                         }}
                     />
-                    <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                        Nhấn Enter để gửi
-                    </Typography>
+                    
+                    {/* 🟢 KHU VỰC TOOLBAR DƯỚI INPUT: NÚT SWITCH VÀ HƯỚNG DẪN */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5, px: 1 }}>
+                        <FormControlLabel
+                            control={
+                                <Switch
+                                    size="small"
+                                    checked={isAnonymous}
+                                    onChange={(e) => setIsAnonymous(e.target.checked)}
+                                    color="warning" // Đổi màu switch sang Cam/Đỏ để tạo cảm giác "Incognito"
+                                />
+                            }
+                            label={
+                                <Typography 
+                                    variant="caption" 
+                                    sx={{ 
+                                        color: isAnonymous ? 'warning.main' : 'text.secondary', 
+                                        fontWeight: isAnonymous ? 'bold' : 'normal',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                >
+                                    Bình luận ẩn danh 🕵️
+                                </Typography>
+                            }
+                        />
+                        
+                        <Typography variant="caption" color="text.secondary">
+                            Nhấn Enter để gửi
+                        </Typography>
+                    </Box>
+                    
                 </Box>
             </Box>
         </Box>

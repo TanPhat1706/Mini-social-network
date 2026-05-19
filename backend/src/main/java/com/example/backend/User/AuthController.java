@@ -151,14 +151,22 @@ public class AuthController {
                 .build();
     }
 
-    // 2. CẬP NHẬT API GET LỊCH SỬ (Thêm cờ nhận diện thiết bị hiện tại)
+// 2. CẬP NHẬT API GET LỊCH SỬ (Hỗ trợ Phân trang cho dữ liệu lớn)
     @GetMapping("/security-history")
-    public ResponseEntity<?> getSecurityHistory(HttpServletRequest request) {
+    public ResponseEntity<?> getSecurityHistory(
+            @RequestParam(defaultValue = "0") int page,   // 🟢 Nhận page từ Frontend
+            @RequestParam(defaultValue = "5") int size,   // 🟢 Nhận size từ Frontend
+            HttpServletRequest request) {
         try {
             String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
             User user = userRepository.findByStudentCode(studentCode).orElseThrow();
-            List<SecurityHistory> historyList = securityHistoryRepository
-                    .findByUserIdOrderByLoginTimeDesc(user.getId());
+
+            // 🟢 Khởi tạo đối tượng phân trang của Spring
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+
+            // 🟢 Lấy dữ liệu theo phân trang từ Database (Chỉ lấy đúng số dòng cần thiết)
+            org.springframework.data.domain.Page<SecurityHistory> historyPage = securityHistoryRepository
+                    .findByUserIdOrderByLoginTimeDesc(user.getId(), pageable);
 
             // Lấy sessionId của Token hiện tại đang gọi API
             String authHeader = request.getHeader("Authorization");
@@ -167,9 +175,9 @@ public class AuthController {
                 currentSessionId = jwtUtil.extractSessionId(authHeader.substring(7));
             }
 
-            // Đóng gói lại dữ liệu để gửi lên Frontend
+            // Đóng gói lại dữ liệu List
             List<Map<String, Object>> responseList = new java.util.ArrayList<>();
-            for (SecurityHistory h : historyList) {
+            for (SecurityHistory h : historyPage.getContent()) {
                 Map<String, Object> map = new java.util.HashMap<>();
                 map.put("id", h.getId());
                 map.put("ipAddress", h.getIpAddress());
@@ -177,19 +185,24 @@ public class AuthController {
                 map.put("device", h.getDevice());
                 map.put("loginTime", h.getLoginTime());
                 map.put("status", h.getStatus());
-                map.put("isActive", h.getIsActive()); // Còn đăng nhập hay không
-                // 🟢 Đánh dấu thiết bị đang dùng để hiển thị chữ "Đang hoạt động" trên UI
+                map.put("isActive", h.getIsActive()); 
                 map.put("isCurrentDevice", h.getSessionId() != null && h.getSessionId().equals(currentSessionId));
                 responseList.add(map);
             }
 
-            return ResponseEntity.ok(responseList);
+            // 🟢 Bọc lại thành format chuẩn để Frontend đọc được content và totalElements
+            Map<String, Object> response = new java.util.HashMap<>();
+            response.put("content", responseList);
+            response.put("totalElements", historyPage.getTotalElements());
+            response.put("totalPages", historyPage.getTotalPages());
+
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body("Lỗi lấy lịch sử bảo mật: " + e.getMessage());
         }
     }
-
+    
     // 3. 🟢 MỚI: API ÉP ĐĂNG XUẤT THIẾT BỊ KHÁC
     @PostMapping("/security-history/{id}/revoke")
     public ResponseEntity<?> revokeSession(@PathVariable Integer id) {

@@ -41,6 +41,7 @@ public class NotificationService {
                     .entityType(event.getEntityType())
                     .metadata(createMetadataJson(event))
                     .isRead(false)
+                    .isAnonymous(event.isAnonymous())
                     .build();
 
             Notification savedNotification = notificationRepository.save(notification);
@@ -105,19 +106,26 @@ public class NotificationService {
         }
     }
 
+// 2. CẬP NHẬT HÀM MAP TO DTO (Ghi đè thông tin người gửi nếu là ẩn danh)
     NotificationDTO mapToDTO(Notification notification) {
         String messageContent = buildMessageContent(notification);
         String targetUrl = buildTargetUrl(notification);
         User sender = notification.getSender();
 
+        // 🟢 KIỂM TRA CỜ ẨN DANH TRƯỚC KHI BUILD DTO
+        Long senderId = notification.isAnonymous() ? 0L : Long.valueOf(sender.getId());
+        String senderName = notification.isAnonymous() ? "Một người dùng ẩn danh" : sender.getFullName();
+        String senderAvatar = notification.isAnonymous() ? "https://ui-avatars.com/api/?name=Anonymous&background=808080&color=fff" : sender.getAvatarUrl();
+        String avatarFrame = notification.isAnonymous() ? null : sender.getCurrentAvatarFrame();
+        String nameColor = notification.isAnonymous() ? null : sender.getCurrentNameColor();
+
         return NotificationDTO.builder()
                 .id(notification.getId())
-                .senderId(Long.valueOf(notification.getSender().getId()))
-                .senderName(notification.getSender().getFullName())
-                .senderAvatar(notification.getSender().getAvatarUrl())
-                // 🟢 BẮT BUỘC PHẢI GỌI GETTER TỪ SENDER ĐỂ ĐỔ DỮ LIỆU VÀO DTO
-                .senderAvatarFrame(sender.getCurrentAvatarFrame())
-                .senderNameColor(sender.getCurrentNameColor())
+                .senderId(senderId)
+                .senderName(senderName)
+                .senderAvatar(senderAvatar)
+                .senderAvatarFrame(avatarFrame)
+                .senderNameColor(nameColor)
                 .message(messageContent)
                 .targetUrl(targetUrl)
                 .createdAt(notification.getCreatedAt())
@@ -125,7 +133,7 @@ public class NotificationService {
                 .type(notification.getType())
                 .build();
     }
-
+    
     private String buildMessageContent(Notification n) {
         switch (n.getType()) {
             case LIKE_POST:

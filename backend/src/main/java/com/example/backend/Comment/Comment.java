@@ -59,4 +59,8 @@ public class Comment extends BaseEntity {
 
     @Column(nullable = false)
     private Long replyCount = 0L;
+
+    // 🟢 THÊM CỘT NÀY ĐỂ ĐÁNH DẤU BÌNH LUẬN ẨN DANH
+    @Column(name = "is_anonymous")
+    private Boolean isAnonymous = false;
 }

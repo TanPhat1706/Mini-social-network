@@ -15,4 +15,6 @@ public class NotificationEvent {
     private Long entityId;
     private String entityType;
     private String message;
+
+    private boolean isAnonymous; // 🟢 THÊM TRƯỜNG NÀY
 }

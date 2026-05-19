@@ -57,8 +57,8 @@ class NotificationServiceTest {
 
     @Test
     void handleNotificationEvent_whenSenderIsReceiver_shouldSkipAndNotSave() {
-        // Tái hiện case người dùng tự thả tim bài của chính mình
-        NotificationEvent event = new NotificationEvent(sender, sender, NotificationType.LIKE_POST, 10L, "POST", "");
+        // 🟢 ĐÃ SỬA: Thêm false vào cuối
+        NotificationEvent event = new NotificationEvent(sender, sender, NotificationType.LIKE_POST, 10L, "POST", "", false);
 
         notificationService.handleNotificationEvent(event);
 
@@ -70,7 +70,8 @@ class NotificationServiceTest {
     void handleNotificationEvent_whenReceiverStudentCodeIsNull_shouldSaveButNotSendSocket() {
         // Tái hiện case lưu DB thành công nhưng user nhận bị lỗi mất định danh (StudentCode = null)
         receiver.setStudentCode(null);
-        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.SHARE_POST, 20L, "POST", "");
+        // 🟢 ĐÃ SỬA: Thêm false vào cuối
+        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.SHARE_POST, 20L, "POST", "", false);
 
         Notification savedNotification = Notification.builder()
                 .id(99L).sender(sender).receiver(receiver).type(NotificationType.SHARE_POST).build();
@@ -88,7 +89,8 @@ class NotificationServiceTest {
     @Test
     void handleNotificationEvent_whenValid_shouldSaveAndSendSocket() {
         // Happy path thuần túy
-        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.LIKE_POST, 30L, "POST", "");
+        // 🟢 ĐÃ SỬA: Thêm false vào cuối
+        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.LIKE_POST, 30L, "POST", "", false);
 
         Notification savedNotification = Notification.builder()
                 .id(100L).sender(sender).receiver(receiver).type(NotificationType.LIKE_POST).entityId(30L).build();
@@ -117,7 +119,8 @@ class NotificationServiceTest {
     void handleNotificationEvent_withLongComment_shouldTruncateMetadata() {
         // Test logic cắt ngắn chuỗi bình luận > 50 ký tự
         String longMessage = "Đây là một bình luận rất rất rất rất rất rất rất rất rất dài vượt qua giới hạn năm mươi ký tự.";
-        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.COMMENT_POST, 40L, "POST", longMessage);
+        // 🟢 ĐÃ SỬA: Thêm false vào cuối
+        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.COMMENT_POST, 40L, "POST", longMessage, false);
 
         ArgumentCaptor<Notification> notifCaptor = ArgumentCaptor.forClass(Notification.class);
         when(notificationRepository.save(notifCaptor.capture())).thenReturn(new Notification());
@@ -134,7 +137,8 @@ class NotificationServiceTest {
     @Test
     void handleNotificationEvent_withFriendRequest_shouldAddPendingMetadata() {
         // Test logic metadata cho kết bạn
-        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.FRIEND_REQUEST, 50L, "USER", "");
+        // 🟢 ĐÃ SỬA: Thêm false vào cuối
+        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.FRIEND_REQUEST, 50L, "USER", "", false);
 
         ArgumentCaptor<Notification> notifCaptor = ArgumentCaptor.forClass(Notification.class);
         when(notificationRepository.save(notifCaptor.capture())).thenReturn(new Notification());
@@ -155,6 +159,7 @@ class NotificationServiceTest {
                 .type(NotificationType.ACCEPT_FRIEND)
                 .entityId(10L)
                 .isRead(false)
+                .isAnonymous(false) // Đảm bảo không ẩn danh
                 .build();
 
         NotificationDTO dto = notificationService.mapToDTO(notification);
@@ -168,5 +173,34 @@ class NotificationServiceTest {
         assertEquals("đã chấp nhận lời mời kết bạn.", dto.getMessage());
         assertEquals("/", dto.getTargetUrl()); // ACCEPT_FRIEND rơi vào nhánh default của URL
         assertFalse(dto.isRead());
+    }
+
+    // ========================================================
+    // 🟢 MỚI: TEST CASE KIỂM CHỨNG TÍNH NĂNG "ĐEO MẶT NẠ"
+    // ========================================================
+    @Test
+    void mapToDTO_whenIsAnonymous_shouldMaskSenderInfo() {
+        Notification notification = Notification.builder()
+                .id(99L)
+                .sender(sender) // Mặc dù truyền sender là Phát
+                .receiver(receiver)
+                .type(NotificationType.COMMENT_POST)
+                .entityId(20L)
+                .isRead(false)
+                .isAnonymous(true) // 🟢 BẬT CỜ ẨN DANH LÊN
+                .build();
+
+        NotificationDTO dto = notificationService.mapToDTO(notification);
+
+        assertEquals(99L, dto.getId());
+        
+        // KIỂM TRA XEM MẶT NẠ ĐÃ ĐƯỢC ĐEO CHUẨN CHƯA
+        assertEquals(0L, dto.getSenderId()); // ID bị xóa dấu vết
+        assertEquals("Một người dùng ẩn danh", dto.getSenderName()); // Đổi tên
+        assertEquals("https://ui-avatars.com/api/?name=Anonymous&background=808080&color=fff", dto.getSenderAvatar()); // Avatar xám
+        assertNull(dto.getSenderAvatarFrame()); // Khung bị ẩn
+        assertNull(dto.getSenderNameColor()); // Màu tên bị ẩn
+        
+        assertEquals("đã bình luận về bài viết của bạn.", dto.getMessage());
     }
 }

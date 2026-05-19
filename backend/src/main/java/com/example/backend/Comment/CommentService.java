@@ -39,19 +39,23 @@ public class CommentService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng (Token không hợp lệ?)"));
     }
 
+    // 1. CẬP NHẬT HÀM CREATE COMMENT
     @Transactional
     public CommentResponse createComment(CommentRequest request) {
         User currentUser = getCurrentUser();
 
         Post post = postRepository.findById(request.getPostId())
                 .orElseThrow(() -> new EntityNotFoundException("Post not found"));
-        
+
         Comment parentComment = null;
         if (request.getParentCommentId() != null) {
             parentComment = commentRepository.findById(request.getParentCommentId())
                     .orElseThrow(() -> new EntityNotFoundException("Parent comment not found"));
             commentRepository.incrementReplyCount(parentComment.getId());
         }
+
+        // 🟢 LẤY CỜ ẨN DANH TỪ REQUEST (Mặc định là false)
+        Boolean isAnon = request.getIsAnonymous() != null ? request.getIsAnonymous() : false;
 
         Comment comment = Comment.builder()
                 .content(request.getContent())
@@ -60,15 +64,18 @@ public class CommentService {
                 .parent(parentComment)
                 .likeCount(0L)
                 .replyCount(0L)
+                .isAnonymous(isAnon) // 🟢 LƯU VÀO DB
                 .build();
-        
+
         Comment savedComment = commentRepository.save(comment);
         postRepository.incrementCommentCount(post.getId());
         vptlService.trackSocialActivity(currentUser.getId(), "COMMENT");
 
+        // 🟢 TRUYỀN CỜ ẨN DANH VÀO EVENT (Nhớ cập nhật constructor của
+        // NotificationEvent)
         evenPublisher.publishEvent(new NotificationEvent(
-                currentUser, post.getAuthor(), NotificationType.COMMENT_POST, post.getId(), "COMMENT", "đã bình luận của bạn"
-        ));
+                currentUser, post.getAuthor(), NotificationType.COMMENT_POST, post.getId(), "COMMENT",
+                "đã bình luận của bạn", isAnon));
 
         return mapToResponse(savedComment, false);
     }
@@ -86,8 +93,9 @@ public class CommentService {
         }
 
         comment.setContent(newContent);
-        boolean isLiked = commentLikeRepository.findByCommentIdAndUserId(commentId, Long.valueOf(currentUserId)).isPresent();
-        
+        boolean isLiked = commentLikeRepository.findByCommentIdAndUserId(commentId, Long.valueOf(currentUserId))
+                .isPresent();
+
         return mapToResponse(comment, isLiked);
     }
 
@@ -111,8 +119,8 @@ public class CommentService {
         if (comment.getParent() != null) {
             Comment parent = comment.getParent();
             if (parent.getReplyCount() > 0) {
-                 parent.setReplyCount(parent.getReplyCount() - 1);
-                 commentRepository.save(parent);
+                parent.setReplyCount(parent.getReplyCount() - 1);
+                commentRepository.save(parent);
             }
         }
 
@@ -138,7 +146,7 @@ public class CommentService {
 
     private Page<CommentResponse> mapToPageResponse(Page<Comment> comments, Long currentUserId) {
         List<Long> commentIds = comments.getContent().stream().map(Comment::getId).toList();
-        
+
         Set<Long> likedCommentIds = new HashSet<>();
         if (currentUserId != null && !commentIds.isEmpty()) {
             likedCommentIds = commentLikeRepository.findCommentIdsLikedByUser(currentUserId, commentIds);
@@ -160,7 +168,7 @@ public class CommentService {
         } else {
             Comment comment = commentRepository.getReferenceById(commentId);
             User user = userRepository.getReferenceById(userId);
-            
+
             CommentLike like = CommentLike.builder().comment(comment).user(user).build();
             commentLikeRepository.save(like);
             commentRepository.incrementLikeCount(commentId);
@@ -168,7 +176,33 @@ public class CommentService {
         }
     }
 
+    // 2. CẬP NHẬT HÀM MAP TO RESPONSE (Nơi đeo mặt nạ thực sự)
     private CommentResponse mapToResponse(Comment comment, boolean isLiked) {
+        UserResponse authorDTO;
+
+        // 🟢 LOGIC ẨN DANH: Đeo mặt nạ trước khi gửi về Frontend
+        if (Boolean.TRUE.equals(comment.getIsAnonymous())) {
+            authorDTO = UserResponse.builder()
+                    .id(0) // Xóa dấu vết ID
+                    .fullName("Người dùng ẩn danh") // Đổi tên hiển thị
+                    .avatarUrl("https://ui-avatars.com/api/?name=Anonymous&background=808080&color=fff") // Avatar mặt
+                                                                                                         // nạ xám
+                    .studentCode("Hidden")
+                    .currentAvatarFrame(null) // Xóa khung avatar xịn (nếu có)
+                    .currentNameColor(null) // Xóa màu tên (nếu có)
+                    .build();
+        } else {
+            // Giữ nguyên thông tin thật nếu không ẩn danh
+            authorDTO = UserResponse.builder()
+                    .id(comment.getAuthor().getId())
+                    .fullName(comment.getAuthor().getFullName())
+                    .avatarUrl(comment.getAuthor().getAvatarUrl())
+                    .studentCode(comment.getAuthor().getStudentCode())
+                    .currentAvatarFrame(comment.getAuthor().getCurrentAvatarFrame())
+                    .currentNameColor(comment.getAuthor().getCurrentNameColor())
+                    .build();
+        }
+
         return CommentResponse.builder()
                 .id(comment.getId())
                 .content(comment.getContent())
@@ -177,12 +211,7 @@ public class CommentService {
                 .replyCount(comment.getReplyCount())
                 .parentId(comment.getParent() != null ? comment.getParent().getId() : null)
                 .isLikedByCurrentUser(isLiked)
-                .author(UserResponse.builder()
-                        .id(comment.getAuthor().getId())
-                        .fullName(comment.getAuthor().getFullName())
-                        .avatarUrl(comment.getAuthor().getAvatarUrl())
-                        .studentCode(comment.getAuthor().getStudentCode())
-                        .build())
+                .author(authorDTO) // 🟢 Gắn author đã được xử lý
                 .build();
     }
 }

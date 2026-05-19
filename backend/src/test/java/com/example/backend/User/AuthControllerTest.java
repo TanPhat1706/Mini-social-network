@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfi
 import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -21,6 +22,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 @WebMvcTest(
         value = AuthController.class,
@@ -170,19 +175,31 @@ class AuthControllerTest extends BaseControllerTest {
     // ==========================================
     // 6. 🟢 MỚI: TEST LẤY LỊCH SỬ BẢO MẬT
     // ==========================================
-    @Test
+@Test
     @WithMockUser(username = "1412")
     void getSecurityHistory_shouldReturnHistoryList() throws Exception {
         when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(mockUser));
-        when(securityHistoryRepository.findByUserIdOrderByLoginTimeDesc(1))
-                .thenReturn(List.of(mockHistory));
+        
+        // 🟢 CẬP NHẬT 1: Giả lập trả về đối tượng PageImpl thay vì List
+        // Sử dụng eq(1) cho userId và any(Pageable.class) cho tham số phân trang
+        when(securityHistoryRepository.findByUserIdOrderByLoginTimeDesc(eq(1), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(mockHistory)));
+                
         when(jwtUtil.extractSessionId(anyString())).thenReturn("mock-session-id");
 
         mockMvc.perform(get("/api/auth/security-history")
+                        // Tùy chọn: Truyền thêm param để mô phỏng giống Frontend gọi
+                        .param("page", "0")
+                        .param("size", "5")
                         .header("Authorization", "Bearer fake-token"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].ipAddress").value("127.0.0.1"))
-                .andExpect(jsonPath("$[0].isCurrentDevice").value(true)); // Test cờ thiết bị hiện tại
+                
+                // 🟢 CẬP NHẬT 2: Sửa JSONPath từ $[0] thành $.content[0]
+                .andExpect(jsonPath("$.content[0].ipAddress").value("127.0.0.1"))
+                .andExpect(jsonPath("$.content[0].isCurrentDevice").value(true)) // Test cờ thiết bị hiện tại
+                
+                // 🟢 THÊM MỚI: Test luôn xem tổng số bản ghi có đúng là 1 không
+                .andExpect(jsonPath("$.totalElements").value(1)); 
     }
 
     // ==========================================

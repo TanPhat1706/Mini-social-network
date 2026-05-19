@@ -10,4 +10,6 @@ public class CommentRequest {
 
     private Long postId;
     private Long parentCommentId;
+
+    private Boolean isAnonymous;
 }
