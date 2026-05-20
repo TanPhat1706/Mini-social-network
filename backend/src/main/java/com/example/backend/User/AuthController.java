@@ -5,7 +5,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -29,6 +28,7 @@ public class AuthController {
 
     @Autowired
     private JwtUtil jwtUtil;
+    private PasswordResetService passwordResetService;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody @Valid RegisterRequest req) {
@@ -36,6 +36,69 @@ public class AuthController {
             return ResponseEntity.ok(authService.register(req));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // Phase 1: Request initiation - must not block or reveal account existence
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body) {
+        try {
+            String email = body.getOrDefault("email", "");
+            // Launch async processing and immediately return the fixed response
+            passwordResetService.asyncInitiateForgotPassword(email);
+            Map<String, String> resp = new HashMap<>();
+            resp.put("message", "If the email matches our records, a reset link has been sent");
+            return ResponseEntity.ok(resp);
+        } catch (Exception ex) {
+            // Do not leak details
+            Map<String, String> resp = new HashMap<>();
+            resp.put("message", "If the email matches our records, a reset link has been sent");
+            return ResponseEntity.ok(resp);
+        }
+    }
+
+    // Phase 3: Verify token and update password
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody @Valid PasswordResetRequest req) {
+        try {
+            boolean ok = passwordResetService.resetPassword(req);
+            if (ok) {
+                Map<String, String> resp = new HashMap<>();
+                resp.put("message", "Password updated successfully");
+                return ResponseEntity.ok(resp);
+            } else {
+                Map<String, String> resp = new HashMap<>();
+                resp.put("message", "Invalid or expired token");
+                return ResponseEntity.status(400).body(resp);
+            }
+        } catch (BadRequestException ex) {
+            Map<String, String> resp = new HashMap<>();
+            resp.put("message", ex.getMessage());
+            return ResponseEntity.status(400).body(resp);
+        } catch (Exception ex) {
+            Map<String, String> resp = new HashMap<>();
+            resp.put("message", "Invalid or expired token");
+            return ResponseEntity.status(400).body(resp);
+        }
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody @Valid ChangePasswordRequest req) {
+        try {
+            String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
+            User user = userRepository.findByStudentCode(studentCode)
+                    .orElseThrow(() -> new BadRequestException("Người dùng không hợp lệ"));
+
+            authService.changePassword(user.getId(), req);
+
+            Map<String, String> resp = new HashMap<>();
+            resp.put("message", "Mật khẩu đã được cập nhật thành công");
+            return ResponseEntity.ok(resp);
+        } catch (BadRequestException ex) {
+            return ResponseEntity.status(400).body(Map.of("message", ex.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(400).body(Map.of("message", "Lỗi khi thay đổi mật khẩu"));
         }
     }
 

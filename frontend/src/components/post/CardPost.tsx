@@ -35,10 +35,10 @@ export interface PostMedia {
 
 export interface PostAuthor {
   id: number;
+  studentCode: string;
   username: string;
   fullName: string;
   avatarUrl: string;
-  // 🟢 THÊM 2 TRƯỜNG NÀY ĐỂ NHẬN DIỆN MA THUẬT
   currentAvatarFrame?: string; 
   currentNameColor?: string;
 }
@@ -55,6 +55,7 @@ export interface PostData {
   originalPost?: PostData;
   likedByCurrentUser: boolean;
   visibility?: string;
+  isSelfPost?: boolean;
 }
 
 interface PostCardProps {
@@ -71,11 +72,9 @@ const formatDate = (dateString: string) => {
 };
 
 // ⭐️ COMPONENT CON: HIỂN THỊ NỘI DUNG BÀI GỐC (BÀI ĐƯỢC SHARE)
-// ⭐️ COMPONENT CON: HIỂN THỊ NỘI DUNG BÀI GỐC (BÀI ĐƯỢC SHARE)
 const SharedPostContent = ({ originalPost }: { originalPost: PostData }) => {
     if (!originalPost) {
       return (
-        // 🟢 ĐÃ SỬA: Dùng bgcolor: 'background.default' và borderColor: 'divider'
         <Box sx={{ p: 2, bgcolor: 'background.default', border: 1, borderColor: 'divider', borderRadius: 2 }}>
           <Typography variant="body2" color="text.secondary" fontStyle="italic">
             Bài viết này không còn khả dụng.
@@ -85,12 +84,9 @@ const SharedPostContent = ({ originalPost }: { originalPost: PostData }) => {
     }
   
     return (
-      // 🟢 ĐÃ SỬA: Dùng borderColor: 'divider'
       <Box sx={{ mt: 2, border: 1, borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
-          {/* 🟢 ĐÃ SỬA: Dùng bgcolor: 'background.default' và borderColor: 'divider' */}
           <Box sx={{ p: 1.5, display: 'flex', alignItems: 'center', bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider' }}>
               
-              {/* 🔴 AVATAR CỦA TÁC GIẢ BÀI GỐC */}
               <Box sx={{ mr: 1.5 }}>
                   <AvatarWithFrame 
                       src={originalPost.author.avatarUrl} 
@@ -101,9 +97,8 @@ const SharedPostContent = ({ originalPost }: { originalPost: PostData }) => {
               </Box>
 
               <Box>
-                  <Link component={RouterLink} to={`/profile/${originalPost.author.id}`} underline="hover" color="text.primary">
+                  <Link component={RouterLink} to={`/profile/${originalPost.author.studentCode}`} underline="hover" color="text.primary">
                     <Typography variant="subtitle2" fontWeight="bold">
-                        {/* 🔴 TÊN CÓ MÀU CỦA TÁC GIẢ BÀI GỐC */}
                         <ColoredName 
                             name={originalPost.author.fullName} 
                             colorClass={originalPost.author.currentNameColor} 
@@ -172,6 +167,7 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
             onDeleteSuccess(post.id); 
         } catch (error) {
             console.error("Error deleting post:", error);
+            // 🟢 ĐÃ SỬA: Thay thế showError bằng alert mặc định
             alert("Lỗi khi xóa bài viết!");
         }
     }
@@ -187,10 +183,12 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
 
       try {
           await api.post(`/api/posts/${post.id}/share`, { content: caption });
+          // 🟢 ĐÃ SỬA: Thay thế showSuccess bằng alert mặc định
           alert("Chia sẻ thành công!");
           setPost(prev => ({ ...prev, shareCount: (prev.shareCount || 0) + 1 }));
       } catch (error) {
           console.error("Lỗi share:", error);
+          // 🟢 ĐÃ SỬA: Thay thế showError bằng alert mặc định
           alert("Không thể chia sẻ bài viết này.");
       }
   };
@@ -202,8 +200,7 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
         {/* HEADER: NGƯỜI ĐĂNG BÀI */}
         <CardHeader
           avatar={
-            <Link component={RouterLink} to={`/profile/${post.author.id}`} style={{ textDecoration: 'none' }}>
-              {/* 🔴 AVATAR CÓ VIỀN CỦA NGƯỜI ĐĂNG */}
+            <Link component={RouterLink} to={`/profile/${post.author.studentCode}`} style={{ textDecoration: 'none' }}>
               <AvatarWithFrame 
                   src={post.author.avatarUrl} 
                   name={post.author.fullName}
@@ -213,17 +210,18 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
             </Link>
           }
           action={
-              <IconButton aria-label="settings" onClick={handleMenuClick}>
-                <MoreVertIcon />
-              </IconButton>
+              post.isSelfPost ? (
+                <IconButton aria-label="settings" onClick={handleMenuClick}>
+                  <MoreVertIcon />
+                </IconButton>
+              ) : null
           }
           title={
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Link component={RouterLink} to={`/profile/${post.author.id}`}
+                <Link component={RouterLink} to={`/profile/${post.author.studentCode}`}
                   variant="h6"
                   sx={{ fontWeight: 'bold', textDecoration: 'none', color: 'text.primary', '&:hover': { textDecoration: 'underline' }}}
                 >
-                    {/* 🔴 TÊN CÓ MÀU CỦA NGƯỜI ĐĂNG */}
                     <ColoredName 
                         name={post.author.fullName} 
                         colorClass={post.author.currentNameColor} 

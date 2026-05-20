@@ -48,7 +48,7 @@ export const UserManager: React.FC = () => {
         await api.post(`/api/admin/approve-user/${userId}`);
         fetchUsers(); 
     } catch (error) {
-        alert("Lỗi khi duyệt người dùng.");
+        showError("Lỗi khi duyệt người dùng.");
     }
   };
 
@@ -59,7 +59,7 @@ export const UserManager: React.FC = () => {
             await api.post(`/api/admin/ban-user/${userId}`);
             fetchUsers();
         } catch (error) {
-            alert("Lỗi khi khóa người dùng.");
+            showError("Lỗi khi khóa người dùng.");
         }
     }
   };

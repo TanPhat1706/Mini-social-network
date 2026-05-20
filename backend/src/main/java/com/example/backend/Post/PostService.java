@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -15,7 +14,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
-
 import com.example.backend.Enum.MediaType;
 import com.example.backend.Enum.NotificationType;
 import com.example.backend.Enum.Visibility;
@@ -27,7 +25,6 @@ import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import com.example.backend.User.UserResponse;
 import com.example.backend.VPTLpoint.VptlService;
-
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
@@ -45,6 +42,11 @@ public class PostService {
         String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByStudentCode(studentCode)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng (Token không hợp lệ?)"));
+    }
+
+    private String getCurrentViewerStudentCode() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null ? auth.getName() : null;
     }
 
     @Transactional
@@ -229,11 +231,29 @@ public class PostService {
         return posts.map(this::mapToPostResponse);
     }
 
+    public Page<PostResponse> getPostsByStudentCode(String studentCode, Pageable pageable) {
+        if (!userRepository.existsByStudentCode(studentCode)) {
+            throw new RuntimeException("User with studentCode " + studentCode + " not found");
+        }
+
+        if (!pageable.getSort().isSorted()) {
+            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by("createdAt").descending());
+        }
+
+        boolean isSelfPost = studentCode.equals(getCurrentViewerStudentCode());
+        Page<Post> posts = postRepository.findByAuthorStudentCode(studentCode, pageable);
+        return posts.map(post -> mapToPostResponse(post, isSelfPost));
+    }
+
     public String uploadFileToS3(MultipartFile file) {
         return fileStorageService.storeFile(file);
     }
 
     public PostResponse mapToPostResponse(Post post) {
+        return mapToPostResponse(post, false);
+    }
+
+    public PostResponse mapToPostResponse(Post post, boolean isSelfPost) {
         User author = post.getAuthor();
         UserResponse authorDto = new UserResponse();
         authorDto.setId(author.getId());
@@ -261,7 +281,7 @@ public class PostService {
             if (post.getOriginalPost().getId().equals(post.getId())) {
                 originalPostResponse = null; 
             } else {
-                originalPostResponse = mapToPostResponse(post.getOriginalPost());
+                originalPostResponse = mapToPostResponse(post.getOriginalPost(), isSelfPost);
             }
         }
 
@@ -277,6 +297,7 @@ public class PostService {
                 .commentCount(post.getCommentCount())
                 .shareCount(post.getShareCount())
                 .isLikedByCurrentUser(false)
+                .isSelfPost(isSelfPost)
                 .originalPost(originalPostResponse)
                 .build();
     }

@@ -9,7 +9,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useColorMode } from '../../styles/theme';
 
 // Import Icons
-import SettingsIcon from '@mui/icons-material/Settings';
 import SecurityIcon from '@mui/icons-material/Security';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import SearchIcon from '@mui/icons-material/Search';
@@ -17,6 +16,8 @@ import HomeIcon from '@mui/icons-material/Home';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
+import SettingsIcon from '@mui/icons-material/Settings';
+import LockResetIcon from '@mui/icons-material/LockReset';
 
 // Import Logic & Components
 import { useAuth } from '../../context/AuthContext';
@@ -26,12 +27,11 @@ import axiosClient from '../../api/axiosClient';
 import MessengerDropdown from '../messenger/MessengerDropdown';
 import { useWebSocket } from '../../context/useWebSocket';
 import FriendButton from '../friend/FriendButton';
-import api from '../../api/api';
+import ChangePasswordModal from '../auth/ChangePasswordModal';
 
 // 🔴 IMPORT COMPONENT AVATAR MA THUẬT
 import AvatarWithFrame from '../AvatarWithFrame';
-import ColoredName from '../ColoredName'; // (Sửa đường dẫn cho đúng từng file)
-
+import ColoredName from '../ColoredName';
 
 // --- STYLED COMPONENTS (FACEBOOK STYLE) ---
 const Search = styled('div')(({ theme }) => ({
@@ -89,14 +89,13 @@ const NavIconButton = styled(IconButton)<{ active?: boolean }>(({ theme, active 
   [theme.breakpoints.down('md')]: { padding: '10px 15px' },
 }));
 
-const ActionIconButton = styled(IconButton)(({ theme }) => ({
+const ActionIconButton = styled(IconButton)(() => ({
   backgroundColor: '#E4E6E9',
   color: '#050505',
   '&:hover': { backgroundColor: '#D8DADF' },
   width: '40px',
   height: '40px',
 }));
-
 
 export default function Header() {
   const { isAuthenticated, user, logout } = useAuth();
@@ -116,6 +115,11 @@ export default function Header() {
   const notiRef = useRef<HTMLDivElement>(null);
   const { notifications } = useWebSocket();
   const [liveUser, setLiveUser] = useState<User | null>(null);
+
+  // 🟢 HỢP NHẤT STATE CHO SETTINGS MENU & ĐỔI MẬT KHẨU
+  const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
+  const [openChangePassword, setOpenChangePassword] = useState(false);
+  const openSettings = Boolean(settingsAnchorEl);
 
   useEffect(() => {
     const trimmedQuery = searchQuery.trim();
@@ -171,9 +175,7 @@ export default function Header() {
   const fetchUnreadCount = async () => {
     try {
       const res = await axiosClient.get('/messages/recent');
-
       const data = res.data;
-
       const convs =
         data?.content ||
         data?.data ||
@@ -214,11 +216,9 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 🟢 THÊM STATE SETTINGS MENU
-  const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
+  const handleMessageRead = () => { setUnreadCount(prev => Math.max(0, prev - 1)); };
 
-  const openSettings = Boolean(settingsAnchorEl);
-
+  // 🟢 HỢP NHẤT HÀM XỬ LÝ MENU SETTINGS
   const handleSettingsClick = (event: React.MouseEvent<HTMLElement>) => {
     setSettingsAnchorEl(event.currentTarget);
   };
@@ -227,13 +227,16 @@ export default function Header() {
     setSettingsAnchorEl(null);
   };
 
-  // 🟢 GỘP LOGOUT
+  const handleOpenChangePassword = () => {
+    handleSettingsClose();
+    setOpenChangePassword(true);
+  };
+
   const handleLogout = () => {
     handleSettingsClose();
     logout();
     navigate('/login');
   };
-  const handleMessageRead = () => { setUnreadCount(prev => Math.max(0, prev - 1)); };
 
   return (
     <AppBar position="sticky" sx={{ backgroundColor: '#FFFFFF', color: '#050505', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 1100 }}>
@@ -273,9 +276,8 @@ export default function Header() {
                       >
                         <Box
                           sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer', flex: 1, minWidth: 0 }}
-                          onClick={() => { navigate(`/profile/${result.id}`); setShowSearchDropdown(false); }}
+                          onClick={() => { navigate(`/profile/${result.studentCode}`); setShowSearchDropdown(false); }}
                         >
-                          {/* 🟢 ĐÃ SỬA: Đã thêm prop "name" cho thanh Tìm kiếm */}
                           <AvatarWithFrame
                             src={result.avatarUrl}
                             name={result.fullName}
@@ -355,7 +357,17 @@ export default function Header() {
                 <NotificationBell />
               </Box>
 
-              {/* Avatar */}
+              <Tooltip title="Cài đặt">
+                <ActionIconButton
+                  onClick={handleSettingsClick}
+                  aria-controls={openSettings ? 'settings-menu' : undefined}
+                  aria-haspopup="true"
+                  aria-expanded={openSettings ? 'true' : undefined}
+                >
+                  <SettingsIcon />
+                </ActionIconButton>
+              </Tooltip>
+
               <Tooltip title={liveUser?.fullName || user?.fullName || 'Tài khoản'}>
                 <Box
                   onClick={() => navigate('/profile')}
@@ -400,19 +412,7 @@ export default function Header() {
                 </Box>
               </Tooltip>
 
-              {/* 🟢 SETTINGS */}
-              <Tooltip title="Cài đặt & Quyền riêng tư">
-                <ActionIconButton
-                  onClick={handleSettingsClick}
-                  aria-controls={openSettings ? 'settings-menu' : undefined}
-                  aria-haspopup="true"
-                  aria-expanded={openSettings ? 'true' : undefined}
-                >
-                  <SettingsIcon />
-                </ActionIconButton>
-              </Tooltip>
-
-              {/* 🟢 SETTINGS MENU */}
+              {/* 🟢 SETTINGS MENU (Đã được hợp nhất gọn gàng) */}
               <Menu
                 id="settings-menu"
                 anchorEl={settingsAnchorEl}
@@ -431,11 +431,19 @@ export default function Header() {
                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
               >
-                <MenuItem onClick={() => navigate('/settings/security')}>
+                <MenuItem onClick={() => { navigate('/settings/security'); handleSettingsClose(); }}>
                   <ListItemIcon>
                     <SecurityIcon fontSize="small" />
                   </ListItemIcon>
                   Lịch sử đăng nhập
+                </MenuItem>
+
+                {/* Tích hợp Đổi mật khẩu vào chung Menu */}
+                <MenuItem onClick={handleOpenChangePassword}>
+                  <ListItemIcon>
+                    <LockResetIcon fontSize="small" />
+                  </ListItemIcon>
+                  Đổi mật khẩu
                 </MenuItem>
 
                 <MenuItem onClick={() => { toggleColorMode(); handleSettingsClose(); }}>
@@ -455,6 +463,9 @@ export default function Header() {
                   Đăng xuất
                 </MenuItem>
               </Menu>
+
+              {/* Modal đổi mật khẩu */}
+              {openChangePassword && <ChangePasswordModal onClose={() => setOpenChangePassword(false)} />}
             </>
           ) : (
             <Button

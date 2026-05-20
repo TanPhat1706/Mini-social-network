@@ -82,10 +82,10 @@ public class AuthService {
     // --- ĐĂNG NHẬP ---
 public String login(LoginRequest req, String sessionId) { // Thêm tham số sessionId
         User user = userRepository.findByStudentCodeOrEmail(req.getIdentifier(), req.getIdentifier())
-                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+                .orElseThrow(() -> new RuntimeException("Tài khoản hoặc mật khẩu gần chính xác!"));
 
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Mật khẩu không đúng!");
+            throw new RuntimeException("Tài khoản hoặc mật khẩu gần chính xác!");
         }
         if (!Boolean.TRUE.equals(user.getActive())) {
             throw new RuntimeException("Tài khoản của bạn chưa được kích hoạt hoặc đã bị khóa!");
@@ -96,6 +96,28 @@ public String login(LoginRequest req, String sessionId) { // Thêm tham số ses
 
         // Truyền sessionId vào khi sinh Token
         return jwtUtil.generateToken(user.getStudentCode(), sessionId);
+    }
+
+    public void changePassword(Integer userId, ChangePasswordRequest req) {
+        if (!req.getNewPassword().equals(req.getConfirmPassword())) {
+            throw new BadRequestException("Mật khẩu xác nhận không khớp");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("Người dùng không tồn tại"));
+
+        if (!passwordEncoder.matches(req.getOldPassword(), user.getPassword())) {
+            throw new BadRequestException("Mật khẩu cũ không chính xác");
+        }
+
+        if (req.getOldPassword().equals(req.getNewPassword())) {
+            throw new BadRequestException("Mật khẩu mới phải khác mật khẩu cũ");
+        }
+
+        String encoded = passwordEncoder.encode(req.getNewPassword());
+        user.setPassword(encoded);
+        user.setLastPasswordResetAt(LocalDateTime.now());
+        userRepository.save(user);
     }
 
     public List<UserResponse> searchUsers(String query) {

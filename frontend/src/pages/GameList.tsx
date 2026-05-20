@@ -4,6 +4,7 @@ import axios from 'axios';
 import {
     Box, Grid, Card, CardContent, CardMedia, Typography, Button, Container, Chip, CircularProgress
 } from '@mui/material';
+import { showWarning } from '../utils/swal';
 import { SportsEsports, VideogameAsset } from '@mui/icons-material';
 
 const GAMES = [
@@ -36,7 +37,7 @@ const GameList: React.FC = () => {
     const handlePlayGame = async (game: typeof GAMES[0]) => {
         if (game.id === 'tictactoe') {
             // Cách 1: Hiện thông báo và chuyển hướng sang trang Chat
-            alert("Trò chơi này cần 2 người! Hãy vào khung Chat để gửi lời mời cho bạn bè nhé.");
+            showWarning("Trò chơi này cần 2 người! Hãy vào khung Chat để gửi lời mời cho bạn bè nhé.");
             navigate('/chat'); // Thay bằng route trang chat của bạn
 
             // Cách 2 (Nâng cao): Mở một Modal popup hiển thị danh sách bạn bè online để chọn mời ngay tại đây.

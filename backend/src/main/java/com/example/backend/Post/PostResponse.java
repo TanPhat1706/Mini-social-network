@@ -23,5 +23,6 @@ public class PostResponse {
     private Long commentCount;
     private Long shareCount;
     private boolean isLikedByCurrentUser;
+    private boolean isSelfPost;
     private PostResponse originalPost;
 }

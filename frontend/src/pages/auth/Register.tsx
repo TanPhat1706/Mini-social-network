@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import api from '../../api/api';
 import { useNavigate } from 'react-router-dom';
 import '../../assets/css/login.css';
+import { showSuccess, showError } from '../../utils/swal';
 
 const Register: React.FC = () => {
   const [role, setRole] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
@@ -12,10 +13,10 @@ const Register: React.FC = () => {
     e.preventDefault();
     try {
       await api.post('/api/auth/register', { ...formData, role });
-      alert("Đăng ký thành công! Chờ Admin duyệt.");
+      showSuccess("Đăng ký thành công! Chờ Admin duyệt.");
       navigate('/login');
     } catch (error: any) {
-      alert(error.response?.data || "Lỗi đăng ký");
+      showError(error.response?.data || "Lỗi đăng ký");
     }
   };
 

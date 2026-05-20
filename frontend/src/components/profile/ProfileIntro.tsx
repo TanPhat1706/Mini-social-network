@@ -7,10 +7,11 @@ import type { User } from '../../types';
 
 interface Props {
   user: User | null;
+  isSelfProfile: boolean;
   onEditClick: () => void;
 }
 
-export default function ProfileIntro({ user, onEditClick }: Props) {
+export default function ProfileIntro({ user, isSelfProfile, onEditClick }: Props) {
   if (!user) return null;
 
   return (
@@ -46,13 +47,15 @@ export default function ProfileIntro({ user, onEditClick }: Props) {
         </Typography>
       </Box>
       
-      <Button 
-        fullWidth variant="contained" 
-        onClick={onEditClick}
-        sx={{ bgcolor: '#E4E6E9', color: 'black', fontWeight: 600, textTransform: 'none', '&:hover': { bgcolor: '#D8DADF' } }}
-      >
-        Chỉnh sửa chi tiết
-      </Button>
+      {isSelfProfile && (
+        <Button 
+          fullWidth variant="contained" 
+          onClick={onEditClick}
+          sx={{ bgcolor: '#E4E6E9', color: 'black', fontWeight: 600, textTransform: 'none', '&:hover': { bgcolor: '#D8DADF' } }}
+        >
+          Chỉnh sửa chi tiết
+        </Button>
+      )}
     </Paper>
   );
 }

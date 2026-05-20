@@ -6,6 +6,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom'; // 🔴 MỚI THÊM
 import type { GameSession, GameWsEvent } from '../types/game';
 import { getApiBaseUrl } from '../config/apiBase';
+import { showError } from '../utils/swal';
 
 // ... (Giữ nguyên interface WebSocketContextType)
 interface WebSocketContextType {
@@ -44,7 +45,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
         senderAvatar: data.senderAvatar,
         message: data.message,
         createdAt: data.createdAt || data.timestamp || new Date().toISOString(),
-        targetUrl: data.targetUrl || (data.type === 'FRIEND_REQUEST' ? `/profile/${data.senderId}` : '#'),
+        targetUrl: data.targetUrl || (data.type === 'FRIEND_REQUEST' ? `/profile/${data.senderStudentCode || data.senderId}` : '#'),
         isRead: data.isRead || false,
         type: data.type
     });
@@ -120,8 +121,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
                     console.log(">>> [PERSONAL GAME EVENT]", event);
 
                     if (event.type === 'ERROR') {
-                        alert(`Lỗi: ${event.message}`);
-                    } else if (event.type === 'GAME_INVITE_ACCEPTED') {
+                        showError(`Lỗi: ${event.message}`);
                        
                         
                         // 🔴 MỚI THÊM: CHUYỂN HƯỚNG CẢ 2 NGƯỜI VÀO PHÒNG CÙNG LÚC

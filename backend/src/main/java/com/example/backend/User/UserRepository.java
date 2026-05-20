@@ -3,15 +3,17 @@ package com.example.backend.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
 import java.util.Optional;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
 public interface UserRepository extends JpaRepository<User, Integer> {
     Optional<User> findByStudentCodeOrEmail(String studentCode, String email);
 
     Optional<User> findByStudentCode(String studentCode); // Dùng cho security load user
+
+    Optional<User> findByStudentCodeAndActive(String studentCode, Boolean active);
 
     boolean existsByEmail(String email);
 

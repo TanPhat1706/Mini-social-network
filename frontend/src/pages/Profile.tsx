@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axiosClient from '../api/axiosClient';
 import { CircularProgress, Box, Typography, Button } from '@mui/material';
+import { showSuccess, showError } from '../utils/swal';
 
 // Import Types & Components
 import type { User, UpdateProfileData } from '../types';
@@ -157,7 +158,7 @@ const Profile: React.FC = () => {
       });
 
       setUser(res.data);
-      alert("Cập nhật thành công!");
+      showSuccess("Cập nhật thành công!");
       setIsEditing(false);
     } catch (error) {
       console.error(error);
@@ -173,10 +174,10 @@ const Profile: React.FC = () => {
       const res = await api.put('/api/shop/items/unequip');
       // Cập nhật lại state ảo để UI mất viền ngay lập tức
       user && setUser({ ...user, currentAvatarFrame: undefined } as any);
-      alert(res.data.message || "Đã tháo viền Avatar thành công!");
+      showSuccess(res.data.message || "Đã tháo viền Avatar thành công!");
     } catch (error) {
       console.error("Lỗi tháo viền:", error);
-      alert("Không thể tháo viền lúc này.");
+      showError("Không thể tháo viền lúc này.");
     }
   };
 

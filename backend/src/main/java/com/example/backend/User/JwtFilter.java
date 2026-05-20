@@ -12,6 +12,8 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
+import java.time.ZoneId;
+import java.util.Date;
 
 import com.example.backend.User.SecurityHistoryRepository; 
 import com.example.backend.User.SecurityHistory;
@@ -24,6 +26,7 @@ public class JwtFilter extends OncePerRequestFilter {
     private CustomUserDetailsService userDetailsService;
     @Autowired
     private SecurityHistoryRepository securityHistoryRepository;
+    private UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
