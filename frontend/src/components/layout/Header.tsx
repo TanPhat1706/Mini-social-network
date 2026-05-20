@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   AppBar, Toolbar, Box, InputBase, Paper, List, ListItem,
-  IconButton, Tooltip, Button, Badge, Typography, CircularProgress
+  IconButton, Tooltip, Button, Badge, Typography, CircularProgress,
+  Menu, MenuItem
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -12,6 +13,8 @@ import HomeIcon from '@mui/icons-material/Home';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
+import SettingsIcon from '@mui/icons-material/Settings';
+import LockResetIcon from '@mui/icons-material/LockReset';
 
 // Import Logic & Components
 import { useAuth } from '../../context/AuthContext';
@@ -21,6 +24,7 @@ import axiosClient from '../../api/axiosClient';
 import MessengerDropdown from '../messenger/MessengerDropdown';
 import { useWebSocket } from '../../context/useWebSocket';
 import FriendButton from '../friend/FriendButton';
+import ChangePasswordModal from '../auth/ChangePasswordModal';
 
 // 🔴 IMPORT COMPONENT AVATAR MA THUẬT
 import AvatarWithFrame from '../AvatarWithFrame';
@@ -83,7 +87,7 @@ const NavIconButton = styled(IconButton)<{ active?: boolean }>(({ theme, active 
   [theme.breakpoints.down('md')]: { padding: '10px 15px' },
 }));
 
-const ActionIconButton = styled(IconButton)(({ theme }) => ({
+const ActionIconButton = styled(IconButton)(() => ({
   backgroundColor: '#E4E6E9',
   color: '#050505',
   '&:hover': { backgroundColor: '#D8DADF' },
@@ -103,6 +107,8 @@ export default function Header() {
   const searchRef = useRef<HTMLDivElement>(null);
 
   const [showMsgDropdown, setShowMsgDropdown] = useState(false);
+  const [settingsAnchor, setSettingsAnchor] = useState<null | HTMLElement>(null);
+  const [openChangePassword, setOpenChangePassword] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const msgRef = useRef<HTMLDivElement>(null);
   const notiRef = useRef<HTMLDivElement>(null);
@@ -208,6 +214,12 @@ export default function Header() {
 
   const handleLogout = () => { logout(); navigate('/login'); };
   const handleMessageRead = () => { setUnreadCount(prev => Math.max(0, prev - 1)); };
+  const handleSettingsClick = (event: React.MouseEvent<HTMLElement>) => setSettingsAnchor(event.currentTarget);
+  const handleSettingsClose = () => setSettingsAnchor(null);
+  const handleOpenChangePassword = () => {
+    setSettingsAnchor(null);
+    setOpenChangePassword(true);
+  };
 
   return (
     <AppBar position="sticky" sx={{ backgroundColor: '#FFFFFF', color: '#050505', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 1100 }}>
@@ -247,7 +259,7 @@ export default function Header() {
                       >
                         <Box
                           sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer', flex: 1, minWidth: 0 }}
-                          onClick={() => { navigate(`/profile/${result.id}`); setShowSearchDropdown(false); }}
+                          onClick={() => { navigate(`/profile/${result.studentCode}`); setShowSearchDropdown(false); }}
                         >
                           {/* 🟢 ĐÃ SỬA: Đã thêm prop "name" cho thanh Tìm kiếm */}
                           <AvatarWithFrame
@@ -323,6 +335,10 @@ export default function Header() {
                 <NotificationBell />
               </Box>
 
+              <Tooltip title="Cài đặt">
+                <ActionIconButton onClick={handleSettingsClick}><SettingsIcon /></ActionIconButton>
+              </Tooltip>
+
               <Tooltip title={liveUser?.fullName || user?.fullName || 'Tài khoản'}>
                 <Box
                   onClick={() => navigate('/profile')}
@@ -350,6 +366,22 @@ export default function Header() {
               <Tooltip title="Đăng xuất">
                 <ActionIconButton onClick={handleLogout}><LogoutIcon /></ActionIconButton>
               </Tooltip>
+
+              <Menu
+                anchorEl={settingsAnchor}
+                open={Boolean(settingsAnchor)}
+                onClose={handleSettingsClose}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              >
+                <MenuItem onClick={handleOpenChangePassword} sx={{ gap: 1.5 }}>
+                  <LockResetIcon fontSize="small" color="action" />
+                  <Typography variant="body2" fontWeight={500}>
+                    Đổi mật khẩu
+                  </Typography>
+                </MenuItem>
+              </Menu>
+              {openChangePassword && <ChangePasswordModal onClose={() => setOpenChangePassword(false)} />}
             </>
           ) : (
             <Button variant="contained" color="primary" onClick={() => navigate('/login')}>

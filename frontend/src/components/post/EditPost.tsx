@@ -4,6 +4,7 @@ import {
   TextField, Button, IconButton, Box, Typography,
   ImageList, ImageListItem, CircularProgress
 } from '@mui/material';
+import { showError } from '../../utils/swal';
 import CloseIcon from '@mui/icons-material/Close';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import { getApiBaseUrl } from '../../config/apiBase';
@@ -48,11 +49,11 @@ export default function EditPost({ open, onClose, post, onUpdateSuccess }) {
         onUpdateSuccess(updatedPost); // Báo ra ngoài để cập nhật UI
         onClose();
       } else {
-        alert('Cập nhật thất bại!');
+        showError('Cập nhật thất bại!');
       }
     } catch (error) {
       console.error(error);
-      alert('Lỗi server!');
+      showError('Lỗi server!');
     } finally {
       setIsLoading(false);
     }

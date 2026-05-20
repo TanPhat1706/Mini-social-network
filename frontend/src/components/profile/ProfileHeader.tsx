@@ -18,8 +18,10 @@ import PersonIcon from '@mui/icons-material/Person';
 import api from '../../api/api';
 import { getApiBaseUrl } from '../../config/apiBase';
 import { useAuth } from '../../context/AuthContext';
+import { showError, showInfo } from '../../utils/swal';
 import PostViewModal from './PostViewModal';
 import EditProfileDialog from './EditProfileDialog'; // Import Dialog mới
+import FriendButton from '../friend/FriendButton';
 
 // --- Styled Components ---
 const CoverPhoto = styled(Box)(({ theme }) => ({
@@ -48,12 +50,17 @@ const getImageUrl = (url: string | undefined) => {
   return `${getApiBaseUrl()}${url}`;
 };
 
-export default function ProfileHeader() {
-  const { user, login } = useAuth(); // Lấy user từ context (hoặc fetch lại)
-  const [profileUser, setProfileUser] = useState(user);
+interface ProfileHeaderProps {
+  profileUser: User | null;
+  isSelfProfile: boolean;
+}
 
-  // Refresh data khi user context thay đổi
-  useEffect(() => { setProfileUser(user); }, [user]);
+export default function ProfileHeader({ profileUser: profileUserProp, isSelfProfile }: ProfileHeaderProps) {
+  const { user: currentUser } = useAuth();
+  const [profileUser, setProfileUser] = useState<User | null>(profileUserProp);
+
+  // Refresh data khi props profileUser thay đổi
+  useEffect(() => { setProfileUser(profileUserProp); }, [profileUserProp]);
 
   // State Menu
   const [avatarMenuAnchor, setAvatarMenuAnchor] = useState<null | HTMLElement>(null);
@@ -96,7 +103,7 @@ export default function ProfileHeader() {
       
     } catch (error) {
       console.error("Upload lỗi:", error);
-      alert("Không thể tải ảnh lên. Vui lòng thử lại.");
+      showError("Không thể tải ảnh lên. Vui lòng thử lại.");
     } finally {
       setIsUploading(false);
       // Reset input để chọn lại file cũ được
@@ -107,64 +114,75 @@ export default function ProfileHeader() {
   const handleRemovePhoto = async (type: 'avatar' | 'cover') => {
      // TODO: Gọi API xóa ảnh (Cần backend hỗ trợ set null). 
      // Tạm thời chưa triển khai backend nên để placeholder
-     alert("Chức năng đang phát triển ở Backend");
+     showInfo("Chức năng đang phát triển ở Backend");
      closeMenus();
   };
+
+  if (!profileUser) return null;
 
   return (
     <>
       {/* INPUT ẨN ĐỂ CHỌN FILE */}
-      <input 
-        type="file" hidden accept="image/*" 
-        ref={avatarInputRef} 
-        onChange={(e) => handleFileUpload(e, 'avatar')} 
-      />
-      <input 
-        type="file" hidden accept="image/*" 
-        ref={coverInputRef} 
-        onChange={(e) => handleFileUpload(e, 'cover')} 
-      />
+      {isSelfProfile && (
+        <>
+          <input 
+            type="file" hidden accept="image/*" 
+            ref={avatarInputRef} 
+            onChange={(e) => handleFileUpload(e, 'avatar')} 
+          />
+          <input 
+            type="file" hidden accept="image/*" 
+            ref={coverInputRef} 
+            onChange={(e) => handleFileUpload(e, 'cover')} 
+          />
+        </>
+      )}
 
       <Paper elevation={0} sx={{ bgcolor: 'background.paper', mb: 3, border: '1px solid #E0E0E0', borderTop: 'none' }}>
         <Container maxWidth="md">
           <Box sx={{ position: 'relative' }}>
             {/* 1. ẢNH BÌA */}
-            <CoverPhoto sx={{ backgroundImage: `url(${getImageUrl(profileUser?.coverPhotoUrl)})` }}>
-              {/* Nút Ba Chấm / Camera cho Ảnh Bìa */}
-              <Button
-                variant="contained"
-                startIcon={<CameraAltIcon />}
-                onClick={handleCoverClick}
-                sx={{
-                  position: 'absolute', bottom: 16, right: 16,
-                  bgcolor: 'white', color: 'black', fontWeight: 'bold',
-                  '&:hover': { bgcolor: '#f2f2f2' }, textTransform: 'none'
-                }}
-              >
-                {isUploading ? "Đang tải..." : "Thêm ảnh bìa"}
-              </Button>
+            <CoverPhoto sx={{ backgroundImage: `url(${getImageUrl(profileUser.coverPhotoUrl)})` }}>
+              {isSelfProfile && (
+                <Button
+                  variant="contained"
+                  startIcon={<CameraAltIcon />}
+                  onClick={handleCoverClick}
+                  sx={{
+                    position: 'absolute', bottom: 16, right: 16,
+                    bgcolor: 'white', color: 'black', fontWeight: 'bold',
+                    '&:hover': { bgcolor: '#f2f2f2' }, textTransform: 'none'
+                  }}
+                >
+                  {isUploading ? 'Đang tải...' : 'Thêm ảnh bìa'}
+                </Button>
+              )}
             </CoverPhoto>
 
             {/* 2. AVATAR */}
-            <Box onClick={handleAvatarClick} sx={{ cursor: 'pointer' }}>
-               <ProfileAvatar src={getImageUrl(profileUser?.avatarUrl)} alt={profileUser?.fullName} />
-               {/* Nút Camera tròn cạnh Avatar */}
-               <IconButton
-                 sx={{
-                   position: 'absolute', bottom: -20, left: 160,
-                   bgcolor: '#E4E6E9', p: 1,
-                   '&:hover': { bgcolor: '#D8DADF' }
-                 }}
-               >
-                 <CameraAltIcon sx={{ color: 'black' }} />
-               </IconButton>
+            <Box
+              onClick={isSelfProfile ? handleAvatarClick : undefined}
+              sx={{ cursor: isSelfProfile ? 'pointer' : 'default' }}
+            >
+               <ProfileAvatar src={getImageUrl(profileUser.avatarUrl)} alt={profileUser.fullName} />
+               {isSelfProfile && (
+                 <IconButton
+                   sx={{
+                     position: 'absolute', bottom: -20, left: 160,
+                     bgcolor: '#E4E6E9', p: 1,
+                     '&:hover': { bgcolor: '#D8DADF' }
+                   }}
+                 >
+                   <CameraAltIcon sx={{ color: 'black' }} />
+                 </IconButton>
+               )}
             </Box>
           </Box>
 
           {/* 3. THÔNG TIN & NÚT EDIT */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', pt: 2, pb: 2, pl: '220px', pr: 2, mt: '-16px' }}>
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 'bold' }}>{profileUser?.fullName}</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 'bold' }}>{profileUser.fullName}</Typography>
               <Typography variant="body1" color="text.secondary">
                  {/* Logic đếm bạn bè cần API riêng, tạm để mockup hoặc lấy từ user */}
                  0 bạn bè 
@@ -172,14 +190,32 @@ export default function ProfileHeader() {
             </Box>
 
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button 
-                variant="contained" 
-                startIcon={<EditIcon />} 
-                onClick={() => setEditDialogOpen(true)}
-                sx={{ bgcolor: '#1877F2', fontWeight: 'bold', textTransform: 'none' }}
-              >
-                Chỉnh sửa trang cá nhân
-              </Button>
+              {isSelfProfile ? (
+                <Button 
+                  variant="contained" 
+                  startIcon={<EditIcon />} 
+                  onClick={() => setEditDialogOpen(true)}
+                  sx={{ bgcolor: '#1877F2', fontWeight: 'bold', textTransform: 'none' }}
+                >
+                  Chỉnh sửa trang cá nhân
+                </Button>
+              ) : (
+                <>
+                  <Box sx={{ width: 140 }}> 
+                    <FriendButton
+                      targetUserId={profileUser.id}
+                      currentUserId={currentUser?.id ?? 0}
+                    />
+                  </Box>
+                  <Button
+                    variant="outlined"
+                    onClick={() => showInfo('Chức năng nhắn tin đang phát triển.')}
+                    sx={{ fontWeight: 'bold', textTransform: 'none' }}
+                  >
+                    Nhắn tin
+                  </Button>
+                </>
+              )}
             </Box>
           </Box>
 

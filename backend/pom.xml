@@ -123,6 +123,10 @@
             <artifactId>java-dotenv</artifactId>
             <version>5.2.2</version>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -188,7 +192,8 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <!-- Chỉnh sửa con số 0.80 này nếu muốn tăng/giảm độ khó (80%) -->
+                                            <!-- Chỉnh sửa con số 0.80 này nếu muốn tăng/giảm độ khó
+                                            (80%) -->
                                             <minimum>0.80</minimum>
                                         </limit>
                                     </limits>

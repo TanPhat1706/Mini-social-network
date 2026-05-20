@@ -7,10 +7,11 @@ import Footer from './components/layout/Footer';
 import { AdminLayout } from './components/layout/AdminLayout';
 
 import HomePage from './pages/HomePage';
-import ProfilePage from './pages/Profile';
+import ProfilePage from './pages/ProfilePage';
 
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import ResetPassword from './pages/auth/ResetPassword';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import { PostManager } from './pages/admin/PostManager';
@@ -115,12 +116,13 @@ function App() {
                 {/* ===== PUBLIC / GUEST ROUTES ===== */}
                 <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
                 <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
+                <Route path="/reset-password" element={<GuestRoute><ResetPassword /></GuestRoute>} />
                 <Route path="/test-avatar" element={<TestAvatarPreview />} />
 
                 {/* ===== PROTECTED USER ROUTES (CẤM ADMIN) ===== */}
                 <Route path="/" element={<UserRoute><HomePage /></UserRoute>} />
                 <Route path="/profile" element={<UserRoute><ProfilePage /></UserRoute>} />
-                <Route path="/profile/:userId" element={<UserRoute><ProfilePage /></UserRoute>} />
+                <Route path="/profile/:studentCode" element={<UserRoute><ProfilePage /></UserRoute>} />
                 <Route path="/posts/:postId" element={<UserRoute><PostDetailPage /></UserRoute>} />
 
                 <Route path="/games" element={

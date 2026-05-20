@@ -1,11 +1,11 @@
 package com.example.backend.FriendRequest;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
-
 import com.example.backend.User.User;
-
 import java.util.List;
 import java.util.Optional;
 
@@ -28,4 +28,10 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Integer>
             "AND u.id != :myId " + // Loại bỏ chính mình
             "AND f.status = 'ACCEPTED'")
     List<User> findAllFriends(Integer myId);
+
+    @Query("SELECT u FROM Friendship f JOIN User u ON (f.user1Id = u.id OR f.user2Id = u.id) " +
+            "WHERE (f.user1Id = :myId OR f.user2Id = :myId) " +
+            "AND u.id != :myId " +
+            "AND f.status = 'ACCEPTED'")
+    Page<User> findFriends(Integer myId, Pageable pageable);
 }

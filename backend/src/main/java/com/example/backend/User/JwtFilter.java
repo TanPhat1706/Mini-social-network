@@ -12,6 +12,8 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
+import java.time.ZoneId;
+import java.util.Date;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
@@ -19,6 +21,8 @@ public class JwtFilter extends OncePerRequestFilter {
     private JwtUtil jwtUtil;
     @Autowired
     private CustomUserDetailsService userDetailsService;
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -39,6 +43,23 @@ public class JwtFilter extends OncePerRequestFilter {
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
             if (jwtUtil.validateToken(token)) {
+                // session revocation: ensure token was issued after any password reset
+                try {
+                    Date issued = jwtUtil.extractIssuedAt(token);
+                    User userEntity = userRepository.findByStudentCode(username).orElse(null);
+                    if (userEntity != null && userEntity.getLastPasswordResetAt() != null) {
+                        ZoneId zid = ZoneId.systemDefault();
+                        Date pwReset = Date.from(userEntity.getLastPasswordResetAt().atZone(zid).toInstant());
+                        if (issued.before(pwReset)) {
+                            // token issued before password reset -> reject
+                            filterChain.doFilter(request, response);
+                            return;
+                        }
+                    }
+                } catch (Exception e) {
+                    // ignore and continue validation
+                }
+
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

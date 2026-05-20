@@ -67,7 +67,7 @@ export const PostManager: React.FC = () => {
       await api.post(`/api/admin/approve-post/${postId}`);
       fetchPosts(); 
     } catch (error) {
-      alert("Lỗi khi duyệt bài.");
+      showError("Lỗi khi duyệt bài.");
     }
   };
 
@@ -86,7 +86,7 @@ export const PostManager: React.FC = () => {
       setOpenDeleteDialog(false);
       fetchPosts();
     } catch (error) {
-      alert("Lỗi khi xóa bài.");
+      showError("Lỗi khi xóa bài.");
     }
   };
 

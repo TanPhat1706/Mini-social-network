@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import gameApi, { type GameScore } from '../../api/gameApi';
 import { ArrowBack } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { showWarning } from '../../utils/swal';
 
 // --- ⚙️ CẤU HÌNH HỆ THỐNG ---
 const CANVAS_SIZE = 400;
@@ -153,7 +154,7 @@ const SnakeGame: React.FC = () => {
         }
 
         if (limitData.count >= MAX_PLAYS_PER_DAY) {
-            alert(`⏳ Bạn đã hết lượt chơi hôm nay (${MAX_PLAYS_PER_DAY}/${MAX_PLAYS_PER_DAY}). Hãy quay lại vào ngày mai để tiếp tục cày top nhé!`);
+            showWarning(`⏳ Bạn đã hết lượt chơi hôm nay (${MAX_PLAYS_PER_DAY}/${MAX_PLAYS_PER_DAY}). Hãy quay lại vào ngày mai để tiếp tục cày top nhé!`);
             return false;
         }
 

@@ -11,11 +11,17 @@ export function getApiBaseUrl(): string {
   if (explicit && String(explicit).trim()) {
     return trimEndSlash(String(explicit).trim());
   }
+
   const authUrl = import.meta.env.VITE_API_URL;
   if (authUrl && String(authUrl).includes('/api/auth')) {
     return trimEndSlash(String(authUrl).replace(/\/api\/auth\/?$/, ''));
   }
+
   return 'http://localhost:8080';
+}
+
+function ensureLeadingSlash(path: string): string {
+  return path.startsWith('/') ? path : `/${path}`;
 }
 
 /**
@@ -26,6 +32,14 @@ export function getApiAuthUrl(): string {
   if (auth && String(auth).trim()) {
     return trimEndSlash(String(auth).trim());
   }
-  return `${getApiBaseUrl()}/api/auth`;
+
+  const baseUrl = getApiBaseUrl();
+  const authEndpoint = import.meta.env.VITE_API_AUTH_ENDPOINT;
+  if (authEndpoint && String(authEndpoint).trim()) {
+    return `${trimEndSlash(baseUrl)}${ensureLeadingSlash(String(authEndpoint).trim())}`;
+  }
+
+  return `${baseUrl}/api/auth`;
 }
+
 console.log('[API]', getApiBaseUrl(), getApiAuthUrl());

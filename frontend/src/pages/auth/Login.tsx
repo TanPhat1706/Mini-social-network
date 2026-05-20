@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import api from '../../api/api'; 
+import api from '../../api/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import '../../assets/css/login.css'; 
+import '../../assets/css/login.css';
+import ForgotPasswordModal from '../../components/auth/ForgotPasswordModal';
+import { showError } from '../../utils/swal';
 
 const Login: React.FC = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [forgotOpen, setForgotOpen] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -20,7 +23,7 @@ const Login: React.FC = () => {
       login(token, userInfo); 
       userInfo.role === 'ADMIN' ? navigate('/admin/dashboard') : navigate('/');
     } catch (error: any) {
-      alert(error.response?.data || "Đăng nhập thất bại");
+      showError(error.response?.data || "Đăng nhập thất bại");
     } finally {
       setLoading(false);
     }
@@ -45,12 +48,18 @@ const Login: React.FC = () => {
               {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
           </form>
+          <div style={{ textAlign: 'center', marginTop: '12px' }}>
+            <button type="button" className="btn-register-new" style={{ backgroundColor: '#1877F2' }} onClick={() => setForgotOpen(true)}>
+              Quên mật khẩu?
+            </button>
+          </div>
           <div style={{ borderBottom: '1px solid #dadde1', margin: '20px 0' }}></div>
           <button className="btn-register-new" onClick={() => navigate('/register')}>
             Tạo tài khoản mới
           </button>
         </div>
       </div>
+      {forgotOpen && <ForgotPasswordModal onClose={() => setForgotOpen(false)} />}
     </div>
   );
 };

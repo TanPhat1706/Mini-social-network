@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import api from '../../api/api'; // Hoặc axiosClient
+import { showError } from '../../utils/swal';
 import type { User } from '../../types';
 
 interface Props {
@@ -46,7 +47,7 @@ export default function EditProfileDialog({ open, onClose, currentUser, onUpdate
       onClose();
     } catch (error) {
       console.error("Lỗi cập nhật:", error);
-      alert("Cập nhật thất bại!");
+      showError("Cập nhật thất bại!");
     } finally {
       setIsLoading(false);
     }

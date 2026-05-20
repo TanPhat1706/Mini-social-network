@@ -2,6 +2,7 @@ package com.example.backend.FriendRequest;
 
 import com.example.backend.Enum.NotificationType;
 import com.example.backend.Event.NotificationEvent; // Import Event
+import com.example.backend.FriendRequest.FriendResponseDTO;
 import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +23,7 @@ public class FriendshipService {
     private FriendshipRepository friendshipRepository;
     @Autowired
     private UserRepository userRepository;
-    
+
     // --- THAY VÌ Inject Repo/Socket, TA DÙNG EVENT PUBLISHER ---
     @Autowired
     private ApplicationEventPublisher eventPublisher;
@@ -33,7 +34,8 @@ public class FriendshipService {
             throw new RuntimeException("Không thể kết bạn với chính mình");
 
         User sender = userRepository.findById(senderId).orElseThrow(() -> new RuntimeException("Sender not found"));
-        User receiver = userRepository.findById(receiverId).orElseThrow(() -> new RuntimeException("Receiver not found"));
+        User receiver = userRepository.findById(receiverId)
+                .orElseThrow(() -> new RuntimeException("Receiver not found"));
 
         Optional<Friendship> existing = friendshipRepository.findFriendship(senderId, receiverId);
 
@@ -50,14 +52,14 @@ public class FriendshipService {
             // ---> BẮN EVENT (Giống PostService)
             // NotificationService sẽ bắt sự kiện này -> Lưu DB -> Gửi Socket
             eventPublisher.publishEvent(new NotificationEvent(
-                sender,          // Người gửi (Sender)
-                receiver,        // Người nhận (Receiver)
-                NotificationType.FRIEND_REQUEST,
-                Long.valueOf(sender.getId()), // EntityID (Click vào sẽ dẫn tới trang cá nhân người gửi)
-                "USER",          // EntityType
-                "đã gửi lại lời mời kết bạn." // Message
+                    sender, // Người gửi (Sender)
+                    receiver, // Người nhận (Receiver)
+                    NotificationType.FRIEND_REQUEST,
+                    Long.valueOf(sender.getId()), // EntityID (Click vào sẽ dẫn tới trang cá nhân người gửi)
+                    "USER", // EntityType
+                    "đã gửi lại lời mời kết bạn." // Message
             ));
-            
+
             return "Đã gửi lại lời mời";
         }
 
@@ -71,13 +73,12 @@ public class FriendshipService {
 
         // ---> BẮN EVENT
         eventPublisher.publishEvent(new NotificationEvent(
-            sender,
-            receiver,
-            NotificationType.FRIEND_REQUEST,
-            Long.valueOf(sender.getId()), 
-            "USER",
-            "đã gửi lời mời kết bạn."
-        ));
+                sender,
+                receiver,
+                NotificationType.FRIEND_REQUEST,
+                Long.valueOf(sender.getId()),
+                "USER",
+                "đã gửi lời mời kết bạn."));
 
         return "Đã gửi lời mời";
     }
@@ -95,18 +96,17 @@ public class FriendshipService {
         friendshipRepository.save(f);
 
         // Lấy thông tin user
-        User me = userRepository.findById(userId).orElseThrow();        // Người chấp nhận
-        User friend = userRepository.findById(targetId).orElseThrow();  // Người gửi lời mời trước đó
+        User me = userRepository.findById(userId).orElseThrow(); // Người chấp nhận
+        User friend = userRepository.findById(targetId).orElseThrow(); // Người gửi lời mời trước đó
 
         // ---> BẮN EVENT: Thông báo cho người kia biết
         eventPublisher.publishEvent(new NotificationEvent(
-            me,              // Sender (là mình)
-            friend,          // Receiver (là bạn)
-            NotificationType.ACCEPT_FRIEND,
-            Long.valueOf(me.getId()), 
-            "USER",
-            "đã chấp nhận lời mời kết bạn."
-        ));
+                me, // Sender (là mình)
+                friend, // Receiver (là bạn)
+                NotificationType.ACCEPT_FRIEND,
+                Long.valueOf(me.getId()),
+                "USER",
+                "đã chấp nhận lời mời kết bạn."));
 
         return "Đã trở thành bạn bè";
     }
@@ -117,22 +117,22 @@ public class FriendshipService {
 
         // Kiểm tra xem đang làm hành động gì để log hoặc xử lý logic phụ (nếu cần)
         String oldStatus = f.getStatus();
-        
+
         f.setStatus("DELETED");
         f.setActionUserId(userId);
         friendshipRepository.save(f);
 
         // TUYỆT ĐỐI KHÔNG BẮN EVENT ACCEPT Ở ĐÂY
         // Nếu muốn, em có thể bắn event REJECT (nhưng thường MXH không làm vậy)
-        
+
         if (oldStatus.equals("ACCEPTED")) {
             return "Đã hủy kết bạn";
         } else if (oldStatus.equals("PENDING")) {
             // userId là người gửi -> Đang Hủy lời mời
             // userId là người nhận -> Đang Từ chối
-            return "Đã hủy lời mời"; 
+            return "Đã hủy lời mời";
         }
-        
+
         return "Đã xóa quan hệ";
     }
 
@@ -144,7 +144,7 @@ public class FriendshipService {
                 .filter(f -> !f.getStatus().equals("DELETED"))
                 .map(f -> f.getUser1Id().equals(myId) ? f.getUser2Id() : f.getUser1Id())
                 .collect(Collectors.toSet());
-        excludeIds.add(myId); 
+        excludeIds.add(myId);
         return allUsers.stream().filter(u -> !excludeIds.contains(u.getId())).collect(Collectors.toList());
     }
 
@@ -164,9 +164,27 @@ public class FriendshipService {
     public List<User> getUserFriends(Integer myId) {
         return friendshipRepository.findAllFriends(myId);
     }
+
+    public Page<FriendResponseDTO> getFriendsByStudentCode(String studentCode, Pageable pageable) {
+        User targetUser = userRepository.findByStudentCode(studentCode)
+                .orElseThrow(() -> new RuntimeException("User with studentCode " + studentCode + " not found"));
+
+        Page<User> friends = friendshipRepository.findFriends(targetUser.getId(), pageable);
+        return friends.map(this::toFriendResponseDTO);
+    }
+
     public Page<User> getSuggestedFriends(Integer myId, int page, int size) {
         // Tạo yêu cầu phân trang
         Pageable pageable = PageRequest.of(page, size);
         return userRepository.findSuggestedFriends(myId, pageable);
+    }
+
+    private FriendResponseDTO toFriendResponseDTO(User user) {
+        return FriendResponseDTO.builder()
+                .id(user.getId())
+                .studentCode(user.getStudentCode())
+                .fullName(user.getFullName())
+                .avatarUrl(user.getAvatarUrl())
+                .build();
     }
 }

@@ -11,10 +11,9 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PostRepository extends JpaRepository<Post, Long> {
-    @Query(value = "SELECT p FROM Post p JOIN FETCH p.author u WHERE p.visibility = 'PUBLIC'",
-        countQuery = "SELECT COUNT(p) FROM Post p WHERE p.visibility = 'PUBLIC'")
+    @Query(value = "SELECT p FROM Post p JOIN FETCH p.author u WHERE p.visibility = 'PUBLIC'", countQuery = "SELECT COUNT(p) FROM Post p WHERE p.visibility = 'PUBLIC'")
     Page<Post> findAllForNewsFeed(Pageable pageable);
-    
+
     @Query("SELECT COUNT(p) FROM Post p")
     long countPosts();
 
@@ -38,4 +37,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     void decrementCommentCount(Long postId);
 
     Page<Post> findByAuthorId(Integer authorId, Pageable pageable);
+
+    Page<Post> findByAuthorStudentCode(String studentCode, Pageable pageable);
 }

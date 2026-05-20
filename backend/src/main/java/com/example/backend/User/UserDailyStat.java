@@ -1,6 +1,5 @@
 package com.example.backend.User;
 
-
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDate;

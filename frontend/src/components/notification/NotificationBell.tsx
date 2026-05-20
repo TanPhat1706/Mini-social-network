@@ -94,7 +94,7 @@ export default function NotificationBell() {
         }
     } catch (error) {
         console.error("Lỗi xử lý kết bạn:", error);
-        alert("Có lỗi xảy ra, vui lòng thử lại.");
+        showError("Có lỗi xảy ra, vui lòng thử lại.");
     } finally {
         // Tắt loading
         setProcessingIds(prev => {

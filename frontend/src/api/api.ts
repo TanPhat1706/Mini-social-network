@@ -13,7 +13,7 @@ const api: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
     'ngrok-skip-browser-warning': 'true',
   },
-  timeout: 10000,
+  timeout: Number(import.meta.env.VITE_API_TIMEOUT) || 10000,
 });
 
 // 2. REQUEST INTERCEPTOR

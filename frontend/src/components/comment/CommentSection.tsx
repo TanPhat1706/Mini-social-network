@@ -87,8 +87,8 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
             if (replyTo) {
                 // Nếu là reply, logic phức tạp hơn chút: 
                 // Cách đơn giản nhất: reload lại comment cha hoặc thông báo user
-                // Ở đây mình alert nhẹ, hoặc bạn có thể tìm comment cha trong list và add vào replies của nó
-                alert("Đã gửi câu trả lời! Hãy mở mục phản hồi để xem.");
+                // Ở đây mình hiện pop-up nhẹ, hoặc bạn có thể tìm comment cha trong list và add vào replies của nó
+                showInfo("Đã gửi câu trả lời! Hãy mở mục phản hồi để xem.");
                 handleCancelReply();
             } else {
                 // Nếu là comment gốc, thêm vào đầu list

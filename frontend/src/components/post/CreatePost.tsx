@@ -107,7 +107,7 @@ export default function CreatePost() {
         (error as any)?.response?.data?.message ||
         (error as any)?.response?.data ||
         'Lỗi kết nối server!';
-      alert(String(serverMessage));
+      showError(String(serverMessage));
     } finally {
       setIsLoading(false);
     }
@@ -155,7 +155,7 @@ export default function CreatePost() {
           
           <FakeInputButton fullWidth>
             {user ? (
-                <><ColoredName name={userName} colorClass={(user as any)?.currentNameColor} /> ơi, bạn đang nghĩ gì thế?</>
+                <><ColoredName name={userName} colorClass={(user as any)?.currentNameColor} />‎ ơi, bạn đang nghĩ gì thế?</>
             ) : 'Đang tải...'}
           </FakeInputButton>
         </Box>

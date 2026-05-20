@@ -53,6 +53,9 @@ public class User {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
+    @Column(name = "last_password_reset_at")
+    private LocalDateTime lastPasswordResetAt;
+
     @Column(name = "level", nullable = false)
     private Integer level = 1; // Mặc định level 1
 

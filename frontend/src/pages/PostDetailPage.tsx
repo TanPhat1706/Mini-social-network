@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Box, CircularProgress, Typography, Button } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import api from '../api/api'; // Axios instance của em
+import { showSuccess } from '../utils/swal';
 import PostCard from '../components/post/CardPost';
 import type { PostData } from '../components/post/CardPost';
 
@@ -36,7 +37,7 @@ export default function PostDetailPage() {
 
   // Xử lý khi xóa bài viết thành công ngay tại trang chi tiết
   const handleDeleteSuccess = (deletedId: number) => {
-    alert("Đã xóa bài viết.");
+    showSuccess("Đã xóa bài viết.");
     navigate('/'); // Xóa xong thì quay về trang chủ
   };
 
