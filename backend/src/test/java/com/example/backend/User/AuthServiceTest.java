@@ -169,7 +169,7 @@ class AuthServiceTest {
 
         // 🟢 Sửa: Thêm tham số sessionId
         RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login(req, "test-session-id"));
-        assertEquals("Tài khoản không tồn tại!", ex.getMessage());
+        assertEquals("Tài khoản hoặc mật khẩu gần chính xác!", ex.getMessage());
         
         // 🟢 Sửa: verify generateToken(anyString(), anyString())
         verify(jwtUtil, never()).generateToken(anyString(), anyString());
@@ -192,7 +192,7 @@ class AuthServiceTest {
 
         // 🟢 Sửa: Thêm tham số sessionId
         RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login(req, "test-session-id"));
-        assertEquals("Mật khẩu không đúng!", ex.getMessage());
+        assertEquals("Tài khoản hoặc mật khẩu gần chính xác!", ex.getMessage());
         
         // 🟢 Sửa: verify
         verify(jwtUtil, never()).generateToken(anyString(), anyString());

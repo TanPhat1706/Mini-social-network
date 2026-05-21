@@ -42,9 +42,8 @@ class AuthControllerTest extends BaseControllerTest {
     @MockBean
     private UserRepository userRepository;
 
-    // 🟢 THÊM 2 MOCK BEAN NÀY ĐỂ TRÁNH LỖI CONTEXT VÌ AUTH CONTROLLER ĐANG CẦN
     @MockBean
-    private SecurityHistoryRepository securityHistoryRepository;
+    private PasswordResetService passwordResetService;
 
 
     private User mockUser;

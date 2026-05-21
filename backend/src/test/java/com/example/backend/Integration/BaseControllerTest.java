@@ -2,11 +2,13 @@ package com.example.backend.Integration;
 
 import com.example.backend.User.CustomUserDetailsService;
 import com.example.backend.User.JwtUtil;
+import com.example.backend.User.SecurityHistoryRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext; // 🟢 NHỚ IMPORT CLASS NÀY
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -20,14 +22,21 @@ public abstract class BaseControllerTest {
     @Autowired
     protected ObjectMapper objectMapper;
     
-    // Trấn an JwtFilter
+    // 🟢 MOCK CHO JWTFILTER CẦN
     @MockBean
     protected JwtUtil jwtUtil; 
 
     @MockBean
+    protected SecurityHistoryRepository securityHistoryRepository;
+
+    @MockBean
     protected CustomUserDetailsService customUserDetailsService;
 
-    // 🟢 CÚ CHỐT HIỆP ĐỒNG: Trấn an @EnableJpaAuditing
+    // 🟢 MOCK CHO @ENABLEJPAUDITING
     @MockBean
-    protected JpaMetamodelMappingContext jpaMappingContext; 
+    protected JpaMetamodelMappingContext jpaMappingContext;
+
+    // 🟢 MOCK CHO EMAIL FUNCTIONALITY
+    @MockBean
+    protected JavaMailSender javaMailSender;
 }

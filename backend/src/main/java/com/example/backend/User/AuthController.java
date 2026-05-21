@@ -28,6 +28,8 @@ public class AuthController {
 
     @Autowired
     private JwtUtil jwtUtil;
+    
+    @Autowired
     private PasswordResetService passwordResetService;
 
     @PostMapping("/register")
