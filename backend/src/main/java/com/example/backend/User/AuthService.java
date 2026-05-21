@@ -19,7 +19,6 @@ import java.nio.file.Path;
 import java.io.IOException;
 import java.util.UUID;
 
-
 @Service
 public class AuthService {
 
@@ -55,17 +54,16 @@ public class AuthService {
         user.setEmail(req.getEmail());
         user.setFullName(req.getFullName());
 
-
         user.setClassName(req.getClassName());
         // ⭐️ XỬ LÝ ROLE & BẢO MẬT (QUAN TRỌNG)
         String requestRole = req.getRole();
-        
+
         if ("TEACHER".equalsIgnoreCase(requestRole)) {
             user.setRole("TEACHER");
         } else {
             // Mặc định là STUDENT nếu role rỗng hoặc sai
             // TUYỆT ĐỐI KHÔNG cho phép set ADMIN từ request này
-            user.setRole("STUDENT"); 
+            user.setRole("STUDENT");
         }
 
         // Đảm bảo user mới phải chờ duyệt
@@ -80,7 +78,7 @@ public class AuthService {
     }
 
     // --- ĐĂNG NHẬP ---
-public String login(LoginRequest req, String sessionId) { // Thêm tham số sessionId
+    public String login(LoginRequest req, String sessionId) { // Thêm tham số sessionId
         User user = userRepository.findByStudentCodeOrEmail(req.getIdentifier(), req.getIdentifier())
                 .orElseThrow(() -> new RuntimeException("Tài khoản hoặc mật khẩu gần chính xác!"));
 
@@ -122,7 +120,7 @@ public String login(LoginRequest req, String sessionId) { // Thêm tham số ses
 
     public List<UserResponse> searchUsers(String query) {
         List<User> users = userRepository.searchUsers(query);
-        
+
         // Chuyển đổi từ Entity sang Response DTO
         return users.stream().map(user -> UserResponse.builder()
                 .id(user.getId())
@@ -134,15 +132,16 @@ public String login(LoginRequest req, String sessionId) { // Thêm tham số ses
                 .active(user.getActive())
                 .currentAvatarFrame(user.getCurrentAvatarFrame())
                 .currentNameColor(user.getCurrentNameColor())
-                .build()
-        ).collect(Collectors.toList());
+                .build()).collect(Collectors.toList());
     }
+
     public String saveFile(MultipartFile file) throws IOException {
-        if (file == null || file.isEmpty()) return null;
+        if (file == null || file.isEmpty())
+            return null;
 
         // Tạo tên file độc nhất để tránh trùng lặp
         String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-        
+
         // Tạo đường dẫn tuyệt đối đến thư mục uploads
         Path uploadPath = Paths.get(uploadDir);
         if (!Files.exists(uploadPath)) {
@@ -159,8 +158,8 @@ public String login(LoginRequest req, String sessionId) { // Thêm tham số ses
     }
 
     // --- MỚI: HÀM CẬP NHẬT PROFILE ---
-    public User updateProfile(String studentCode, String fullName, String bio, 
-                              String className, MultipartFile avatar, MultipartFile cover) throws IOException {
+    public User updateProfile(String studentCode, String fullName, String bio,
+            String className, MultipartFile avatar, MultipartFile cover) throws IOException {
         User user = userRepository.findByStudentCode(studentCode)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -181,9 +180,12 @@ public String login(LoginRequest req, String sessionId) { // Thêm tham số ses
         }
 
         // Cập nhật thông tin text nếu có
-        if (fullName != null) user.setFullName(fullName);
-        if (bio != null) user.setBio(bio);
-        if (className != null) user.setClassName(className);
+        if (fullName != null)
+            user.setFullName(fullName);
+        if (bio != null)
+            user.setBio(bio);
+        if (className != null)
+            user.setClassName(className);
 
         // Cập nhật Avatar nếu có upload
         if (avatar != null && !avatar.isEmpty()) {
@@ -199,8 +201,10 @@ public String login(LoginRequest req, String sessionId) { // Thêm tham số ses
 
         return userRepository.save(user);
     }
+
     // --- MỚI: LƯU LỊCH SỬ BẢO MẬT (ĐĂNG NHẬP) ---
-    public void saveSecurityHistory(User user, String ipAddress, String userAgentString, String status, String sessionId) {
+    public void saveSecurityHistory(User user, String ipAddress, String userAgentString, String status,
+            String sessionId) {
         SecurityHistory history = new SecurityHistory();
         history.setUser(user);
         history.setIpAddress(ipAddress != null ? ipAddress : "Unknown IP");
@@ -226,9 +230,9 @@ public String login(LoginRequest req, String sessionId) { // Thêm tham số ses
                 if (c.os.major != null) {
                     os += " " + c.os.major;
                 }
-                
+
                 String device = c.device.family;
-                
+
                 // Gom chung lại cho đẹp UI. Nếu là máy tính thường device sẽ báo "Other"
                 if ("Other".equalsIgnoreCase(device) || device.equals(os)) {
                     history.setDevice(os);
