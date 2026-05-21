@@ -18,6 +18,7 @@ public class UserProfileService {
         boolean isSelfProfile = viewerStudentCode != null && viewerStudentCode.equals(targetUser.getStudentCode());
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/yyyy");
 
+        // 🟢 CẬP NHẬT: Truyền thêm 2 tham số vào constructor
         return new UserProfileResponse(
                 targetUser.getId(),
                 targetUser.getStudentCode(),
@@ -26,6 +27,9 @@ public class UserProfileService {
                 targetUser.getAvatarUrl(),
                 targetUser.getBio(),
                 targetUser.getCreatedAt().format(formatter),
-                isSelfProfile);
+                isSelfProfile,
+                targetUser.getCurrentAvatarFrame(), // Truyền viền vào
+                targetUser.getCurrentNameColor() // Truyền màu tên vào
+        );
     }
 }

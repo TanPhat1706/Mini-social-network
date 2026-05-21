@@ -8,6 +8,8 @@ public record UserProfileResponse(
         String avatarUrl,
         String bio,
         String joinedAt,
-        boolean isSelfProfile
+        boolean isSelfProfile,
+        String currentAvatarFrame,
+        String currentNameColor
 ) {
 }

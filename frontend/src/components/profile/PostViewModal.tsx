@@ -1,47 +1,62 @@
 import React from 'react';
 import { Dialog, DialogContent, IconButton, Box } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import PostCard from '../../components/post/CardPost'; // Tái sử dụng PostCard
+import PostCard, { type PostData } from '../../components/post/CardPost';
+import AvatarWithFrame from '../AvatarWithFrame';
 
-// Định nghĩa kiểu cho props
 interface PostViewModalProps {
   open: boolean;
   onClose: () => void;
-  // TODO: Sau này sẽ truyền post thật vào
-  // post: any; 
+  imageUrl?: string;
+  frameClass?: string;
+  post?: PostData;
 }
 
-export default function PostViewModal({ open, onClose }: PostViewModalProps) {
+export default function PostViewModal({ open, onClose, imageUrl, frameClass, post }: PostViewModalProps) {
   return (
     <Dialog 
       open={open} 
       onClose={onClose} 
-      maxWidth="md" 
+      maxWidth="sm" // Đổi thành sm để modal không quá thô kệch
       fullWidth
+      PaperProps={{
+          sx: { bgcolor: 'background.default', borderRadius: 2 }
+      }}
     >
-      {/* Nút đóng X (giống ảnh 2 của lần trước) */}
       <IconButton
-        aria-label="close"
         onClick={onClose}
         sx={{
-          position: 'absolute',
-          right: 8,
-          top: 8,
-          color: (theme) => theme.palette.grey[500],
-          backgroundColor: 'rgba(255,255,255,0.7)',
-          zIndex: 1, // Nằm trên
-          '&:hover': {
-            backgroundColor: 'rgba(255,255,255,0.9)',
-          }
+          position: 'absolute', right: 8, top: 8,
+          bgcolor: 'rgba(0,0,0,0.3)', color: 'white',
+          zIndex: 10,
+          '&:hover': { bgcolor: 'rgba(0,0,0,0.5)' }
         }}
       >
         <CloseIcon />
       </IconButton>
       
-      <DialogContent sx={{ p: 0, m: 0 }}>
-        {/* Chúng ta sẽ hiển thị PostCard ngay trong Modal */}
-        {/* Sau này, chúng ta sẽ truyền "post" thật vào đây */}
-        <PostCard />
+      <DialogContent sx={{ 
+          p: 0, 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          overflow: 'hidden' // 🟢 CHỐNG THANH TRƯỢT
+      }}>
+        {imageUrl ? (
+          <Box sx={{ 
+              p: 2, 
+              width: '100%', 
+              maxHeight: '80vh', // Ép chiều cao tối đa của ảnh
+              display: 'flex', 
+              justifyContent: 'center' 
+          }}>
+            <AvatarWithFrame src={imageUrl} frameClass={frameClass} size={400} />
+          </Box>
+        ) : post ? (
+          <Box sx={{ width: '100%' }}>
+            <PostCard post={post} onDeleteSuccess={() => onClose()} />
+          </Box>
+        ) : null}
       </DialogContent>
     </Dialog>
   );
