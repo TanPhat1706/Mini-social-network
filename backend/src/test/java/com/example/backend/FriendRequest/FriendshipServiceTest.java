@@ -291,4 +291,97 @@ class FriendshipServiceTest {
         verify(friendshipRepository).findPendingRequests(1);
         verify(friendshipRepository).findAllFriends(1);
     }
+    // ==========================================
+    // 🟢 BỔ SUNG: CÁC NHÁNH CÒN THIẾU CỦA SEND REQUEST VÀ ACCEPT REQUEST
+    // ==========================================
+
+    @Test
+    void sendRequest_whenAlreadyPending_shouldThrow() {
+        // Lấp nhánh f.getStatus().equals("PENDING") trong điều kiện ||
+        when(userRepository.findById(1)).thenReturn(Optional.of(user1));
+        when(userRepository.findById(2)).thenReturn(Optional.of(user2));
+
+        Friendship existing = new Friendship();
+        existing.setStatus("PENDING");
+        when(friendshipRepository.findFriendship(1, 2)).thenReturn(Optional.of(existing));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> friendshipService.sendRequest(1, 2));
+        assertEquals("Đã tồn tại mối quan hệ", ex.getMessage());
+    }
+
+    @Test
+    void acceptRequest_whenUserNotFoundInDb_shouldThrow() {
+        Friendship f = new Friendship();
+        f.setActionUserId(2); // User 2 gửi lời mời
+        when(friendshipRepository.findFriendship(1, 2)).thenReturn(Optional.of(f));
+        
+        // 🟢 Ép lỗi khi lấy thông tin user từ DB
+        when(userRepository.findById(1)).thenReturn(Optional.empty()); 
+
+        assertThrows(Exception.class, () -> friendshipService.acceptRequest(1, 2));
+    }
+
+    // ==========================================
+    // 🟢 BỔ SUNG: NHÁNH TOÁN TỬ 3 NGÔI TRONG GET SUGGESTED FRIENDS
+    // ==========================================
+
+    @Test
+    void getSuggestedFriendsList_whenMyIdIsUser2_shouldFilterProperly() {
+        User u3 = new User(); 
+        u3.setId(3);
+        when(userRepository.findAll()).thenReturn(List.of(user1, u3));
+
+        Friendship f1 = new Friendship();
+        // 🟢 Cố tình đặt mình (1) ở vị trí User2Id để chạy qua nhánh còn lại của toán tử 3 ngôi
+        f1.setUser1Id(3); 
+        f1.setUser2Id(1); 
+        f1.setStatus("ACCEPTED");
+
+        when(friendshipRepository.findAll()).thenReturn(List.of(f1));
+
+        List<User> suggestions = friendshipService.getSuggestedFriends(1);
+        
+        // Cả user1 (bản thân) và u3 (đã là bạn bè) đều bị lọc mất
+        assertEquals(0, suggestions.size()); 
+    }
+
+    // ==========================================
+    // 🟢 BỔ SUNG: HÀM GET FRIENDS BY STUDENT CODE (CHƯA TỪNG ĐƯỢC TEST)
+    // ==========================================
+
+    @Test
+    void getFriendsByStudentCode_whenUserNotFound_shouldThrow() {
+        when(userRepository.findByStudentCode("GHOST")).thenReturn(Optional.empty());
+        PageRequest pageable = PageRequest.of(0, 10);
+        
+        RuntimeException ex = assertThrows(RuntimeException.class, 
+                () -> friendshipService.getFriendsByStudentCode("GHOST", pageable));
+        assertEquals("User with studentCode GHOST not found", ex.getMessage());
+    }
+
+    @Test
+    void getFriendsByStudentCode_whenValid_shouldReturnDTOPage() {
+        when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(user1));
+        PageRequest pageable = PageRequest.of(0, 10);
+        
+        // Tạo một user bạn bè giả mạo
+        User friend = new User();
+        friend.setId(2);
+        friend.setStudentCode("FRIEND_CODE");
+        friend.setFullName("Bạn Tốt");
+        friend.setAvatarUrl("avatar.png");
+        
+        Page<User> friendPage = new PageImpl<>(List.of(friend));
+        when(friendshipRepository.findFriends(user1.getId(), pageable)).thenReturn(friendPage);
+        
+        // Gọi hàm (sẽ tự động gọi luôn hàm private toFriendResponseDTO)
+        Page<FriendResponseDTO> result = friendshipService.getFriendsByStudentCode("1412", pageable);
+        
+        // Xác minh kết quả ánh xạ DTO
+        assertEquals(1, result.getTotalElements());
+        assertEquals(2, result.getContent().get(0).getId());
+        assertEquals("FRIEND_CODE", result.getContent().get(0).getStudentCode());
+        assertEquals("Bạn Tốt", result.getContent().get(0).getFullName());
+        assertEquals("avatar.png", result.getContent().get(0).getAvatarUrl());
+    }
 }

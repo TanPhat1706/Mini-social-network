@@ -20,6 +20,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -177,5 +179,139 @@ class ChatControllerTest extends BaseControllerTest {
 
         // Xác minh Repository đã được gọi với đúng tham số: (partnerId, myId)
         verify(chatMessageRepository).markMessagesAsRead(eq(2), eq(1));
+    }
+    // ==========================================
+    // 🟢 BỔ SUNG: CÁC NHÁNH CỦA PROCESS MESSAGE
+    // ==========================================
+
+    @Test
+    void processMessage_whenReceiverAndSenderNotFound_shouldStillSaveButNotBroadcast() {
+        when(chatMessageRepository.save(any(ChatMessage.class))).thenReturn(mockMessage);
+        
+        // 🟢 Cố tình trả về null để lấp 2 nhánh if (receiver != null) và if (sender != null)
+        when(userRepository.findById(2)).thenReturn(Optional.empty()); 
+        when(userRepository.findById(1)).thenReturn(Optional.empty()); 
+
+        chatController.processMessage(mockMessage);
+
+        verify(chatMessageRepository).save(mockMessage);
+        // Đảm bảo MessagingTemplate không bao giờ được gọi
+        verify(messagingTemplate, never()).convertAndSendToUser(anyString(), anyString(), any(ChatMessage.class));
+    }
+
+    // ==========================================
+    // 🟢 BỔ SUNG: CÁC NHÁNH CỦA MARK AS READ
+    // ==========================================
+
+    @Test
+    @WithMockUser(username = "test@example.com")
+    void markAsRead_whenUserFoundByEmail_shouldSucceed() throws Exception {
+        // 🟢 Lấp nhánh tìm bằng Email
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(currentUser));
+
+        mockMvc.perform(put("/api/auth/messages/read/2")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        verify(chatMessageRepository).markMessagesAsRead(eq(2), eq(1));
+    }
+
+    @Test
+    @WithMockUser(username = "ghost")
+    void markAsRead_whenUserNotFound_shouldDoNothingButReturn200() throws Exception {
+        // 🟢 Lấp nhánh không tìm thấy user
+        when(userRepository.findByEmail("ghost")).thenReturn(Optional.empty());
+        when(userRepository.findByStudentCode("ghost")).thenReturn(Optional.empty());
+
+        mockMvc.perform(put("/api/auth/messages/read/2")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        // Đảm bảo Repository không được gọi vì currentUser == null
+        verify(chatMessageRepository, never()).markMessagesAsRead(anyInt(), anyInt());
+    }
+
+    // ==========================================
+    // 🟢 BỔ SUNG: CÁC NHÁNH CỦA GET RECENT CONVERSATIONS
+    // ==========================================
+
+    @Test
+    @WithMockUser(username = "test@example.com")
+    void getRecentConversations_whenUserFoundByEmail_shouldReturnList() throws Exception {
+        // 🟢 Lấp nhánh tìm bằng Email
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(currentUser));
+        when(chatMessageRepository.findRecentMessages(1)).thenReturn(List.of(mockMessage));
+        when(userRepository.findById(2)).thenReturn(Optional.of(partnerUser));
+
+        mockMvc.perform(get("/api/auth/messages/recent"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "ghost")
+    void getRecentConversations_whenUserNotFound_shouldReturn404() throws Exception {
+        // 🟢 Lấp nhánh không tìm thấy user -> Trả về 404
+        when(userRepository.findByEmail("ghost")).thenReturn(Optional.empty());
+        when(userRepository.findByStudentCode("ghost")).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/auth/messages/recent"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "1412")
+    void getRecentConversations_whenPartnerNotFound_shouldSkipPartner() throws Exception {
+        when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(currentUser));
+        when(chatMessageRepository.findRecentMessages(1)).thenReturn(List.of(mockMessage));
+        
+        // 🟢 Lấp nhánh partner == null (Không add vào list conversations)
+        when(userRepository.findById(2)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/auth/messages/recent"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty()); // List trả về phải rỗng
+    }
+
+    @Test
+    @WithMockUser(username = "1412")
+    void getRecentConversations_testIsReadLogic() throws Exception {
+        when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(currentUser));
+
+        // Tạo 3 tin nhắn mô phỏng 3 nhánh logic của isRead
+        // 1. Đối tác gửi cho mình, mình chưa đọc -> isRead = false
+        ChatMessage msg1 = new ChatMessage();
+        msg1.setSenderId(2); msg1.setReceiverId(1); msg1.setRead(false);
+
+        // 2. Đối tác gửi cho mình, mình đã đọc -> isRead = true
+        ChatMessage msg2 = new ChatMessage();
+        msg2.setSenderId(3); msg2.setReceiverId(1); msg2.setRead(true);
+
+        // 3. Mình gửi cho đối tác -> isRead = true (Luôn true ở phía mình hiển thị inbox)
+        ChatMessage msg3 = new ChatMessage();
+        msg3.setSenderId(1); msg3.setReceiverId(4); msg3.setRead(false);
+
+        when(chatMessageRepository.findRecentMessages(1)).thenReturn(List.of(msg1, msg2, msg3));
+        
+        when(userRepository.findById(2)).thenReturn(Optional.of(buildUser(2, "User2")));
+        when(userRepository.findById(3)).thenReturn(Optional.of(buildUser(3, "User3")));
+        when(userRepository.findById(4)).thenReturn(Optional.of(buildUser(4, "User4")));
+
+        mockMvc.perform(get("/api/auth/messages/recent"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3))
+                // Kiểm tra nhánh 1
+                .andExpect(jsonPath("$[0].isRead").value(false))
+                // Kiểm tra nhánh 2
+                .andExpect(jsonPath("$[1].isRead").value(true))
+                // Kiểm tra nhánh 3
+                .andExpect(jsonPath("$[2].isRead").value(true));
+    }
+
+    // Hàm tiện ích tạo User cho test
+    private User buildUser(Integer id, String name) {
+        User u = new User();
+        u.setId(id);
+        u.setFullName(name);
+        return u;
     }
 }

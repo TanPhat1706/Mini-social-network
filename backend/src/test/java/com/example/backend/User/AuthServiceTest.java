@@ -460,4 +460,129 @@ class AuthServiceTest {
         verify(userRepository).save(any(User.class));
         verify(spy, times(2)).saveFile(any());
     }
+    // ==========================================
+    // 🟢 BỔ SUNG TEST CASE: SECURITY HISTORY (Nhánh thiết bị di động & Chuỗi rỗng)
+    // ==========================================
+
+    @Test
+    void saveSecurityHistory_withMobileAgent_shouldParseDeviceCorrectly() {
+        User u = new User();
+        String ip = "192.168.1.1";
+        // User-Agent của iPhone
+        String ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1";
+        
+        ArgumentCaptor<SecurityHistory> captor = ArgumentCaptor.forClass(SecurityHistory.class);
+        when(securityHistoryRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        authService.saveSecurityHistory(u, ip, ua, "SUCCESS", "session-ios");
+
+        SecurityHistory saved = captor.getValue();
+        // Kiểm tra xem luồng else (ghép tên OS và Device) có hoạt động đúng không
+        assertTrue(saved.getDevice().contains("iOS"));
+        assertTrue(saved.getDevice().contains("iPhone")); // Kết quả mong muốn: "iOS 16 (iPhone)"
+    }
+
+    @Test
+    void saveSecurityHistory_withEmptyAgent_shouldFallback() {
+        User u = new User();
+        ArgumentCaptor<SecurityHistory> captor = ArgumentCaptor.forClass(SecurityHistory.class);
+        when(securityHistoryRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        // Truyền chuỗi rỗng "" thay vì null
+        authService.saveSecurityHistory(u, "127.0.0.1", "", "FAILED", "session-empty");
+
+        SecurityHistory saved = captor.getValue();
+        assertEquals("Unknown Browser", saved.getBrowser());
+        assertEquals("Unknown Device", saved.getDevice());
+    }
+
+    // ==========================================
+    // 🟢 BỔ SUNG TEST CASE: CHANGE PASSWORD (Đang thiếu hoàn toàn)
+    // ==========================================
+
+    @Test
+    void changePassword_whenPasswordsDoNotMatch_shouldThrowBadRequest() {
+        ChangePasswordRequest req = new ChangePasswordRequest();
+        req.setOldPassword("oldPass");
+        req.setNewPassword("newPass123");
+        req.setConfirmPassword("differentPass"); // Không khớp
+
+        BadRequestException ex = assertThrows(BadRequestException.class, 
+                () -> authService.changePassword(1, req));
+        assertEquals("Mật khẩu xác nhận không khớp", ex.getMessage());
+        verify(userRepository, never()).findById(anyInt());
+    }
+
+    @Test
+    void changePassword_whenUserNotFound_shouldThrowBadRequest() {
+        ChangePasswordRequest req = new ChangePasswordRequest();
+        req.setOldPassword("oldPass");
+        req.setNewPassword("newPass123");
+        req.setConfirmPassword("newPass123");
+
+        when(userRepository.findById(99)).thenReturn(Optional.empty());
+
+        BadRequestException ex = assertThrows(BadRequestException.class, 
+                () -> authService.changePassword(99, req));
+        assertEquals("Người dùng không tồn tại", ex.getMessage());
+    }
+
+    @Test
+    void changePassword_whenOldPasswordIncorrect_shouldThrowBadRequest() {
+        ChangePasswordRequest req = new ChangePasswordRequest();
+        req.setOldPassword("wrongOldPass");
+        req.setNewPassword("newPass123");
+        req.setConfirmPassword("newPass123");
+
+        User u = new User();
+        u.setPassword("hashedOldPass");
+
+        when(userRepository.findById(1)).thenReturn(Optional.of(u));
+        when(passwordEncoder.matches("wrongOldPass", "hashedOldPass")).thenReturn(false);
+
+        BadRequestException ex = assertThrows(BadRequestException.class, 
+                () -> authService.changePassword(1, req));
+        assertEquals("Mật khẩu cũ không chính xác", ex.getMessage());
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void changePassword_whenNewPasswordSameAsOld_shouldThrowBadRequest() {
+        ChangePasswordRequest req = new ChangePasswordRequest();
+        req.setOldPassword("samePass");
+        req.setNewPassword("samePass");
+        req.setConfirmPassword("samePass");
+
+        User u = new User();
+        u.setPassword("hashedOldPass");
+
+        when(userRepository.findById(1)).thenReturn(Optional.of(u));
+        when(passwordEncoder.matches("samePass", "hashedOldPass")).thenReturn(true);
+
+        BadRequestException ex = assertThrows(BadRequestException.class, 
+                () -> authService.changePassword(1, req));
+        assertEquals("Mật khẩu mới phải khác mật khẩu cũ", ex.getMessage());
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void changePassword_whenValidRequest_shouldUpdateAndSave() {
+        ChangePasswordRequest req = new ChangePasswordRequest();
+        req.setOldPassword("oldPass");
+        req.setNewPassword("newPass123");
+        req.setConfirmPassword("newPass123");
+
+        User u = new User();
+        u.setPassword("hashedOldPass");
+
+        when(userRepository.findById(1)).thenReturn(Optional.of(u));
+        when(passwordEncoder.matches("oldPass", "hashedOldPass")).thenReturn(true);
+        when(passwordEncoder.encode("newPass123")).thenReturn("hashedNewPass123");
+
+        authService.changePassword(1, req);
+
+        assertEquals("hashedNewPass123", u.getPassword());
+        assertNotNull(u.getLastPasswordResetAt());
+        verify(userRepository).save(u);
+    }
 }

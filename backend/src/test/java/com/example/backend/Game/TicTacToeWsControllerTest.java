@@ -25,6 +25,8 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNotNull;
@@ -205,5 +207,154 @@ class TicTacToeWsControllerTest {
         session.setCurrentTurn(currentTurn);
         session.setWinnerId(winnerId);
         return session;
+    }
+    // ==========================================
+    // 🟢 BỔ SUNG: TEST START GAME
+    // ==========================================
+
+    @Test
+    void startGame_whenSuccess_shouldBroadcastGameStart() {
+        StartGameRequest request = new StartGameRequest();
+        request.setSessionId(88L);
+        mockAuthenticatedUser(hostUser);
+
+        when(ticTacToeService.startGame(88L, 1)).thenReturn(waitingSession);
+
+        ticTacToeWsController.startGame(request, authentication);
+
+        ArgumentCaptor<GameWsEvent> eventCaptor = ArgumentCaptor.forClass(GameWsEvent.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/game/88"), eventCaptor.capture());
+
+        GameWsEvent event = eventCaptor.getValue();
+        assertEquals(GameEventType.GAME_START, event.getType());
+        assertEquals("Game started.", event.getMessage());
+    }
+
+    @Test
+    void startGame_whenServiceThrows_shouldSendErrorToCurrentUser() {
+        StartGameRequest request = new StartGameRequest();
+        request.setSessionId(88L);
+        mockAuthenticatedUser(hostUser);
+
+        when(ticTacToeService.startGame(88L, 1)).thenThrow(new GameException("Only host can start game"));
+        when(userRepository.findById(1)).thenReturn(Optional.of(hostUser));
+
+        ticTacToeWsController.startGame(request, authentication);
+
+        verify(messagingTemplate).convertAndSendToUser(eq("HOST001"), eq("/queue/game-events"), any(GameWsEvent.class));
+    }
+
+    // ==========================================
+    // 🟢 BỔ SUNG: TEST MAKE MOVE (GAME UPDATE & EXCEPTION)
+    // ==========================================
+
+    @Test
+    void makeMove_whenGameContinues_shouldBroadcastGameUpdate() {
+        GameMoveRequest request = new GameMoveRequest();
+        request.setSessionId(88L);
+        request.setRow(1);
+        request.setCol(1);
+        mockAuthenticatedUser(hostUser);
+
+        // Trả về session đang PLAYING và chưa có winner
+        GameSession playingSession = buildSession(88L, GameSessionStatus.PLAYING, "----X----", 2, null);
+        when(ticTacToeService.makeMove(88L, 1, 1, 1)).thenReturn(playingSession);
+
+        ticTacToeWsController.makeMove(request, authentication);
+
+        ArgumentCaptor<GameWsEvent> eventCaptor = ArgumentCaptor.forClass(GameWsEvent.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/game/88"), eventCaptor.capture());
+
+        GameWsEvent event = eventCaptor.getValue();
+        assertEquals(GameEventType.GAME_UPDATE, event.getType()); // 🟢 Nhánh GAME_UPDATE
+        assertEquals("Move updated.", event.getMessage());
+    }
+
+    @Test
+    void makeMove_whenServiceThrows_shouldSendError() {
+        GameMoveRequest request = new GameMoveRequest();
+        request.setSessionId(88L);
+        mockAuthenticatedUser(hostUser);
+
+        when(ticTacToeService.makeMove(anyLong(), anyInt(), any(), any())).thenThrow(new GameException("Invalid move"));
+        when(userRepository.findById(1)).thenReturn(Optional.of(hostUser));
+
+        ticTacToeWsController.makeMove(request, authentication);
+
+        verify(messagingTemplate).convertAndSendToUser(eq("HOST001"), eq("/queue/game-events"), any(GameWsEvent.class));
+    }
+
+    // ==========================================
+    // 🟢 BỔ SUNG: TEST JOIN ROOM EXCEPTION & SEND TO USER NULL
+    // ==========================================
+
+    @Test
+    void joinRoom_whenServiceThrows_shouldSendError() {
+        JoinRoomRequest request = new JoinRoomRequest();
+        request.setSessionId(88L);
+        mockAuthenticatedUser(guestUser);
+
+        when(ticTacToeService.getSession(88L)).thenThrow(new GameException("Session not found"));
+        when(userRepository.findById(2)).thenReturn(Optional.of(guestUser));
+
+        ticTacToeWsController.joinRoom(request, authentication);
+
+        verify(messagingTemplate).convertAndSendToUser(eq("GUEST002"), eq("/queue/game-events"), any(GameWsEvent.class));
+    }
+
+    @Test
+    void joinRoom_whenServiceThrows_andUserNotInDb_shouldNotSendWebSocketMessage() {
+        JoinRoomRequest request = new JoinRoomRequest();
+        request.setSessionId(88L);
+        mockAuthenticatedUser(guestUser);
+
+        when(ticTacToeService.getSession(88L)).thenThrow(new GameException("Session error"));
+        // 🟢 Cố tình trả về empty để test nhánh user == null trong hàm sendToUser
+        when(userRepository.findById(2)).thenReturn(Optional.empty()); 
+
+        ticTacToeWsController.joinRoom(request, authentication);
+
+        // Không gửi tin nhắn nào đi vì user không tồn tại
+        verify(messagingTemplate, never()).convertAndSendToUser(anyString(), anyString(), any(GameWsEvent.class));
+    }
+
+    // ==========================================
+    // 🟢 BỔ SUNG: TEST GET CURRENT USER ID (CÁC NHÁNH LỖI)
+    // ==========================================
+
+    @Test
+    void getCurrentUserId_whenUserFoundByEmail_shouldSucceed() {
+        JoinRoomRequest request = new JoinRoomRequest();
+        request.setSessionId(88L);
+
+        when(authentication.isAuthenticated()).thenReturn(true);
+        when(authentication.getName()).thenReturn("guest@example.com"); // Đăng nhập bằng Email
+        
+        // Không tìm thấy theo Student Code
+        when(userRepository.findByStudentCode("guest@example.com")).thenReturn(Optional.empty());
+        // 🟢 Nhánh: Tìm thấy bằng Email (Lambda function)
+        when(userRepository.findByEmail("guest@example.com")).thenReturn(Optional.of(guestUser)); 
+        
+        when(ticTacToeService.getSession(88L)).thenReturn(waitingSession);
+
+        ticTacToeWsController.joinRoom(request, authentication);
+
+        verify(messagingTemplate).convertAndSend(eq("/topic/game/88"), any(GameWsEvent.class));
+    }
+
+    @Test
+    void getCurrentUserId_whenUserCompletelyNotFound_shouldThrow() {
+        JoinRoomRequest request = new JoinRoomRequest();
+        request.setSessionId(88L);
+
+        when(authentication.isAuthenticated()).thenReturn(true);
+        when(authentication.getName()).thenReturn("ghost_user");
+        
+        // 🟢 Nhánh: Tìm cả Code và Email đều không ra
+        when(userRepository.findByStudentCode("ghost_user")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("ghost_user")).thenReturn(Optional.empty()); 
+
+        GameException ex = assertThrows(GameException.class, () -> ticTacToeWsController.joinRoom(request, authentication));
+        assertEquals("Current user not found", ex.getMessage());
     }
 }

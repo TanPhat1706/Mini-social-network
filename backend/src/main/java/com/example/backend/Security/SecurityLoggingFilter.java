@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 @Component
 public class SecurityLoggingFilter extends OncePerRequestFilter {
 
-    private static final Logger log = LoggerFactory.getLogger("SECURITY");
+    private Logger log = LoggerFactory.getLogger("SECURITY");
 
     // ===== Detect patterns =====
     private static final Pattern SQLI = Pattern.compile(

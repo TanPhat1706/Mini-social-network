@@ -171,4 +171,137 @@ class TicTacToeServiceTest {
         verify(vptlService).addGameExp(1, 50); 
         verify(vptlService).addGameExp(2, 50); 
     }
+    // ==========================================
+    // 🟢 BỔ SUNG: TEST CREATE SESSION & GET SESSION
+    // ==========================================
+
+    @Test
+    void createSession_shouldReturnNewWaitingSession() {
+        when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        GameSession created = ticTacToeService.createSession(1);
+
+        assertEquals(1, created.getHostId());
+        assertEquals(GameSessionStatus.WAITING, created.getStatus());
+        assertEquals("---------", created.getBoard());
+        assertNotNull(created.getUpdatedAt());
+    }
+
+    @Test
+    void getSession_whenNotFound_shouldThrowException() {
+        when(gameSessionRepository.findById(99L)).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> ticTacToeService.getSession(99L));
+        assertEquals("Game session not found", ex.getMessage());
+    }
+
+    // ==========================================
+    // 🟢 BỔ SUNG: CÁC NHÁNH EXCEPTION CỦA ACCEPT INVITE
+    // ==========================================
+
+    @Test
+    void acceptInvite_whenMessageNotFound_shouldThrow() {
+        when(chatMessageRepository.findById(99L)).thenReturn(Optional.empty());
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> ticTacToeService.acceptInvite(99L, 2));
+        assertEquals("Invite message not found", ex.getMessage());
+    }
+
+    @Test
+    void acceptInvite_whenNotGameInvite_shouldThrow() {
+        ChatMessage msg = new ChatMessage();
+        msg.setMessageType(MessageType.TEXT); // Sai loại tin nhắn
+        when(chatMessageRepository.findById(100L)).thenReturn(Optional.of(msg));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> ticTacToeService.acceptInvite(100L, 2));
+        assertEquals("Message is not a game invite", ex.getMessage());
+    }
+
+    @Test
+    void acceptInvite_whenNotReceiver_shouldThrow() {
+        ChatMessage msg = new ChatMessage();
+        msg.setMessageType(MessageType.GAME_INVITE);
+        msg.setReceiverId(2); // Người nhận là 2
+        when(chatMessageRepository.findById(100L)).thenReturn(Optional.of(msg));
+
+        // Người bấm chấp nhận là 3 (Kẻ gian)
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> ticTacToeService.acceptInvite(100L, 3));
+        assertEquals("Only invite receiver can accept", ex.getMessage());
+    }
+
+    // ==========================================
+    // 🟢 BỔ SUNG: CÁC NHÁNH EXCEPTION CỦA START GAME
+    // ==========================================
+
+    @Test
+    void startGame_whenNotHost_shouldThrow() {
+        when(gameSessionRepository.findById(10L)).thenReturn(Optional.of(session));
+
+        // Người bấm start là Guest (2), không phải Host (1)
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> ticTacToeService.startGame(10L, 2));
+        assertEquals("Only host can start game", ex.getMessage());
+    }
+
+    @Test
+    void startGame_whenStatusNotWaiting_shouldThrow() {
+        session.setStatus(GameSessionStatus.PLAYING); // Đã start rồi
+        when(gameSessionRepository.findById(10L)).thenReturn(Optional.of(session));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> ticTacToeService.startGame(10L, 1));
+        assertEquals("Game is not in waiting state", ex.getMessage());
+    }
+
+    // ==========================================
+    // 🟢 BỔ SUNG: CÁC NHÁNH EXCEPTION CỦA MAKE MOVE & VALIDATE PLAYER
+    // ==========================================
+
+    @Test
+    void makeMove_whenNotInSession_shouldThrow() {
+        when(gameSessionRepository.findById(10L)).thenReturn(Optional.of(session));
+
+        // Người đánh là 99 (Không phải host 1, cũng không phải guest 2)
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> ticTacToeService.makeMove(10L, 99, 0, 0));
+        assertEquals("You are not in this game session", ex.getMessage());
+    }
+
+    @Test
+    void makeMove_whenGameNotPlaying_shouldThrow() {
+        session.setStatus(GameSessionStatus.FINISHED);
+        when(gameSessionRepository.findById(10L)).thenReturn(Optional.of(session));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> ticTacToeService.makeMove(10L, 1, 0, 0));
+        assertEquals("Game is not playing", ex.getMessage());
+    }
+
+    @Test
+    void makeMove_whenBoundsAreNullOrNegative_shouldThrow() {
+        // Kiểm tra nhánh row == null hoặc col == null hoặc số âm
+        assertThrows(RuntimeException.class, () -> ticTacToeService.makeMove(10L, 1, null, 0));
+        assertThrows(RuntimeException.class, () -> ticTacToeService.makeMove(10L, 1, 0, null));
+        assertThrows(RuntimeException.class, () -> ticTacToeService.makeMove(10L, 1, -1, 0));
+        assertThrows(RuntimeException.class, () -> ticTacToeService.makeMove(10L, 1, 0, 3));
+    }
+
+    // ==========================================
+    // 🟢 BỔ SUNG: KỊCH BẢN GUEST (O) CHIẾN THẮNG
+    // ==========================================
+
+    @Test
+    void makeMove_whenGuestWins_shouldFinishAndReward() {
+        // Tình huống: O O - | X X - | - - -
+        session.setBoard("OO-XX----");
+        session.setCurrentTurn(2); // Lượt của Guest
+        when(gameSessionRepository.findById(10L)).thenReturn(Optional.of(session));
+        when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // Guest (O) đánh vào ô (0, 2) tạo thành hàng ngang 3 O
+        GameSession updated = ticTacToeService.makeMove(10L, 2, 0, 2);
+
+        assertEquals("OOOXX----", updated.getBoard());
+        assertEquals(GameSessionStatus.FINISHED, updated.getStatus());
+        assertEquals(2, updated.getWinnerId()); // Guest thắng
+
+        // Kiểm tra phần thưởng (Guest +100, Host +20)
+        verify(vptlService).addGameExp(2, 100); 
+        verify(vptlService).addGameExp(1, 20);  
+    }
 }

@@ -4,13 +4,18 @@ import java.util.HashMap;
 import java.util.Map;
 import com.example.backend.User.BadRequestException;
 import com.example.backend.User.UserProfileNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Slf4j // 🟢 BẬT LOG: Rất quan trọng cho môi trường AWS
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
     @ExceptionHandler(UserProfileNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleUserProfileNotFound(UserProfileNotFoundException ex) {
         Map<String, String> errorResponse = new HashMap<>();
@@ -29,12 +34,38 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
+    // ==========================================
+    // 🟢 THÊM MỚI: BẮT LỖI VALIDATION TỪ @Valid
+    // ==========================================
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("error", "Validation Failed");
+        errorResponse.put("message", "Dữ liệu đầu vào không hợp lệ");
+
+        // Gom toàn bộ lỗi của các trường (fields) bị sai vào một Map
+        Map<String, String> fieldErrors = new HashMap<>();
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            fieldErrors.put(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+        
+        // Trả về chi tiết các field bị lỗi cho Frontend dễ parse
+        errorResponse.put("details", fieldErrors);
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    // ==========================================
+    // 🟢 CẬP NHẬT: CHỐT CHẶN CUỐI CÙNG (LỖI 500)
+    // ==========================================
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGlobalException(Exception ex) {
-        // log.error("Lỗi hệ thống: ", ex);
+        // 🟢 MỞ COMMENT BẮT BUỘC: Nếu không ghi log ở đây, khi lên Cloud bạn sẽ "mù rờ" không biết vì sao app sập
+        log.error("Lỗi hệ thống nghiêm trọng (500 Internal Server Error): ", ex);
 
         Map<String, String> errorResponse = new HashMap<>();
         errorResponse.put("error", "Internal Server Error");
+        // Giấu chi tiết lỗi thực sự với người dùng để bảo mật (Không leak database/code info)
         errorResponse.put("message", "Hệ thống đang gặp sự cố, vui lòng thử lại sau.");
         
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);

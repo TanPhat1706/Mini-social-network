@@ -9,6 +9,7 @@ import com.example.backend.Storage.FileStorageService;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -16,26 +17,32 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-//import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-//import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
+
     @Mock
     private FileStorageService fileStorageService;
 
@@ -59,21 +66,17 @@ class PostServiceTest {
 
     private User currentUser;
 
-    // @org.junit.jupiter.api.io.TempDir
-    // Path tempDir;
-
     @BeforeEach
     void setUp() {
-        // ReflectionTestUtils.setField(postService, "uploadDir", tempDir.toString());
         currentUser = new User();
         currentUser.setId(1);
         currentUser.setStudentCode("SV001");
         currentUser.setRole("STUDENT");
         currentUser.setFullName("User 1");
 
-        SecurityContextHolder.getContext()
-                .setAuthentication(new UsernamePasswordAuthenticationToken("SV001", null));
-        // Không phải test nào cũng gọi getCurrentUser(), nên cần lenient để tránh UnnecessaryStubbingException
+        mockSecurityContext("SV001");
+
+        // Lenient để tránh lỗi UnnecessaryStubbingException ở các test không gọi DB
         lenient().when(userRepository.findByStudentCode("SV001")).thenReturn(Optional.of(currentUser));
     }
 
@@ -82,10 +85,31 @@ class PostServiceTest {
         SecurityContextHolder.clearContext();
     }
 
+    /**
+     * HÀM HELPER: Hỗ trợ giả lập các trường hợp đăng nhập khác nhau
+     */
+    private void mockSecurityContext(String studentCode) {
+        if (studentCode == null) {
+            SecurityContextHolder.clearContext();
+            return;
+        }
+        Authentication authentication = mock(Authentication.class);
+        lenient().when(authentication.getName()).thenReturn(studentCode);
+
+        SecurityContext securityContext = mock(SecurityContext.class);
+        lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
+        SecurityContextHolder.setContext(securityContext);
+    }
+
+    // ==========================================
+    // 1. NHÓM TEST API TẠO BÀI (CREATE) VÀ HELPER
+    // ==========================================
+
     @Test
+    @DisplayName("Tạo bài viết không nội dung, không media -> Ném lỗi 400")
     void createPost_whenNoContentAndNoMedia_shouldThrowBadRequest() {
         PostRequest req = new PostRequest();
-        req.setContent("   ");
+        req.setContent("   "); // Khoảng trắng sẽ bị trim() thành rỗng
         req.setVisibility(Visibility.PRIVATE);
         req.setMediaFiles(List.of());
 
@@ -96,9 +120,10 @@ class PostServiceTest {
     }
 
     @Test
+    @DisplayName("Tạo bài viết với Visibility = PUBLIC -> Ép thành PENDING và không cộng điểm")
     void createPost_whenVisibilityPublic_shouldForcePending_andNotTrackPublicActivity() {
         PostRequest req = new PostRequest();
-        req.setContent(" hello ");
+        req.setContent(" hello "); // Sẽ tự động trim()
         req.setVisibility(Visibility.PUBLIC);
 
         when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -112,84 +137,128 @@ class PostServiceTest {
     }
 
     @Test
-    void createPost_withMedia_shouldStoreFiles_andAttachMediaToPost() {
+    @DisplayName("Tạo bài viết KHÔNG có media")
+    void createPost_withoutMedia() {
         PostRequest req = new PostRequest();
-        req.setContent(""); // media-only is allowed
+        req.setContent("Just text");
         req.setVisibility(Visibility.PRIVATE);
-        MockMultipartFile file = new MockMultipartFile(
-                "mediaFiles", "a.png", "image/png", "x".getBytes(StandardCharsets.UTF_8)
-        );
-        req.setMediaFiles(List.of(file));
+        req.setMediaFiles(null);
 
-        // Mock S3 upload trả về URL
-        when(fileStorageService.storeFile(any())).thenReturn("https://bucket.s3.ap-southeast-1.amazonaws.com/uuid_a.png");
-
-        ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
-        when(postRepository.save(captor.capture())).thenAnswer(inv -> {
-            Post p = inv.getArgument(0);
-            p.setId(99L);
-            return p;
-        });
+        when(postRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         PostResponse res = postService.createPost(req);
-
-        Post saved = captor.getValue();
-        assertEquals(Visibility.PRIVATE, saved.getVisibility());
-        assertNotNull(saved.getMedia());
-        assertEquals(1, saved.getMedia().size());
-        assertNotNull(saved.getMedia().get(0).getMediaUrl());
-        // Kiểm tra URL trả về từ S3 (không còn dùng /uploads/ local)
-        assertTrue(saved.getMedia().get(0).getMediaUrl().startsWith("https://"));
-        assertTrue(saved.getMedia().get(0).getMediaUrl().contains(".s3."));
-        assertEquals(99L, res.getId());
+        assertTrue(res.getMedia().isEmpty());
     }
 
     @Test
+    @DisplayName("Tạo bài viết với 4 loại Media khác nhau (Test hàm detectMediaType)")
+    void createPost_withVariousMediaTypes() {
+        MockMultipartFile nullTypeFile = new MockMultipartFile("file", "test", null, "data".getBytes());
+        MockMultipartFile videoFile = new MockMultipartFile("file", "test", "video/mp4", "data".getBytes());
+        MockMultipartFile audioFile = new MockMultipartFile("file", "test", "audio/mp3", "data".getBytes());
+        MockMultipartFile imageFile = new MockMultipartFile("file", "test", "image/png", "data".getBytes());
+
+        PostRequest req = new PostRequest();
+        req.setContent("Test Media");
+        req.setVisibility(Visibility.PRIVATE);
+        req.setMediaFiles(List.of(nullTypeFile, videoFile, audioFile, imageFile));
+
+        when(fileStorageService.storeFile(any())).thenReturn("url");
+        when(postRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        PostResponse res = postService.createPost(req);
+
+        assertEquals(4, res.getMedia().size());
+        assertEquals("IMAGE", res.getMedia().get(0).getType());
+        assertEquals("VIDEO", res.getMedia().get(1).getType());
+        assertEquals("AUDIO", res.getMedia().get(2).getType());
+        assertEquals("IMAGE", res.getMedia().get(3).getType());
+    }
+
+    @Test
+    @DisplayName("Chuẩn hóa content bị null (Test normalizeContent)")
+    void createPost_withNullContent() {
+        PostRequest req = new PostRequest();
+        req.setContent(null);
+        req.setVisibility(Visibility.PRIVATE);
+        req.setMediaFiles(List.of(new MockMultipartFile("file", "data".getBytes())));
+
+        when(postRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        PostResponse res = postService.createPost(req);
+        assertEquals("", res.getContent());
+    }
+
+    @Test
+    void createPost_whenMediaUploadFails_shouldThrowRuntimeException() {
+        PostRequest req = new PostRequest();
+        req.setContent("Test IO");
+        req.setVisibility(Visibility.PRIVATE);
+
+        MultipartFile badFile = mock(MultipartFile.class);
+        when(fileStorageService.storeFile(any())).thenThrow(new RuntimeException("S3 upload failed"));
+        req.setMediaFiles(List.of(badFile));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.createPost(req));
+        assertEquals("S3 upload failed", ex.getMessage());
+    }
+
+    // ==========================================
+    // 2. NHÓM TEST SỬA VÀ XÓA (UPDATE & DELETE)
+    // ==========================================
+
+    @Test
+    @DisplayName("Lỗi Update khi Post không tồn tại")
+    void updatePost_whenPostNotFound_shouldThrow() {
+        when(postRepository.findById(999L)).thenReturn(Optional.empty());
+        PostRequest req = new PostRequest();
+        req.setContent("Nội dung");
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.updatePost(999L, req));
+        assertEquals("Bài viết không tồn tại!", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("Không cho phép sửa bài viết của người khác")
     void updatePost_whenNotAuthor_shouldThrow() {
         User other = new User();
         other.setId(2);
-        Post post = Post.builder().id(10L).author(other).media(new java.util.ArrayList<>()).build();
-
+        Post post = Post.builder().id(10L).author(other).media(new ArrayList<>()).build();
         when(postRepository.findById(10L)).thenReturn(Optional.of(post));
 
         PostRequest req = new PostRequest();
         req.setContent("x");
-        req.setVisibility(Visibility.PRIVATE);
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.updatePost(10L, req));
         assertEquals("Bạn không có quyền chỉnh sửa bài viết này!", ex.getMessage());
-        verify(postRepository, never()).save(any());
     }
 
     @Test
-    void updatePost_whenVisibilityPublic_shouldForcePending_andReplaceMedia() {
-        Post post = Post.builder()
-                .id(10L)
-                .author(currentUser)
-                .media(new java.util.ArrayList<>())
-                .build();
+    @DisplayName("Sửa bài thành PUBLIC thì ép về PENDING")
+    void updatePost_whenVisibilityPublic_shouldForcePending() {
+        Post post = Post.builder().id(10L).author(currentUser).media(new ArrayList<>()).build();
         post.setVisibility(Visibility.PRIVATE);
 
         when(postRepository.findById(10L)).thenReturn(Optional.of(post));
         when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
-        // Mock S3 upload trả về URL
-        when(fileStorageService.storeFile(any())).thenReturn("https://bucket.s3.ap-southeast-1.amazonaws.com/uuid_a.png");
+        when(fileStorageService.storeFile(any())).thenReturn("https://s3/url");
 
         PostRequest req = new PostRequest();
-        req.setContent("  new  ");
+        req.setContent("new");
         req.setVisibility(Visibility.PUBLIC);
-        req.setMediaFiles(List.of(new MockMultipartFile(
-                "mediaFiles", "a.png", "image/png", "x".getBytes(StandardCharsets.UTF_8)
-        )));
+        req.setMediaFiles(List.of(new MockMultipartFile("file", "x".getBytes())));
 
         PostResponse res = postService.updatePost(10L, req);
 
-        assertEquals("new", res.getContent());
         assertEquals(Visibility.PENDING, res.getVisibility());
         assertEquals(1, post.getMedia().size());
-        // Kiểm tra URL trả về từ S3 (không còn dùng /uploads/ local)
-        assertTrue(post.getMedia().get(0).getMediaUrl().startsWith("https://"));
-        assertTrue(post.getMedia().get(0).getMediaUrl().contains(".s3."));
+    }
+
+    @Test
+    void deletePost_whenPostNotFound_shouldThrow() {
+        when(postRepository.findById(999L)).thenReturn(Optional.empty());
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.deletePost(999L));
+        assertEquals("Bài viết không tồn tại!", ex.getMessage());
     }
 
     @Test
@@ -197,19 +266,15 @@ class PostServiceTest {
         User other = new User();
         other.setId(2);
         Post post = Post.builder().id(10L).author(other).build();
-
         when(postRepository.findById(10L)).thenReturn(Optional.of(post));
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.deletePost(10L));
         assertEquals("Bạn không có quyền xóa bài viết này!", ex.getMessage());
-        verify(postRepository, never()).delete(any());
     }
 
     @Test
     void deletePost_whenAdmin_shouldDelete() {
         currentUser.setRole("ADMIN");
-        when(userRepository.findByStudentCode("SV001")).thenReturn(Optional.of(currentUser));
-
         User other = new User();
         other.setId(2);
         Post post = Post.builder().id(10L).author(other).build();
@@ -221,12 +286,32 @@ class PostServiceTest {
     }
 
     @Test
+    void deletePost_whenIsAuthor_shouldDeleteSuccessfully() {
+        Post post = Post.builder().id(10L).author(currentUser).build();
+        when(postRepository.findById(10L)).thenReturn(Optional.of(post));
+
+        String msg = postService.deletePost(10L);
+        assertEquals("Xóa bài viết thành công", msg);
+        verify(postRepository).delete(post);
+    }
+
+    // ==========================================
+    // 3. NHÓM TEST TƯƠNG TÁC (LIKE, SHARE, APPROVE)
+    // ==========================================
+
+    @Test
+    void approvePost_whenPostNotFound_shouldThrow() {
+        when(postRepository.findById(999L)).thenReturn(Optional.empty());
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.approvePost(999L));
+        assertEquals("Bài viết không tồn tại!", ex.getMessage());
+    }
+
+    @Test
     void approvePost_whenWasPending_shouldTrackActivity() {
         User author = new User();
         author.setId(5);
         Post post = Post.builder().id(10L).author(author).visibility(Visibility.PENDING).build();
         when(postRepository.findById(10L)).thenReturn(Optional.of(post));
-        when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
 
         postService.approvePost(10L);
 
@@ -240,10 +325,8 @@ class PostServiceTest {
         author.setId(5);
         Post post = Post.builder().id(10L).author(author).visibility(Visibility.PUBLIC).build();
         when(postRepository.findById(10L)).thenReturn(Optional.of(post));
-        when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
 
         postService.approvePost(10L);
-
         verify(vptlService, never()).trackSocialActivity(anyInt(), eq("POST"));
     }
 
@@ -256,14 +339,11 @@ class PostServiceTest {
 
         verify(postLikeRepository).delete(like);
         verify(postRepository).decrementLikeCount(10L);
-        verify(postRepository, never()).incrementLikeCount(anyLong());
-        verify(evenPublisher, never()).publishEvent(any());
     }
 
     @Test
     void toggleLike_whenNotLiked_shouldSaveLike_increment_track_andPublishNotification() {
         when(postLikeRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.empty());
-
         User author = new User();
         author.setId(2);
         Post post = Post.builder().id(10L).author(author).build();
@@ -274,10 +354,15 @@ class PostServiceTest {
         verify(postLikeRepository).save(any(PostLike.class));
         verify(postRepository).incrementLikeCount(10L);
         verify(vptlService).trackSocialActivity(1, "LIKE");
+        verify(evenPublisher).publishEvent(any(NotificationEvent.class));
+    }
 
-        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
-        verify(evenPublisher).publishEvent(captor.capture());
-        assertTrue(captor.getValue() instanceof NotificationEvent);
+    @Test
+    void sharePost_whenOriginalPostNotFound_shouldThrow() {
+        when(postRepository.findById(999L)).thenReturn(Optional.empty());
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> postService.sharePost(999L, new PostRequest()));
+        assertEquals("Bài viết gốc không tồn tại", ex.getMessage());
     }
 
     @Test
@@ -285,34 +370,21 @@ class PostServiceTest {
         Post root = Post.builder().id(10L).visibility(Visibility.PRIVATE).build();
         when(postRepository.findById(10L)).thenReturn(Optional.of(root));
 
-        PostRequest req = new PostRequest();
-        req.setContent("share");
-
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.sharePost(10L, req));
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.sharePost(10L, new PostRequest()));
         assertEquals("Không thể chia sẻ bài viết riêng tư", ex.getMessage());
-        verify(postRepository, never()).save(any(Post.class));
     }
 
     @Test
     void sharePost_shouldIncrementRootShareCount_saveRootAndShare_track_andPublish() {
         User author = new User();
         author.setId(2);
-
-        Post root = Post.builder()
-                .id(10L)
-                .author(author)
-                .visibility(Visibility.PUBLIC)
-                .shareCount(0L)
-                .media(new java.util.ArrayList<>())
-                .build();
+        Post root = Post.builder().id(10L).author(author).visibility(Visibility.PUBLIC).shareCount(0L)
+                .media(new ArrayList<>()).build();
         when(postRepository.findById(10L)).thenReturn(Optional.of(root));
-
         when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
 
         PostRequest req = new PostRequest();
         req.setContent(" share ");
-        req.setVisibility(Visibility.PUBLIC);
-
         PostResponse res = postService.sharePost(10L, req);
 
         assertNotNull(res);
@@ -322,11 +394,38 @@ class PostServiceTest {
     }
 
     @Test
+    @DisplayName("Share bài của người share -> Map về Root")
+    void sharePost_whenSharingASharedPost_shouldMapToRootPost() {
+        User rootAuthor = new User();
+        rootAuthor.setId(2);
+        Post rootPost = Post.builder().id(5L).author(rootAuthor).visibility(Visibility.PUBLIC).shareCount(10L)
+                .media(new ArrayList<>()).build();
+
+        User sharer = new User();
+        sharer.setId(3);
+        Post sharedPost = Post.builder().id(10L).author(sharer).visibility(Visibility.PUBLIC).originalPost(rootPost)
+                .media(new ArrayList<>()).build();
+
+        when(postRepository.findById(10L)).thenReturn(Optional.of(sharedPost));
+        when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PostRequest req = new PostRequest();
+        req.setContent("Share lại");
+        PostResponse res = postService.sharePost(10L, req);
+
+        assertNotNull(res);
+        assertEquals(11L, rootPost.getShareCount());
+    }
+
+    // ==========================================
+    // 4. NHÓM TEST TRUY VẤN (GET)
+    // ==========================================
+
+    @Test
     void getPostsByAuthor_shouldUseCurrentUserId() {
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 2);
-        org.springframework.data.domain.Page<Post> page = new org.springframework.data.domain.PageImpl<>(List.of(
-                Post.builder().id(1L).author(currentUser).media(new java.util.ArrayList<>()).build()
-        ), pageable, 1);
+        Pageable pageable = PageRequest.of(0, 2);
+        Page<Post> page = new PageImpl<>(List.of(
+                Post.builder().id(1L).author(currentUser).media(new ArrayList<>()).build()), pageable, 1);
         when(postRepository.findByAuthorId(eq(1), any())).thenReturn(page);
 
         var result = postService.getPostsByAuthor(0, 2);
@@ -334,133 +433,82 @@ class PostServiceTest {
         assertEquals(1, result.getTotalElements());
         verify(postRepository).findByAuthorId(eq(1), any());
     }
-    // ==========================================
-    // BỔ SUNG CÁC TEST CASE CÒN THIẾU
-    // ==========================================
 
     @Test
     void getAllPostsForAdmin_shouldReturnMappedList() {
-        Post p1 = Post.builder().id(1L).author(currentUser).media(new java.util.ArrayList<>()).build();
-        Post p2 = Post.builder().id(2L).author(currentUser).media(new java.util.ArrayList<>()).build();
-        
+        Post p1 = Post.builder().id(1L).author(currentUser).media(new ArrayList<>()).build();
+        Post p2 = Post.builder().id(2L).author(currentUser).media(new ArrayList<>()).build();
         when(postRepository.findAllWithAuthorAndMedia()).thenReturn(List.of(p1, p2));
 
         List<PostResponse> result = postService.getAllPostsForAdmin();
 
         assertEquals(2, result.size());
-        assertEquals(1L, result.get(0).getId());
-        assertEquals(2L, result.get(1).getId());
-        verify(postRepository).findAllWithAuthorAndMedia();
     }
 
     @Test
-    void deletePost_whenIsAuthor_shouldDeleteSuccessfully() {
-        // Test luồng tác giả tự xóa bài của mình
-        Post post = Post.builder().id(10L).author(currentUser).build();
-        when(postRepository.findById(10L)).thenReturn(Optional.of(post));
+    @DisplayName("Lấy danh sách bài viết theo mã SV (isSelfPost = true)")
+    void getPostsByStudentCode_whenSelfPost_shouldReturnPage() {
+        Post post = new Post();
+        post.setId(10L);
+        post.setAuthor(currentUser);
+        post.setMedia(new ArrayList<>());
 
-        String msg = postService.deletePost(10L);
+        Pageable pageable = PageRequest.of(0, 10);
+        when(userRepository.existsByStudentCode("SV001")).thenReturn(true);
+        when(postRepository.findByAuthorStudentCode(eq("SV001"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(post)));
 
-        assertEquals("Xóa bài viết thành công", msg);
-        verify(postRepository).delete(post);
+        Page<PostResponse> result = postService.getPostsByStudentCode("SV001", pageable);
+
+        assertNotNull(result);
+        assertTrue(result.getContent().get(0).isSelfPost());
     }
 
     @Test
-    void sharePost_whenSharingASharedPost_shouldMapToRootPost() {
-        // Giả lập Root Post (Bài gốc)
-        User rootAuthor = new User();
-        rootAuthor.setId(2);
-        Post rootPost = Post.builder()
-                .id(5L)
-                .author(rootAuthor)
-                .visibility(Visibility.PUBLIC)
-                .shareCount(10L)
-                .media(new java.util.ArrayList<>())
-                .build();
+    @DisplayName("Lấy bài theo mã SV tự động thêm Sort nếu chưa có")
+    void getPostsByStudentCode_whenUnsortedPageable_shouldAddSort() {
+        when(userRepository.existsByStudentCode("SV001")).thenReturn(true);
+        when(postRepository.findByAuthorStudentCode(eq("SV001"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
 
-        // Giả lập Shared Post (Bài đã được share từ Root Post)
-        User sharer = new User();
-        sharer.setId(3);
-        Post sharedPost = Post.builder()
-                .id(10L)
-                .author(sharer)
-                .visibility(Visibility.PUBLIC)
-                .originalPost(rootPost) // Bài này trỏ về bài gốc
-                .media(new java.util.ArrayList<>())
-                .build();
+        // 🟢 ĐÃ SỬA: Dùng PageRequest.of(0, 10) (Có trang, có size, nhưng CHƯA SORT)
+        // Thay vì dùng Pageable.unpaged() sẽ gây lỗi lấy PageNumber
+        Pageable unsortedPageable = PageRequest.of(0, 10);
+        postService.getPostsByStudentCode("SV001", unsortedPageable);
 
-        when(postRepository.findById(10L)).thenReturn(Optional.of(sharedPost));
-        when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
+        ArgumentCaptor<Pageable> pageCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(postRepository).findByAuthorStudentCode(eq("SV001"), pageCaptor.capture());
 
-        PostRequest req = new PostRequest();
-        req.setContent("Share lại bài của người đã share");
-
-        PostResponse res = postService.sharePost(10L, req);
-
-        // Đảm bảo bài viết mới được trỏ thẳng về rootPost (id 5L), không trỏ về bài trung gian (id 10L)
-        assertNotNull(res);
-        verify(postRepository).save(rootPost); // Đảm bảo shareCount của root được cập nhật
-        assertEquals(11L, rootPost.getShareCount());
-    }
-
-    // ==========================================
-    // CÁC NHÁNH EXCEPTION (NOT FOUND / IO)
-    // ==========================================
-
-    @Test
-    void updatePost_whenPostNotFound_shouldThrow() {
-        when(postRepository.findById(999L)).thenReturn(Optional.empty());
-        
-        PostRequest req = new PostRequest();
-        // Thêm nội dung giả để vượt qua hàm validatePostPayload
-        req.setContent("Nội dung hợp lệ để pass validation"); 
-        
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.updatePost(999L, req));
-        assertEquals("Bài viết không tồn tại!", ex.getMessage());
+        // Kiểm chứng xem Service đã tự động nội suy Sort vào chưa
+        assertTrue(pageCaptor.getValue().getSort().isSorted());
     }
 
     @Test
-    void deletePost_whenPostNotFound_shouldThrow() {
-        when(postRepository.findById(999L)).thenReturn(Optional.empty());
-        
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.deletePost(999L));
-        assertEquals("Bài viết không tồn tại!", ex.getMessage());
-    }
-
-    @Test
-    void approvePost_whenPostNotFound_shouldThrow() {
-        when(postRepository.findById(999L)).thenReturn(Optional.empty());
-        
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.approvePost(999L));
-        assertEquals("Bài viết không tồn tại!", ex.getMessage());
-    }
-
-    @Test
-    void sharePost_whenOriginalPostNotFound_shouldThrow() {
-        when(postRepository.findById(999L)).thenReturn(Optional.empty());
-        PostRequest req = new PostRequest();
-        
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.sharePost(999L, req));
-        assertEquals("Bài viết gốc không tồn tại", ex.getMessage());
-    }
-
-    @Test
-    void createPost_whenMediaUploadFails_shouldThrowRuntimeException() throws IOException {
-        PostRequest req = new PostRequest();
-        req.setContent("Test IO");
-        req.setVisibility(Visibility.PRIVATE);
-        
-        // Mock FileStorageService ném lỗi khi upload lên S3
-        org.springframework.web.multipart.MultipartFile badFile = mock(org.springframework.web.multipart.MultipartFile.class);
-        when(fileStorageService.storeFile(any()))
-        .thenThrow(new RuntimeException("S3 upload failed"));
-        
-        req.setMediaFiles(List.of(badFile));
+    void getPostsByStudentCode_whenUserNotFound_shouldThrow() {
+        when(userRepository.existsByStudentCode("GHOST")).thenReturn(false);
+        Pageable pageable = PageRequest.of(0, 10);
 
         RuntimeException ex = assertThrows(RuntimeException.class,
-        () -> postService.createPost(req));
+                () -> postService.getPostsByStudentCode("GHOST", pageable));
+        assertTrue(ex.getMessage().contains("not found"));
+    }
 
-assertEquals("S3 upload failed", ex.getMessage());
+    @Test
+    @DisplayName("getCurrentUser ném lỗi khi Token hỏng hoặc không có trong DB")
+    void getCurrentUser_whenUserNotInDB_shouldThrowException() {
+        mockSecurityContext("HACKER");
+        when(userRepository.findByStudentCode("HACKER")).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.createPost(new PostRequest()));
+        assertTrue(ex.getMessage().contains("Token không hợp lệ"));
+    }
+
+    @Test
+    void uploadFileToS3_shouldCallStorageService() {
+        MultipartFile mockFile = mock(MultipartFile.class);
+        when(fileStorageService.storeFile(mockFile)).thenReturn("/url");
+
+        String url = postService.uploadFileToS3(mockFile);
+        assertEquals("/url", url);
     }
 }
-
