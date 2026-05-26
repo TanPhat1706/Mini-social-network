@@ -14,20 +14,21 @@ import java.time.Duration;
 
 public class RealtimeSocialE2ETest {
 
+    // Delay giữa action
     private static final int ACTION_DELAY_MS = 250;
+    // Delay giữa các bước lớn để dễ quan sát
     private static final int STEP_DELAY_MS = 300;
 
+    // Listener Selenium dùng để "slow motion" toàn bộ thao tác.
     public static class SlowMotionListener implements WebDriverListener {
         @Override
         public void beforeClick(WebElement element) {
             delay();
         }
-
         @Override
         public void beforeSendKeys(WebElement element, CharSequence... keysToSend) {
             delay();
         }
-
         private void delay() {
             try {
                 Thread.sleep(ACTION_DELAY_MS);
@@ -37,6 +38,7 @@ public class RealtimeSocialE2ETest {
         }
     }
 
+    // Hàm pause dùng chung cho toàn bộ test
     private static void pause(int milliseconds) {
         try {
             Thread.sleep(milliseconds);
@@ -45,11 +47,13 @@ public class RealtimeSocialE2ETest {
         }
     }
 
+    // Hàm chờ cho đến khi trang đã load hoàn toàn (document.readyState === "complete").
     private static void waitForPageReady(WebDriver driver, WebDriverWait wait) {
         wait.until(webDriver -> "complete".equals(
                 ((JavascriptExecutor) webDriver).executeScript("return document.readyState")));
     }
 
+    // Hàm điền text vào input/textarea của React, đảm bảo kích hoạt đúng event để React nhận diện được thay đổi.
     private static void fillReactField(JavascriptExecutor js, WebElement element, String text) {
         element.click();
         js.executeScript(
@@ -65,6 +69,7 @@ public class RealtimeSocialE2ETest {
                 element, text);
     }
 
+    // Click vào element với retry để tránh StaleElementReferenceException, và scroll nó vào view nếu cần.
     private static void clickStable(WebDriver driver, WebDriverWait wait, JavascriptExecutor js, By locator) {
         wait.until(ExpectedConditions.presenceOfElementLocated(locator));
         for (int attempt = 0; attempt < 5; attempt++) {
@@ -81,6 +86,7 @@ public class RealtimeSocialE2ETest {
         }
     }
 
+    // Click vào element khi nó đã hiển thị và enabled, với retry để tránh StaleElement.
     private static void clickWhenEnabled(WebDriver driver, WebDriverWait wait, JavascriptExecutor js, By locator) {
         wait.until(webDriver -> {
             WebElement el = webDriver.findElement(locator);
@@ -92,6 +98,7 @@ public class RealtimeSocialE2ETest {
     /** Mã SV tài khoản nhận thông báo real-time trong kịch bản này. */
     private static final String NOTIFICATION_RECEIVER_CODE = "2511";
 
+    // Tìm nút Like trên bài viết của user cụ thể.
     private static void waitForOtherUsersPost(WebDriverWait wait) {
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("[data-testid='post-card'][data-self-post='false']")));
@@ -105,11 +112,13 @@ public class RealtimeSocialE2ETest {
                 preferredAuthorCode));
     }
 
+    // Nút Thích trên bài không phải của người đang thao tác; nếu không có bài của NOTIFICATION_RECEIVER_CODE thì chọn bài nào cũng được.
     private static By likeButtonOnAnyOtherUsersPost() {
         return By.xpath(
                 "(//*[@data-testid='post-card' and @data-self-post='false']//button[contains(., 'Thích')])[1]");
     }
 
+    // Nút Chia sẻ trên bài không phải của người đang thao tác; ưu tiên bài của NOTIFICATION_RECEIVER_CODE.
     private static By shareButtonOnOtherUsersPost(String preferredAuthorCode) {
         return By.xpath(String.format(
                 "(//*[@data-testid='post-card' and @data-self-post='false' and @data-author-code='%s']"
@@ -117,11 +126,13 @@ public class RealtimeSocialE2ETest {
                 preferredAuthorCode));
     }
 
+    // Nút Chia sẻ trên bài không phải của người đang thao tác; nếu không có bài của NOTIFICATION_RECEIVER_CODE thì chọn bài nào cũng được.
     private static By shareButtonOnAnyOtherUsersPost() {
         return By.xpath(
                 "(//*[@data-testid='post-card' and @data-self-post='false']//*[@data-testid='post-share-button'])[1]");
     }
 
+    // Nút Bình luận trên bài của tác giả cụ thể.
     private static By commentButtonOnAuthorsPost(String authorCode) {
         return By.xpath(String.format(
                 "(//*[@data-testid='post-card' and @data-author-code='%s']"
@@ -129,6 +140,7 @@ public class RealtimeSocialE2ETest {
                 authorCode));
     }
 
+    // Hàm click Like trên bài của người khác, ưu tiên bài của NOTIFICATION_RECEIVER_CODE nếu có.
     private static void clickLikeOnOtherUsersPost(WebDriver driver, WebDriverWait wait, JavascriptExecutor js) {
         waitForOtherUsersPost(wait);
         By preferred = likeButtonOnOtherUsersPost(NOTIFICATION_RECEIVER_CODE);
@@ -142,6 +154,7 @@ public class RealtimeSocialE2ETest {
         }
     }
 
+    // Hàm click Share trên bài của người khác, ưu tiên bài của NOTIFICATION_RECEIVER_CODE nếu có.
     private static void clickShareOnOtherUsersPost(WebDriver driver, WebDriverWait wait, JavascriptExecutor js) {
         waitForOtherUsersPost(wait);
         By preferred = shareButtonOnOtherUsersPost(NOTIFICATION_RECEIVER_CODE);
@@ -152,6 +165,7 @@ public class RealtimeSocialE2ETest {
         }
     }
 
+    // Hàm đăng nhập dùng chung cho cả 2 trình duyệt.
     private static void login(WebDriver driver, WebDriverWait wait, JavascriptExecutor js, String identifier, String password) {
         wait.until(ExpectedConditions.urlContains("/login"));
         waitForPageReady(driver, wait);
@@ -184,6 +198,7 @@ public class RealtimeSocialE2ETest {
         JavascriptExecutor js1412 = (JavascriptExecutor) driver1412;
         driver1412.manage().window().setSize(new org.openqa.selenium.Dimension(900, 1000));
         driver1412.manage().window().setPosition(new org.openqa.selenium.Point(900, 0));
+        
         try {
             System.out.println("=== BẮT ĐẦU KỊCH BẢN KIỂM THỬ REAL-TIME WEBSOCKET ===");
             driver2511.get("http://localhost:5173/login");
@@ -193,7 +208,7 @@ public class RealtimeSocialE2ETest {
             driver1412.get("http://localhost:5173/login");
             login(driver1412, wait1412, js1412, "1412", "1412");
             wait1412.until(ExpectedConditions.urlToBe("http://localhost:5173/"));
-            
+
             System.out.println("Step 1 (1412): Thích bài viết của người khác (không phải bài của 1412)...");
             waitForPageReady(driver1412, wait1412);
             clickLikeOnOtherUsersPost(driver1412, wait1412, js1412);
@@ -251,6 +266,7 @@ public class RealtimeSocialE2ETest {
             System.out.println("\n[XÁC NHẬN]: Cửa sổ (2511) đã nhận đủ thông báo Like, Share, Comment Realtime!");
             pause(10000);
             System.out.println("\n=== KỊCH BẢN KIỂM THỬ REAL-TIME HOÀN TẤT ===");
+
         } catch (Exception e) {
             System.err.println("!!! [THẤT BẠI] Kịch bản gãy. Chi tiết lỗi:");
             e.printStackTrace();
