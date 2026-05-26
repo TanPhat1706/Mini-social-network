@@ -97,9 +97,7 @@ export default function CreatePost() {
       await api.post('/api/posts', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      
-      // ⭐️ Reload lại trang hoặc callback ra ngoài để refresh list (tùy logic của bạn)
-      window.location.reload(); // Tạm thời reload để thấy post mới
+
       handleClose();
     } catch (error) {
       console.error('Create post error:', error);
@@ -133,8 +131,9 @@ export default function CreatePost() {
       />
 
       {/* PHẦN 1: TRIGGER BUTTON */}
-      <Paper 
-        elevation={0} 
+      <Paper
+        data-testid="create-post-trigger"
+        elevation={0}
         sx={{ border: '1px solid #E0E0E0', p: 2, mb: 3, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' }}}
         onClick={handleClickOpen}
       >
@@ -204,6 +203,7 @@ export default function CreatePost() {
           </Box>
           
           <TextField
+            data-testid="create-post-content"
             autoFocus
             fullWidth
             multiline
@@ -253,9 +253,10 @@ export default function CreatePost() {
         </DialogContent>
         
         <DialogActions sx={{ p: 2 }}>
-          <Button 
-            fullWidth 
-            variant="contained" 
+          <Button
+            data-testid="create-post-submit"
+            fullWidth
+            variant="contained"
             onClick={handlePost}
             disabled={(!postContent.trim() && selectedFiles.length === 0) || isLoading}
           >

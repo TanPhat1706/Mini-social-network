@@ -3,8 +3,9 @@ import {
   Card, CardHeader, CardContent, CardActions,
   IconButton, Typography, Box, Divider, Button, Link,
   Menu, MenuItem, ListItemIcon,
-  Collapse
+  Collapse, Dialog, DialogTitle, DialogContent, DialogActions, TextField
 } from '@mui/material';
+import { showSuccess, showError } from '../../utils/swal';
 import { Link as RouterLink } from 'react-router-dom';
 
 // Import Icons
@@ -130,6 +131,9 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
   const [post, setPost] = useState<PostData>(initialPost);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareCaption, setShareCaption] = useState('');
+  const [shareLoading, setShareLoading] = useState(false);
   const [showComments, setShowComments] = useState(false);
   
   const isMenuOpen = Boolean(anchorEl);
@@ -177,25 +181,38 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
   const handleUpdateSuccess = (updatedPost: PostData) => setPost(updatedPost);
   const handleCommentClick = () => setShowComments(!showComments);
 
-  const handleShareClick = async () => {
-      const caption = prompt("Nhập nội dung bạn muốn chia sẻ:");
-      if (caption === null) return;
+  const handleShareClick = () => {
+      setShareCaption('');
+      setShareOpen(true);
+  };
 
+  const handleShareSubmit = async () => {
+      const caption = shareCaption.trim();
+      if (!caption) return;
+
+      setShareLoading(true);
       try {
           await api.post(`/api/posts/${post.id}/share`, { content: caption });
-          // 🟢 ĐÃ SỬA: Thay thế showSuccess bằng alert mặc định
-          alert("Chia sẻ thành công!");
+          setShareOpen(false);
+          setShareCaption('');
+          showSuccess('Chia sẻ thành công!');
           setPost(prev => ({ ...prev, shareCount: (prev.shareCount || 0) + 1 }));
       } catch (error) {
-          console.error("Lỗi share:", error);
-          // 🟢 ĐÃ SỬA: Thay thế showError bằng alert mặc định
-          alert("Không thể chia sẻ bài viết này.");
+          console.error('Lỗi share:', error);
+          showError('Không thể chia sẻ bài viết này.');
+      } finally {
+          setShareLoading(false);
       }
   };
 
   return (
     <>
-      <Card sx={{ maxWidth: '100%', margin: 'auto', mb: 3, boxShadow: 3, borderRadius: 2 }}>
+      <Card
+        data-testid="post-card"
+        data-self-post={post.isSelfPost ? 'true' : 'false'}
+        data-author-code={post.author.studentCode}
+        sx={{ maxWidth: '100%', margin: 'auto', mb: 3, boxShadow: 3, borderRadius: 2 }}
+      >
         
         {/* HEADER: NGƯỜI ĐĂNG BÀI */}
         <CardHeader
@@ -321,10 +338,11 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
             Bình luận
           </Button>
           
-          <Button 
-            fullWidth 
+          <Button
+            data-testid="post-share-button"
+            fullWidth
             onClick={handleShareClick}
-            startIcon={<ShareOutlinedIcon />} 
+            startIcon={<ShareOutlinedIcon />}
             sx={{ color: 'text.secondary', textTransform: 'none' }}
           >
             Chia sẻ
@@ -341,6 +359,47 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
             </Box>
         </Collapse>
       </Card>
+
+      <Dialog
+        open={shareOpen}
+        onClose={() => !shareLoading && setShareOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        data-testid="share-post-dialog"
+      >
+        <DialogTitle>Chia sẻ bài viết</DialogTitle>
+        <DialogContent>
+          <TextField
+            data-testid="share-post-content"
+            autoFocus
+            fullWidth
+            multiline
+            minRows={3}
+            placeholder="Nhập nội dung bạn muốn chia sẻ..."
+            value={shareCaption}
+            onChange={(e) => setShareCaption(e.target.value)}
+            disabled={shareLoading}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            data-testid="share-post-cancel"
+            onClick={() => setShareOpen(false)}
+            disabled={shareLoading}
+          >
+            Hủy
+          </Button>
+          <Button
+            data-testid="share-post-submit"
+            variant="contained"
+            onClick={handleShareSubmit}
+            disabled={!shareCaption.trim() || shareLoading}
+          >
+            {shareLoading ? 'Đang chia sẻ...' : 'Chia sẻ'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {isEditDialogOpen && (
         <EditPost

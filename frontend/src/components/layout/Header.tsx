@@ -359,10 +359,12 @@ export default function Header() {
 
               <Tooltip title="Cài đặt">
                 <ActionIconButton
+                  data-testid="header-settings-button"
                   onClick={handleSettingsClick}
                   aria-controls={openSettings ? 'settings-menu' : undefined}
                   aria-haspopup="true"
                   aria-expanded={openSettings ? 'true' : undefined}
+                  aria-label="Cài đặt"
                 >
                   <SettingsIcon />
                 </ActionIconButton>
@@ -454,6 +456,7 @@ export default function Header() {
                 <Divider />
 
                 <MenuItem
+                  data-testid="header-logout"
                   onClick={handleLogout}
                   sx={{ color: 'error.main' }}
                 >

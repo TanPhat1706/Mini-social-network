@@ -42,14 +42,32 @@ const Login: React.FC = () => {
 
         <div className="auth-card">
           <form onSubmit={handleLogin}>
-            <input className="form-input" type="text" placeholder="Email hoặc Mã Sinh Viên" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required />
-            <input className="form-input" type="password" placeholder="Mật khẩu" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <input
+              data-testid="login-identifier"
+              className="form-input"
+              type="text"
+              placeholder="Email hoặc Mã Sinh Viên"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              autoComplete="username"
+              required
+            />
+            <input
+              data-testid="login-password"
+              className="form-input"
+              type="password"
+              placeholder="Mật khẩu"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
             <button type="submit" className="btn-login" disabled={loading}>
               {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
           </form>
           <div style={{ textAlign: 'center', marginTop: '12px' }}>
-            <button type="button" className="btn-register-new" style={{ backgroundColor: '#1877F2' }} onClick={() => setForgotOpen(true)}>
+            <button type="button" className="btn-forgot-password" style={{ backgroundColor: '#1877F2' }} onClick={() => setForgotOpen(true)}>
               Quên mật khẩu?
             </button>
           </div>

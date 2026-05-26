@@ -62,3 +62,15 @@
   cursor: pointer;
   display: inline-block;
 }
+.btn-forgot-password {
+  background-color: var(--fb-green);
+  color: white;
+  font-size: 17px;
+  font-weight: 700;
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: none;
+  margin-top: 20px;
+  cursor: pointer;
+  display: inline-block;
+}

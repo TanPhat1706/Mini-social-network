@@ -149,6 +149,7 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
                     )}
 
                     <TextField
+                        data-testid="comment-input"
                         fullWidth multiline maxRows={4}
                         placeholder={replyTo ? "Viết câu trả lời..." : "Viết bình luận..."}
                         variant="outlined" size="small"
@@ -162,10 +163,11 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
                         InputProps={{
                             endAdornment: (
                                 <InputAdornment position="end">
-                                    <IconButton 
-                                        onClick={handleSubmit} 
+                                    <IconButton
+                                        data-testid="comment-submit"
+                                        onClick={handleSubmit}
                                         disabled={!content.trim() || submitting}
-                                        color={isAnonymous ? "warning" : "primary"} // 🟢 Đổi màu nút gửi nếu đang ẩn danh
+                                        color={isAnonymous ? "warning" : "primary"}
                                     >
                                         {submitting ? <CircularProgress size={20} /> : <SendIcon />}
                                     </IconButton>
@@ -177,12 +179,14 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
                     {/* 🟢 KHU VỰC TOOLBAR DƯỚI INPUT: NÚT SWITCH VÀ HƯỚNG DẪN */}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5, px: 1 }}>
                         <FormControlLabel
+                            data-testid="comment-anonymous-toggle"
                             control={
                                 <Switch
+                                    data-testid="comment-anonymous-switch"
                                     size="small"
                                     checked={isAnonymous}
                                     onChange={(e) => setIsAnonymous(e.target.checked)}
-                                    color="warning" // Đổi màu switch sang Cam/Đỏ để tạo cảm giác "Incognito"
+                                    color="warning"
                                 />
                             }
                             label={

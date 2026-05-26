@@ -39,11 +39,12 @@ public class UserLifecycleE2ETest {
     public static void main(String[] args) {
         // 1. Khởi tạo WebDriver GỐC
         WebDriver originalDriver = new ChromeDriver();
-        
+
         // 2. 🟢 GỌI PUBLIC CLASS VỪA TẠO
         WebDriverListener slowMotionListener = new SlowMotionListener();
-        
-        // 3. 🟢 BỌC DRIVER GỐC LẠI (Tất cả lệnh gọi 'driver' từ đây về sau sẽ bị làm chậm tự động)
+
+        // 3. 🟢 BỌC DRIVER GỐC LẠI (Tất cả lệnh gọi 'driver' từ đây về sau sẽ bị làm
+        // chậm tự động)
         WebDriver driver = new EventFiringDecorator<>(slowMotionListener).decorate(originalDriver);
 
         // Phóng to cửa sổ bằng driver đã được bọc
@@ -82,20 +83,38 @@ public class UserLifecycleE2ETest {
             driver.findElement(By.name("fullName")).sendKeys(testFullName);
             driver.findElement(By.name("studentCode")).sendKeys(testStudentCode);
             driver.findElement(By.name("className")).sendKeys(testClass);
-            driver.findElement(By.name("email")).sendKeys(testEmail);            
+            driver.findElement(By.name("email")).sendKeys(testEmail);
             driver.findElement(By.name("password")).sendKeys(testPassword);
 
             System.out.println("Step 4: Gửi biểu mẫu đăng ký...");
             driver.findElement(By.xpath("//button[contains(text(), 'Đăng ký')]")).click();
 
             System.out.println("Step 5: Xử lý thông báo Alert từ hệ thống...");
-            // Đợi Alert xuất hiện trên trình duyệt
-            wait.until(ExpectedConditions.alertIsPresent());
-            Alert successAlert = driver.switchTo().alert();
-            System.out.println("-> Nội dung Alert: " + successAlert.getText());
-            successAlert.accept(); // Nhấn nút OK trên Alert
 
-            // Đợi hệ thống tự động nhảy về trang Login sau khi bấm OK
+            // 1. Quét tìm dòng chữ báo thành công trên giao diện (bản chất nó là HTML DOM,
+            // không phải Browser Alert)
+            By successMessageLocator = By.xpath("//*[contains(text(), 'Đăng ký thành công')]");
+            wait.until(ExpectedConditions.visibilityOfElementLocated(successMessageLocator));
+            System.out.println("-> Đã hiển thị Popup thành công từ thư viện Swal.");
+
+            // 2. Xử lý nút "OK" của Popup (SweetAlert thường có nút xác nhận mang class
+            // swal2-confirm)
+            try {
+                // Đặt bộ chờ ngắn (2 giây) để tìm nút OK. Dùng xpath bao quát các trường hợp
+                // nút OK của Swal
+                WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(2));
+                WebElement btnSwalConfirm = shortWait.until(ExpectedConditions.elementToBeClickable(
+                        By.xpath("//button[contains(@class, 'swal2-confirm') or text()='OK' or text()='Đồng ý']")));
+                btnSwalConfirm.click();
+                System.out.println("-> Đã nhấn nút 'OK' trên Popup.");
+            } catch (Exception e) {
+                // Nếu React code tự động tắt popup (dạng Toast) mà không cần bấm, ta cứ thế bỏ
+                // qua
+                System.out.println("-> Popup tự động đóng hoặc không yêu cầu nhấn nút xác nhận.");
+            }
+
+            // 3. Đợi hệ thống tự động nhảy về trang Login (do lệnh navigate('/login') của
+            // React)
             wait.until(ExpectedConditions.urlToBe("http://localhost:5173/login"));
             System.out.println("-> Đăng ký thành công! Đã quay trở về trang đăng nhập.");
 
@@ -125,11 +144,12 @@ public class UserLifecycleE2ETest {
             navUsers.click();
 
             wait.until(ExpectedConditions.urlToBe("http://localhost:5173/admin/users"));
-            System.out.println("Step 8: Thực hiện kỹ thuật Cuộn chuột (Scroll) xuống đáy trang để hiển thị user mới...");
-            
+            System.out
+                    .println("Step 8: Thực hiện kỹ thuật Cuộn chuột (Scroll) xuống đáy trang để hiển thị user mới...");
+
             JavascriptExecutor js = (JavascriptExecutor) driver;
             js.executeScript("window.scrollTo(0, document.body.scrollHeight);");
-            Thread.sleep(1000); 
+            Thread.sleep(1000);
 
             System.out.println("Step 9: Tìm dòng chứa Mã sinh viên '" + testStudentCode + "' và nhấn Icon 'Duyệt'...");
 
@@ -140,7 +160,7 @@ public class UserLifecycleE2ETest {
                     ExpectedConditions.elementToBeClickable(By.xpath(xpathApproveBtn)));
 
             js.executeScript("arguments[0].scrollIntoView(true);", btnApprove);
-            Thread.sleep(500); 
+            Thread.sleep(500);
 
             btnApprove.click();
             System.out.println("-> Đã kích hoạt phê duyệt tài khoản thành công bằng Icon!");
