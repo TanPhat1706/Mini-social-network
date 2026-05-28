@@ -1,10 +1,7 @@
 package com.example.backend.Chat;
 
-import com.example.backend.Chat.ChatRoom;
-import com.example.backend.Chat.ChatRoomRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.util.Optional;
 
 @Service

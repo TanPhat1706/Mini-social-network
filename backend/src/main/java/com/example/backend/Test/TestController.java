@@ -1,17 +1,13 @@
-package com.example.backend.test;
+package com.example.backend.Test;
 
 import java.security.Principal;
-
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
 import com.example.backend.User.User;
 import com.example.backend.User.UserResponse;
-
 import lombok.RequiredArgsConstructor;
 
 @RestController

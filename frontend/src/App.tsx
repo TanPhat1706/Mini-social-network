@@ -29,8 +29,17 @@ import SnakeGame from './components/game/SnakeGame';
 import TicTacToePage from './components/game/TicTacToePage'; // Đổi đường dẫn cho khớp với thư mục của bạn
 import GameList from './pages/GameList';
 
+import ChatBox from './components/chat/ChatBox';
 
+/* ================= 💬 GLOBAL CHAT WRAPPER 💬 ================= */
+// Tạo một wrapper nhỏ để gọi useAuth một cách an toàn vì nó sẽ nằm TRONG AuthProvider
+const GlobalChatWrapper = () => {
+  const { isAuthenticated, user } = useAuth();
 
+  if (!isAuthenticated || !user || user.role === 'ADMIN') return null;
+
+  return <ChatBox currentUser={user} />;
+};
 
 /* ================= 🛡️ HỆ THỐNG LÍNH CANH ROUTE 🛡️ ================= */
 
@@ -142,6 +151,8 @@ function App() {
             </main>
 
             <Footer />
+
+            <GlobalChatWrapper />
           </Box>
         </AuthProvider>
       </ChatProvider>

@@ -8,11 +8,9 @@ import com.example.backend.VPTLpoint.VptlService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.util.concurrent.ThreadLocalRandom;
-import com.fasterxml.jackson.databind.ObjectMapper; // Import này rất quan trọng
-import com.fasterxml.jackson.core.JsonProcessingException;
+// import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
@@ -22,7 +20,7 @@ public class TicTacToeService {
     private final GameSessionRepository gameSessionRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final VptlService vptlService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    // private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Transactional
     public GameSession acceptInvite(Long inviteMessageId, Integer accepterId) {

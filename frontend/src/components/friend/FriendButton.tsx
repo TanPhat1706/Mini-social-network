@@ -1,108 +1,196 @@
 import React, { useState, useEffect } from 'react';
-import axiosClient from '../../api/axiosClient';
-import { useTheme } from '@mui/material/styles'; // 🟢 IMPORT THEME
+import axios from 'axios';
+import { Button, Box, CircularProgress, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
+import CheckIcon from '@mui/icons-material/Check';
+import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
+import { useTheme } from '@mui/material/styles';
+import { showError, showSuccess } from '../../utils/swal';
+import { getFriendshipStatus, sendFriendRequest, removeFriendship } from '../../api/friendApi';
 
-interface Props { 
-  targetUserId: number; 
-  currentUserId: number; 
-  className?: string; 
+interface Props {
+  targetUserId: number;
+  currentUserId: number;
+  className?: string;
 }
 
 const FriendButton: React.FC<Props> = ({ targetUserId, currentUserId, className }) => {
   const [status, setStatus] = useState<string>('NONE');
   const [actionUserId, setActionUserId] = useState<number | null>(null);
-  const [isHovering, setIsHovering] = useState(false);
-  
-  // 🟢 CÀI ĐẶT BỘ MÀU THEO CHẾ ĐỘ SÁNG TỐI
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isFetchingStatus, setIsFetchingStatus] = useState<boolean>(true);
+
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const openMenu = Boolean(anchorEl);
+
   const theme = useTheme();
-  const isDark = theme.palette.mode === 'dark';
-  const greyBg = isDark ? '#3A3B3C' : '#e4e6eb';
-  const greyText = isDark ? '#E4E6EB' : '#050505';
 
   useEffect(() => {
-    const checkStatus = async () => {
+    let isMounted = true;
+
+    const fetchStatus = async () => {
+      setIsFetchingStatus(true);
+
       try {
-        const res = await axiosClient.get(`/friends/status/${targetUserId}`);
-        setStatus(res.data.status);
-        setActionUserId(res.data.actionUserId);
-      } catch (err) { console.error(err); }
+        const response = await getFriendshipStatus(targetUserId);
+        if (!isMounted) return;
+
+        setStatus(response.data.status ?? 'NONE');
+        setActionUserId(response.data.actionUserId ?? null);
+      } catch (error) {
+        console.error(error);
+        if (isMounted) {
+          showError('Không thể tải trạng thái kết bạn. Vui lòng thử lại sau.');
+          setStatus('NONE');
+          setActionUserId(null);
+        }
+      } finally {
+        if (isMounted) setIsFetchingStatus(false);
+      }
     };
-    checkStatus();
+
+    fetchStatus();
+
+    return () => {
+      isMounted = false;
+    };
   }, [targetUserId]);
 
-  const handleAction = async (action: 'add' | 'accept' | 'remove') => {
-    if (action === 'remove' && status === 'ACCEPTED') {
-       if (!window.confirm("Bạn có chắc chắn muốn hủy kết bạn không?")) return;
-    }
+  const handleAddFriend = async () => {
+    setIsLoading(true);
     try {
-      if (action === 'add') {
-        await axiosClient.post(`/friends/add/${targetUserId}`);
-        setStatus('PENDING'); setActionUserId(currentUserId);
-      } else if (action === 'accept') {
-        await axiosClient.post(`/friends/accept/${targetUserId}`);
-        setStatus('ACCEPTED');
-      } else {
-        await axiosClient.delete(`/friends/remove/${targetUserId}`);
-        setStatus('NONE'); setActionUserId(null);
-      }
-    } catch(e) { console.error(e); }
+      await sendFriendRequest(targetUserId);
+      setStatus('PENDING');
+      setActionUserId(currentUserId);
+    } catch (error) {
+      console.error(error);
+      const errorMessage = axios.isAxiosError(error)
+        ? (error.response?.data?.message || error.response?.data || error.message)
+        : 'Gửi lời mời kết bạn thất bại. Vui lòng thử lại.';
+      showError(String(errorMessage));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const baseStyle: React.CSSProperties = { 
-    padding: '8px 4px', 
-    borderRadius: '6px', 
-    border: 'none', 
-    fontWeight: '600', 
-    cursor: 'pointer', 
-    fontSize: '13px', 
-    transition: 'all 0.2s', 
-    width: '100%', 
-    height: '36px', 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    gap: '4px'
+  const handleRemoveFriend = async () => {
+    setAnchorEl(null);
+    setIsLoading(true);
+    try {
+      await removeFriendship(targetUserId);
+      setStatus('NONE');
+      setActionUserId(null);
+      showSuccess('Đã hủy kết bạn.');
+    } catch (error) {
+      console.error(error);
+      showError('Không thể hủy kết bạn lúc này.');
+    } finally {
+      setIsLoading(false);
+    }
   };
-  
+
+  if (isFetchingStatus) {
+    return (
+      <Button
+        fullWidth
+        variant="contained"
+        disabled
+        className={className}
+        sx={{ textTransform: 'none', fontWeight: 600, height: 36 }}
+        startIcon={<CircularProgress size={16} color="inherit" />}
+      >
+        Đang tải...
+      </Button>
+    );
+  }
+
   if (status === 'ACCEPTED') {
     return (
-      <button 
-        onClick={() => handleAction('remove')}
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
-        style={{
-          ...baseStyle, 
-          // 🟢 ĐÃ SỬA: Áp dụng bộ màu xám động
-          background: isHovering ? (isDark ? '#4A1920' : '#ffebee') : greyBg, 
-          color: isHovering ? (isDark ? '#EF5350' : '#d32f2f') : greyText
-        }}
-        className={className}
-      >
-        {isHovering ? 'Hủy' : '✔ Bạn bè'}
-      </button>
+      <>
+        <Button
+          fullWidth
+          variant="contained"
+          className={className}
+          onClick={(e) => setAnchorEl(e.currentTarget)}
+          disabled={isLoading}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 600,
+            height: 36,
+            bgcolor: 'success.main',
+            color: 'common.white',
+            '&:hover': { bgcolor: 'success.dark' },
+          }}
+          startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <CheckIcon fontSize="small" />}
+        >
+          Bạn bè
+        </Button>
+        <Menu
+          anchorEl={anchorEl}
+          open={openMenu}
+          onClose={() => setAnchorEl(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        >
+          <MenuItem onClick={handleRemoveFriend} sx={{ color: 'error.main' }}>
+            <ListItemIcon>
+              <PersonRemoveIcon fontSize="small" color="error" />
+            </ListItemIcon>
+            <ListItemText primary="Hủy kết bạn" />
+          </MenuItem>
+        </Menu>
+      </>
     );
   }
 
   if (status === 'PENDING') {
-    if (actionUserId === currentUserId) {
-      return (
-        <button onClick={() => handleAction('remove')} style={{...baseStyle, background: greyBg, color: greyText}} className={className}>
-           Hủy lời mời
-        </button>
-      );
-    } 
     return (
-      <div style={{display:'flex', gap:'4px', width: '100%'}}>
-        <button onClick={() => handleAction('accept')} style={{...baseStyle, background: theme.palette.primary.main, color: 'white', flex: 1}}>Nhận</button>
-        <button onClick={() => handleAction('remove')} style={{...baseStyle, background: greyBg, color: greyText, flex: 1}}>Xóa</button>
-      </div>
+      <>
+        <Button
+          fullWidth
+          variant="outlined"
+          className={className}
+          onClick={(e) => setAnchorEl(e.currentTarget)}
+          disabled={isLoading}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 600,
+            height: 36,
+            borderColor: theme.palette.divider,
+            color: theme.palette.text.secondary,
+          }}
+        >
+          {isLoading ? <CircularProgress size={16} color="inherit" /> : 'Đã gửi lời mời'}
+        </Button>
+        <Menu
+          anchorEl={anchorEl}
+          open={openMenu}
+          onClose={() => setAnchorEl(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        >
+          <MenuItem onClick={handleRemoveFriend}>
+            <ListItemIcon><PersonRemoveIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="Hủy lời mời" />
+          </MenuItem>
+        </Menu>
+      </>
     );
   }
 
   return (
-    <button onClick={() => handleAction('add')} style={{...baseStyle, background: isDark ? 'rgba(24, 119, 242, 0.2)' : '#e7f3ff', color: theme.palette.primary.main}} className={className}>
-      + Thêm bạn
-    </button>
+    <Box sx={{ width: '100%' }}>
+      <Button
+        fullWidth
+        variant="contained"
+        color="primary"
+        onClick={handleAddFriend}
+        disabled={isLoading}
+        className={className}
+        sx={{ textTransform: 'none', fontWeight: 600, height: 36 }}
+        startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
+      >
+        {isLoading ? 'Đang gửi...' : 'Thêm bạn'}
+      </Button>
+    </Box>
   );
 };
+
 export default FriendButton;

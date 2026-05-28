@@ -1,7 +1,6 @@
-package com.example.backend.admin;
+package com.example.backend.Admin;
 
 import com.example.backend.Integration.BaseControllerTest;
-import com.example.backend.Post.Post;
 import com.example.backend.Post.PostRepository;
 import com.example.backend.Post.PostResponse;
 import com.example.backend.Post.PostService;
@@ -13,14 +12,10 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfi
 import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
-
 import java.util.List;
 import java.util.Optional;
-
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;

@@ -1,9 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
-  Box, Container, Avatar, Typography, Button, IconButton,
-  Menu, MenuItem, Divider, Tabs, Tab, Paper, ListItemIcon, CircularProgress
+  Box, Container, Typography, Button, IconButton,
+  Menu, MenuItem, Divider, Tabs, Tab, Paper, ListItemIcon
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
 
 // Import Icons
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
@@ -23,6 +22,7 @@ import FriendButton from '../friend/FriendButton';
 import AvatarWithFrame from '../AvatarWithFrame'; // Fix đường dẫn
 import ColoredName from '../ColoredName'; // Fix đường dẫn
 import type { User } from '../../types';
+import { useChat } from '../../context/ChatContext';
 
 const getImageUrl = (url: string | undefined) => {
   if (!url) return undefined;
@@ -38,7 +38,7 @@ interface ProfileHeaderProps {
 
 export default function ProfileHeader({ profileUser, isSelfProfile, onUpdateProfile }: ProfileHeaderProps) {
   const { user: currentUser } = useAuth();
-
+  const { openChat } = useChat();
   const [avatarMenuAnchor, setAvatarMenuAnchor] = useState<null | HTMLElement>(null);
   const [coverMenuAnchor, setCoverMenuAnchor] = useState<null | HTMLElement>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -130,7 +130,13 @@ export default function ProfileHeader({ profileUser, isSelfProfile, onUpdateProf
               ) : (
                 <>
                   <Box sx={{ width: 140 }}><FriendButton targetUserId={profileUser.id} currentUserId={currentUser?.id ?? 0} /></Box>
-                  <Button variant="outlined" onClick={() => showInfo('Chức năng nhắn tin đang phát triển.')} sx={{ fontWeight: 'bold', textTransform: 'none' }}>Nhắn tin</Button>
+                  <Button
+                    variant="outlined"
+                    onClick={() => openChat(profileUser)}
+                    sx={{ fontWeight: 'bold', textTransform: 'none' }}
+                  >
+                    Nhắn tin
+                  </Button>
                 </>
               )}
             </Box>

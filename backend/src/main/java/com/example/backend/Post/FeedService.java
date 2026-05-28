@@ -9,6 +9,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import lombok.RequiredArgsConstructor;
+
 @Service
 public class FeedService {
     private final PostRepository postRepository;
@@ -42,6 +49,19 @@ public class FeedService {
         // Lấy list ID để query like 1 lần (tối ưu hiệu năng - bạn làm rất tốt phần này!)
         List<Long> postIds = posts.stream().map(Post::getId).toList();
         
+        // ⭐️ KỸ THUẬT PRE-WARM CACHE: Gom các bài gốc (Original Post) lại để fetch một lần
+        List<Long> originalPostIds = posts.stream()
+                .map(Post::getOriginalPost)
+                .filter(op -> op != null && op.getId() != null)
+                .map(Post::getId)
+                .toList();
+        
+        // Bắn 1 câu query để lôi toàn bộ Original Post + Media lên RAM (Session L1 Cache của Hibernate)
+        if (!originalPostIds.isEmpty()) {
+            postRepository.findByIdInWithMedia(originalPostIds);  
+        }
+        
+        // 2. Lấy danh sách ID các bài viết user hiện tại đã like bằng 1 câu query
         Set<Long> likedPostIds = Collections.emptySet();
         if (!postIds.isEmpty() && currentUserId != null) {
             likedPostIds = postLikeRepository.findPostIdsLikedByUser((long) currentUserId, postIds);
@@ -52,11 +72,6 @@ public class FeedService {
         // 2. Map dữ liệu sang PostResponse
         List<PostResponse> responseList = posts.stream().map(post -> {
             PostResponse response = postService.mapToPostResponse(post);            
-            response.setLikedByCurrentUser(finalLikedPostIds.contains(post.getId()));            
-            return response;
-        }).collect(Collectors.toList());
-
-        // 3. Lấy con trỏ (ID) của bài viết cuối cùng để Front-end dùng cho lần gọi sau
         Long nextCursor = responseList.isEmpty() ? null : responseList.get(responseList.size() - 1).getId();
 
         return new CursorPageResponse<>(responseList, nextCursor, hasNext);

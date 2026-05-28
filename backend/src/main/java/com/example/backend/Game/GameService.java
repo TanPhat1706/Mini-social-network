@@ -1,8 +1,6 @@
 package com.example.backend.Game;
 
-import com.example.backend.Game.GameScore;
 import com.example.backend.User.User;
-import com.example.backend.Game.GameScoreRepository;
 import com.example.backend.User.UserRepository;
 import com.example.backend.VPTLpoint.VptlService;
 import org.springframework.beans.factory.annotation.Autowired;

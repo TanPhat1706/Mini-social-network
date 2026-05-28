@@ -1,4 +1,4 @@
-package com.example.backend.admin;
+package com.example.backend.Admin;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -11,6 +11,9 @@ import com.example.backend.User.User;           // Import đúng folder User
 import com.example.backend.User.UserRepository; // Import đúng folder User
 import com.example.backend.User.UserResponse;   // Import đúng folder User
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.HashMap;
 import java.util.List;
@@ -49,7 +52,8 @@ public class AdminController {
     @GetMapping("/posts")
     public ResponseEntity<?> getAllPosts() {
         try {
-            List<PostResponse> posts = postService.getAllPostsForAdmin();
+            Pageable pageable = PageRequest.of(0, 10); // Example pagination, adjust as needed
+            Page<PostResponse> posts = postService.getAllPostsForAdmin(pageable);
             return ResponseEntity.ok(posts);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Failed to retrieve posts: " + e.getMessage());
