@@ -14,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 import com.example.backend.Enum.MediaType;
 import com.example.backend.Enum.NotificationType;
 import com.example.backend.Enum.Visibility;
@@ -25,7 +26,6 @@ import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import com.example.backend.User.UserResponse;
 import com.example.backend.VPTLpoint.VptlService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -96,7 +96,7 @@ public class PostService {
     public PostResponse updatePost(Long postId, PostRequest request) {
         User currentUser = getCurrentUser();
         validatePostPayload(request);
-        
+
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Bài viết không tồn tại!"));
 
@@ -115,6 +115,7 @@ public class PostService {
 
         var currentMediaList = post.getMedia();
         currentMediaList.clear();
+
         if (request.getMediaFiles() != null && !request.getMediaFiles().isEmpty()) {
             for (MultipartFile file : request.getMediaFiles()) {
                 String fileUrl = fileStorageService.storeFile(file);
@@ -133,25 +134,25 @@ public class PostService {
     @Transactional
     public String deletePost(Long postId) {
         User currentUser = getCurrentUser();
-        
+
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Bài viết không tồn tại!"));
 
         boolean isAdmin = "ADMIN".equals(currentUser.getRole());
         if (!post.getAuthor().getId().equals(currentUser.getId()) && !isAdmin) {
-             throw new RuntimeException("Bạn không có quyền xóa bài viết này!");
+            throw new RuntimeException("Bạn không có quyền xóa bài viết này!");
         }
 
         postRepository.delete(post);
         return "Xóa bài viết thành công";
     }
 
-    @Transactional
-    public List<PostResponse> getAllPostsForAdmin() {
-        List<Post> posts = postRepository.findAllWithAuthorAndMedia();
-        return posts.stream().map(this::mapToPostResponse).collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public Page<PostResponse> getAllPostsForAdmin(Pageable pageable) {
+        Page<Post> posts = postRepository.findAllWithAuthorAndMedia(pageable);
+        return posts.map(this::mapToPostResponse);
     }
-    
+
     @Transactional
     public void approvePost(Long postId) {
         Post post = postRepository.findById(postId)
@@ -174,21 +175,22 @@ public class PostService {
             postLikeRepository.delete(existingLike.get());
             postRepository.decrementLikeCount(postId);
         } else {
+            Post post = postRepository.findById(postId)
+                    .orElseThrow(() -> new RuntimeException("Bài viết không tồn tại!"));
             User user = getCurrentUser();
-            Post post = postRepository.getReferenceById(postId);
             User author = post.getAuthor();
 
             PostLike newLike = PostLike.builder()
                     .post(post)
                     .user(user)
                     .build();
-            
+
             postLikeRepository.save(newLike);
             postRepository.incrementLikeCount(postId);
             vptlService.trackSocialActivity(currentUser.getId(), "LIKE");
             evenPublisher.publishEvent(new NotificationEvent(
-                currentUser, author, NotificationType.LIKE_POST, postId, "POST", "đã thích bài viết của bạn", false
-            ));
+                    currentUser, author, NotificationType.LIKE_POST, postId, "POST", "đã thích bài viết của bạn",
+                    false));
         }
     }
 
@@ -197,10 +199,13 @@ public class PostService {
         User currentUser = getCurrentUser();
         Post originalPost = postRepository.findById(originalPostId)
                 .orElseThrow(() -> new RuntimeException("Bài viết gốc không tồn tại"));
+
         Post rootPost = originalPost.getOriginalPost() != null ? originalPost.getOriginalPost() : originalPost;
+
         if (rootPost.getVisibility() == Visibility.PRIVATE) {
-             throw new RuntimeException("Không thể chia sẻ bài viết riêng tư");
+            throw new RuntimeException("Không thể chia sẻ bài viết riêng tư");
         }
+
         Post share = new Post();
         share.setContent(request.getContent());
         share.setAuthor(currentUser);
@@ -208,21 +213,21 @@ public class PostService {
         share.setOriginalPost(rootPost);
         share.setVisibility(Visibility.PUBLIC);
         rootPost.setShareCount(rootPost.getShareCount() + 1);
-        postRepository.save(rootPost);
+        
         Post savedShare = postRepository.save(share);
         vptlService.trackSocialActivity(currentUser.getId(), "SHARE");
         evenPublisher.publishEvent(new NotificationEvent(
-            currentUser, 
-            rootPost.getAuthor(), 
-            NotificationType.SHARE_POST,
-            rootPost.getId(), 
-            "POST", 
-            "đã chia sẻ bài viết của bạn.",
-            false
-        ));
+                currentUser,
+                rootPost.getAuthor(),
+                NotificationType.SHARE_POST,
+                rootPost.getId(),
+                "POST",
+                "đã chia sẻ bài viết của bạn.",
+                false));
         return mapToPostResponse(savedShare);
     }
 
+    @Transactional(readOnly = true)
     public Page<PostResponse> getPostsByAuthor(int page, int size) {
         User currentUser = getCurrentUser();
         Integer authorId = currentUser.getId();
@@ -231,13 +236,15 @@ public class PostService {
         return posts.map(this::mapToPostResponse);
     }
 
+    @Transactional(readOnly = true)
     public Page<PostResponse> getPostsByStudentCode(String studentCode, Pageable pageable) {
         if (!userRepository.existsByStudentCode(studentCode)) {
             throw new RuntimeException("User with studentCode " + studentCode + " not found");
         }
 
         if (!pageable.getSort().isSorted()) {
-            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by("createdAt").descending());
+            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+                    Sort.by("createdAt").descending());
         }
 
         boolean isSelfPost = studentCode.equals(getCurrentViewerStudentCode());
@@ -259,13 +266,11 @@ public class PostService {
         authorDto.setId(author.getId());
         authorDto.setFullName(author.getFullName());
         authorDto.setAvatarUrl(author.getAvatarUrl());
-        authorDto.setStudentCode(author.getStudentCode()); 
-        
-        // 🟢 BỔ SUNG 2 DÒNG NÀY ĐỂ TRUYỀN MA THUẬT XUỐNG FRONTEND
+        authorDto.setStudentCode(author.getStudentCode());
         authorDto.setCurrentAvatarFrame(author.getCurrentAvatarFrame());
         authorDto.setCurrentNameColor(author.getCurrentNameColor());
 
-        List<PostMedia> mediaList = post.getMedia() == null ? new ArrayList<>() : post.getMedia();
+        // List<PostMedia> mediaList = post.getMedia() == null ? new ArrayList<>() : post.getMedia();
 
         List<MediaResponse> mediaDtos = post.getMedia().stream()
                 .map(m -> MediaResponse.builder()
@@ -276,12 +281,13 @@ public class PostService {
                 .collect(Collectors.toList());
 
         PostResponse originalPostResponse = null;
-        
+
         if (post.getOriginalPost() != null) {
             if (post.getOriginalPost().getId().equals(post.getId())) {
-                originalPostResponse = null; 
+                originalPostResponse = null;
             } else {
-                originalPostResponse = mapToPostResponse(post.getOriginalPost(), isSelfPost);
+                // originalPostResponse = mapToPostResponse(post.getOriginalPost(), isSelfPost);
+                originalPostResponse = buildFlattenedPostResponse(post.getOriginalPost(), isSelfPost);
             }
         }
 
@@ -302,16 +308,55 @@ public class PostService {
                 .build();
     }
 
+    private PostResponse buildFlattenedPostResponse(Post post, boolean isSelfPost) {
+        User author = post.getAuthor();
+        UserResponse authorDto = new UserResponse();
+        authorDto.setId(author.getId());
+        authorDto.setFullName(author.getFullName());
+        authorDto.setAvatarUrl(author.getAvatarUrl());
+        authorDto.setStudentCode(author.getStudentCode());
+        authorDto.setCurrentAvatarFrame(author.getCurrentAvatarFrame());
+        authorDto.setCurrentNameColor(author.getCurrentNameColor());
+
+        List<MediaResponse> mediaDtos = post.getMedia().stream()
+                .map(m -> MediaResponse.builder()
+                        .id(m.getId())
+                        .url(m.getMediaUrl())
+                        .type(m.getMediaType().toString())
+                        .build())
+                .collect(Collectors.toList());
+
+        return PostResponse.builder()
+                .id(post.getId())
+                .content(post.getContent())
+                .visibility(post.getVisibility())
+                .createdAt(post.getCreatedAt())
+                .updatedAt(post.getUpdatedAt())
+                .author(authorDto)
+                .media(mediaDtos)
+                .likeCount(post.getLikeCount())
+                .commentCount(post.getCommentCount())
+                .shareCount(post.getShareCount())
+                .isLikedByCurrentUser(false)
+                .isSelfPost(isSelfPost)
+                .originalPost(null)
+                .build();
+    }
+
     private MediaType detectMediaType(MultipartFile file) {
         String contentType = file.getContentType();
-        if (contentType == null) return MediaType.IMAGE;
-        if (contentType.startsWith("video")) return MediaType.VIDEO;
-        if (contentType.startsWith("audio")) return MediaType.AUDIO;
+        if (contentType == null)
+            return MediaType.IMAGE;
+        if (contentType.startsWith("video"))
+            return MediaType.VIDEO;
+        if (contentType.startsWith("audio"))
+            return MediaType.AUDIO;
         return MediaType.IMAGE;
     }
 
     private String normalizeContent(String content) {
-        if (content == null) return "";
+        if (content == null)
+            return "";
         return content.trim();
     }
 

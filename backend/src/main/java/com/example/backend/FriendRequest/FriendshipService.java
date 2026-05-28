@@ -2,7 +2,6 @@ package com.example.backend.FriendRequest;
 
 import com.example.backend.Enum.NotificationType;
 import com.example.backend.Event.NotificationEvent; // Import Event
-import com.example.backend.FriendRequest.FriendResponseDTO;
 import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,13 +51,13 @@ public class FriendshipService {
             // ---> BẮN EVENT (Giống PostService)
             // NotificationService sẽ bắt sự kiện này -> Lưu DB -> Gửi Socket
             eventPublisher.publishEvent(new NotificationEvent(
-                sender,          // Người gửi (Sender)
-                receiver,        // Người nhận (Receiver)
-                NotificationType.FRIEND_REQUEST,
-                Long.valueOf(sender.getId()), // EntityID (Click vào sẽ dẫn tới trang cá nhân người gửi)
-                "USER",          // EntityType
-                "đã gửi lại lời mời kết bạn.", // Message
-                false            // isAnonymous
+                    sender, // Người gửi (Sender)
+                    receiver, // Người nhận (Receiver)
+                    NotificationType.FRIEND_REQUEST,
+                    Long.valueOf(sender.getId()), // EntityID (Click vào sẽ dẫn tới trang cá nhân người gửi)
+                    "USER", // EntityType
+                    "đã gửi lại lời mời kết bạn.", // Message
+                    false // isAnonymous
             ));
 
             return "Đã gửi lại lời mời";
@@ -74,14 +73,13 @@ public class FriendshipService {
 
         // ---> BẮN EVENT
         eventPublisher.publishEvent(new NotificationEvent(
-            sender,
-            receiver,
-            NotificationType.FRIEND_REQUEST,
-            Long.valueOf(sender.getId()), 
-            "USER",
-            "đã gửi lời mời kết bạn.",
-            false
-        ));
+                sender,
+                receiver,
+                NotificationType.FRIEND_REQUEST,
+                Long.valueOf(sender.getId()),
+                "USER",
+                "đã gửi lời mời kết bạn.",
+                false));
 
         return "Đã gửi lời mời";
     }
@@ -104,14 +102,13 @@ public class FriendshipService {
 
         // ---> BẮN EVENT: Thông báo cho người kia biết
         eventPublisher.publishEvent(new NotificationEvent(
-            me,              // Sender (là mình)
-            friend,          // Receiver (là bạn)
-            NotificationType.ACCEPT_FRIEND,
-            Long.valueOf(me.getId()), 
-            "USER",
-            "đã chấp nhận lời mời kết bạn.",
-            false
-        ));
+                me, // Sender (là mình)
+                friend, // Receiver (là bạn)
+                NotificationType.ACCEPT_FRIEND,
+                Long.valueOf(me.getId()),
+                "USER",
+                "đã chấp nhận lời mời kết bạn.",
+                false));
 
         return "Đã trở thành bạn bè";
     }
@@ -123,7 +120,7 @@ public class FriendshipService {
         // Kiểm tra xem đang làm hành động gì để log hoặc xử lý logic phụ (nếu cần)
         String oldStatus = f.getStatus();
 
-        f.setStatus("DELETED");
+        f.setStatus("NONE");
         f.setActionUserId(userId);
         friendshipRepository.save(f);
 

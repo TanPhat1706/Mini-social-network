@@ -49,7 +49,7 @@ const Login: React.FC = () => {
             </button>
           </form>
           <div style={{ textAlign: 'center', marginTop: '12px' }}>
-            <button type="button" className="btn-register-new" style={{ backgroundColor: '#1877F2' }} onClick={() => setForgotOpen(true)}>
+            <button type="button" className="btn-forgot-password" onClick={() => setForgotOpen(true)}>
               Quên mật khẩu?
             </button>
           </div>

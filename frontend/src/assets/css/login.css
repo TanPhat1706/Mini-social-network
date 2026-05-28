@@ -1,13 +1,15 @@
 /* src/assets/css/login.css */
 :root {
   --fb-blue: #1877F2;
-  --fb-green: #42b72a; /* Màu cho nút Tạo tài khoản */
+  --fb-green: #42b72a;
+  /* Màu cho nút Tạo tài khoản */
   --fb-bg: #F0F2F5;
   --text-main: #1c1e21;
 }
 
 .auth-wrapper {
-  background-color: var(--fb-bg); /* Chuyển từ Gradient sang nền phẳng FB */
+  background-color: var(--fb-bg);
+  /* Chuyển từ Gradient sang nền phẳng FB */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -61,4 +63,13 @@
   margin-top: 20px;
   cursor: pointer;
   display: inline-block;
+}
+
+.btn-forgot-password {
+  background: none;
+  border: none;
+  color: var(--text-main);
+  font-size: 14px;
+  margin-top: 12px;
+  cursor: pointer;
 }

@@ -16,9 +16,30 @@ import ColoredName from '../components/ColoredName';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import ProfileIntro from '../components/profile/ProfileIntro';
 
-interface ProfileResponse extends User {
+interface ProfileApiResponse {
+  userId: number;
+  username: string;
+  fullName: string;
+  email: string;
+  avatarUrl?: string;
+  coverPhotoUrl?: string;
+  bio?: string;
+  className?: string;
+  role?: string;
+  active?: boolean;
+  createdAt?: string;
+  lastLogin?: string;
+  joinedAt?: string;
   relationshipStatus?: string;
+  blocked?: boolean;
   isSelfProfile?: boolean;
+  currentAvatarFrame?: string | null;
+  currentNameColor?: string | null;
+}
+
+interface ProfileUser extends User {
+  isSelfProfile?: boolean;
+  relationshipStatus?: string;
   blocked?: boolean;
 }
 
@@ -26,7 +47,7 @@ const ProfilePage: React.FC = () => {
   const { studentCode } = useParams<{ studentCode?: string }>();
   const { user: currentUser } = useAuth();
 
-  const [profileUser, setProfileUser] = useState<ProfileResponse | null>(null);
+  const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [friends, setFriends] = useState<User[]>([]);
   const [posts, setPosts] = useState<PostData[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -43,8 +64,27 @@ const ProfilePage: React.FC = () => {
       setLoading(true); setNotFound(false); setIsBlocked(false);
       try {
         const userRes = await api.get(`/api/users/${profileCode}/profile`);
-        const data = userRes.data as ProfileResponse;
-        setProfileUser(data);
+        const data = userRes.data as ProfileApiResponse;
+        setProfileUser({
+          id: data.userId,
+          studentCode: data.username,
+          email: data.email,
+          fullName: data.fullName,
+          className: data.className ?? '',
+          role: data.role ?? '',
+          avatarUrl: data.avatarUrl,
+          coverPhotoUrl: data.coverPhotoUrl,
+          bio: data.bio,
+          active: data.active ?? true,
+          currentAvatarFrame: data.currentAvatarFrame ?? null,
+          currentNameColor: data.currentNameColor ?? null,
+          vptlPoints: undefined,
+          createdAt: data.createdAt ?? data.joinedAt ?? '',
+          lastLogin: data.lastLogin ?? '',
+          isSelfProfile: data.isSelfProfile,
+          relationshipStatus: data.relationshipStatus,
+          blocked: data.blocked
+        });
         setIsBlocked(data.relationshipStatus === 'BLOCKED' || data.blocked === true);
       } catch (error) {
         if (axios.isAxiosError(error) && error.response?.status === 404) setNotFound(true);

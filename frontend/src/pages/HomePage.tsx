@@ -130,7 +130,7 @@ export default function HomePage() {
         </Box>
       </Box>
 
-      {user && <ChatBox currentUser={user} />}
+      {/* {user && <ChatBox currentUser={user} />} */}
     </>
   );
 }
