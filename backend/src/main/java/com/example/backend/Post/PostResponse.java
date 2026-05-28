@@ -25,4 +25,13 @@ public class PostResponse {
     private boolean isLikedByCurrentUser;
     private boolean isSelfPost;
     private PostResponse originalPost;
+    // Thêm Setter thủ công cho isLikedByCurrentUser
+    public void setLikedByCurrentUser(boolean likedByCurrentUser) {
+        this.isLikedByCurrentUser = likedByCurrentUser;
+    }
+
+    // Tui khuyên bạn nên làm luôn cho isSelfPost để phòng hờ lỗi tương tự
+    public void setSelfPost(boolean selfPost) {
+        this.isSelfPost = selfPost;
+    }
 }

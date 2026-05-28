@@ -16,11 +16,14 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "posts")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Post extends BaseEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -63,4 +66,8 @@ public class Post extends BaseEntity {
 
     @Column(nullable = false)
     private Long shareCount = 0L;
+
+    public Long getId() {
+        return this.id;
+    }
 }

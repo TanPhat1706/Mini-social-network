@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 @Table(name = "users")
 @Data
 public class User {
+
     // ... (Giữ nguyên các trường cũ: id, studentCode, email, password...)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -72,13 +73,19 @@ public class User {
     @Column(name = "current_name_color")
     private String currentNameColor;
 
+    public Integer getId() {
+        return this.id;
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (active == null)
+        if (active == null) {
             active = false;
-        if (role == null)
+        }
+        if (role == null) {
             role = "STUDENT";
+        }
     }
 }

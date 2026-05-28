@@ -1,5 +1,6 @@
 package com.example.backend.Post;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -13,23 +14,26 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.Authentication;
 
 import com.example.backend.User.User;
-// ⭐️ LƯU Ý: Huynh kiểm tra xem UserRepository nằm ở package nào. 
-// Nếu code báo lỗi import, hãy đổi thành com.example.backend.repository.UserRepository
+// ⭐️ LƯU Ý: Đã kiểm tra import UserRepository
 import com.example.backend.User.UserRepository;
-
-import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/feed")
-@RequiredArgsConstructor
 public class FeedController {
 
     private final FeedService feedService;
     private final UserRepository userRepository;
 
+    // Thay thế @RequiredArgsConstructor bằng Constructor tường minh
+    @Autowired
+    public FeedController(FeedService feedService, UserRepository userRepository) {
+        this.feedService = feedService;
+        this.userRepository = userRepository;
+    }
+
     @GetMapping
-    public ResponseEntity<Page<PostResponse>> getNewsFeed(
-            @RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<CursorPageResponse<PostResponse>> getNewsFeed(
+            @RequestParam(required = false) Long lastPostId,
             @RequestParam(defaultValue = "10") int size
     ) {
         // 1. Lấy Authentication từ Context
@@ -50,8 +54,7 @@ public class FeedController {
             return ResponseEntity.status(401).build();
         }
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<PostResponse> result = feedService.getNewsFeed(currentUser.getId(), pageable);
+        CursorPageResponse<PostResponse> result = feedService.getNewsFeed(currentUser.getId(), lastPostId, size);
 
         return ResponseEntity.ok(result);
     }

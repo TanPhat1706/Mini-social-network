@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.5</version>
+        <version>3.2.6</version>
         <relativePath />
     </parent>
     <groupId>com.example</groupId>
@@ -17,7 +17,7 @@
     <properties>
         <java.version>17</java.version>
         <jjwt.version>0.11.5</jjwt.version>
-        <lombok.version>1.18.30</lombok.version>
+        <lombok.version>1.18.34</lombok.version>
         <jacoco.version>0.8.11</jacoco.version>
         <!-- Current suite ~73% line coverage; raise toward 0.80 as tests grow -->
         <jacoco.line.minimum>0.70</jacoco.line.minimum>
@@ -139,10 +139,10 @@
             <version>5.8.0</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
+        <!-- <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
+        </dependency> -->
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-otlp</artifactId>

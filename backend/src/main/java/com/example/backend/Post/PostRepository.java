@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -39,4 +40,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Page<Post> findByAuthorId(Integer authorId, Pageable pageable);
 
     Page<Post> findByAuthorStudentCode(String studentCode, Pageable pageable);
+
+    // 🟢 HÀM MỚI TỐI ƯU CHO INFINITE SCROLL
+    @Query("SELECT p FROM Post p JOIN FETCH p.author u WHERE p.visibility = 'PUBLIC' " +
+           "AND (:lastPostId IS NULL OR p.id < :lastPostId) " +
+           "ORDER BY p.id DESC")
+    List<Post> findCursorBasedNewsFeed(@Param("lastPostId") Long lastPostId, Pageable pageable);
 }
