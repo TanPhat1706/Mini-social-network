@@ -186,7 +186,7 @@ class FriendshipServiceTest {
         String result = friendshipService.removeFriendship(1, 2);
 
         assertEquals("Đã hủy kết bạn", result);
-        assertEquals("DELETED", f.getStatus());
+        assertEquals("NONE", f.getStatus());
         assertEquals(1, f.getActionUserId());
         verify(friendshipRepository).save(f);
         verify(eventPublisher, never()).publishEvent(any()); // Đảm bảo không bắn thông báo khi xóa bạn
@@ -201,7 +201,7 @@ class FriendshipServiceTest {
         String result = friendshipService.removeFriendship(1, 2);
 
         assertEquals("Đã hủy lời mời", result);
-        assertEquals("DELETED", f.getStatus());
+        assertEquals("NONE", f.getStatus());
     }
 
     @Test

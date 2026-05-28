@@ -4,17 +4,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import lombok.RequiredArgsConstructor;
 
 @Service
 public class FeedService {
@@ -69,9 +63,14 @@ public class FeedService {
 
         final Set<Long> finalLikedPostIds = likedPostIds;
         
-        // 2. Map dữ liệu sang PostResponse
+        // 3. Map dữ liệu sang PostResponse (Đã sửa lỗi cú pháp ở đây)
         List<PostResponse> responseList = posts.stream().map(post -> {
             PostResponse response = postService.mapToPostResponse(post);            
+            response.setLikedByCurrentUser(finalLikedPostIds.contains(post.getId()));            
+            return response;
+        }).collect(Collectors.toList());
+
+        // 4. Lấy con trỏ (ID) của bài viết cuối cùng để Front-end dùng cho lần gọi sau
         Long nextCursor = responseList.isEmpty() ? null : responseList.get(responseList.size() - 1).getId();
 
         return new CursorPageResponse<>(responseList, nextCursor, hasNext);

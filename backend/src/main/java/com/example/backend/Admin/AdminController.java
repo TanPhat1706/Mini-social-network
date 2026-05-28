@@ -1,40 +1,40 @@
 package com.example.backend.Admin;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import com.example.backend.Post.PostService;
-import com.example.backend.Post.PostResponse;
-import com.example.backend.Post.PostRepository;
-import com.example.backend.User.User;           // Import đúng folder User
-import com.example.backend.User.UserRepository; // Import đúng folder User
-import com.example.backend.User.UserResponse;   // Import đúng folder User
-import org.springframework.beans.factory.annotation.Autowired;
+import java.util.stream.Collectors;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.example.backend.Post.PostRepository;
+import com.example.backend.Post.PostResponse;
+import com.example.backend.Post.PostService;
+import com.example.backend.User.User;
+import com.example.backend.User.UserRepository;
+import com.example.backend.User.UserResponse;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/admin")
+@RequiredArgsConstructor // 🟢 Tối ưu Injection: Thay thế toàn bộ @Autowired
 public class AdminController {
 
-    @Autowired
-    private PostService postService;
-    
-    @Autowired
-    private PostRepository postRepository;
+    private final PostService postService;
+    private final PostRepository postRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private UserRepository userRepository;
-
+    // ==========================================
     // --- CÁC API VỀ BÀI VIẾT (POST) ---
+    // ==========================================
 
-    @GetMapping("/dashboard") // Đệ thêm mapping cho hàm này để không bị lỗi 404
+    @GetMapping("/dashboard")
     public ResponseEntity<String> getAdminDashboard() {
         return ResponseEntity.ok("Admin Dashboard");
     }
@@ -50,9 +50,11 @@ public class AdminController {
     }
 
     @GetMapping("/posts")
-    public ResponseEntity<?> getAllPosts() {
+    public ResponseEntity<?> getAllPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) { // 🟢 SỬA LỖI: Nhận page/size động từ request
         try {
-            Pageable pageable = PageRequest.of(0, 10); // Example pagination, adjust as needed
+            Pageable pageable = PageRequest.of(page, size); 
             Page<PostResponse> posts = postService.getAllPostsForAdmin(pageable);
             return ResponseEntity.ok(posts);
         } catch (Exception e) {
@@ -61,9 +63,12 @@ public class AdminController {
     }
 
     @DeleteMapping("/delete-post/{post_id}")
-    public ResponseEntity<String> deletePost(@PathVariable Long post_id, @RequestParam String reason) {
+    public ResponseEntity<String> deletePost(
+            @PathVariable Long post_id, 
+            @RequestParam(required = false) String reason) { // 🟢 TỐI ƯU: Cho phép reason không bắt buộc, hoặc truyền vào Service
         try {
-            postService.deletePost(post_id);
+            // Lý tưởng nhất là: postService.deletePost(post_id, reason);
+            postService.deletePost(post_id); 
             return ResponseEntity.ok("Xóa bài thành công.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi xóa bài: " + e.getMessage());
@@ -80,16 +85,16 @@ public class AdminController {
         }
     }
 
+    // ==========================================
     // --- CÁC API VỀ NGƯỜI DÙNG (USER) ---
+    // ==========================================
 
-    // 1. Lấy danh sách toàn bộ User (Đã tối ưu dùng Builder)
     @GetMapping("/users")
     public ResponseEntity<?> getAllUsers() {
         try {
             List<String> targetRoles = Arrays.asList("STUDENT", "TEACHER");
             List<User> users = userRepository.findByRoleIn(targetRoles);        
 
-            // ⭐️ SỬA ĐỔI: Dùng Builder thay vì set thủ công để đồng bộ với UserResponse mới
             List<UserResponse> userResponses = users.stream().map(u -> UserResponse.builder()
                 .id(u.getId())
                 .studentCode(u.getStudentCode())
@@ -111,10 +116,10 @@ public class AdminController {
         }
     }
 
-    // 2. Ban User (Khóa tài khoản)
     @PostMapping("/ban-user/{user_id}")
     public ResponseEntity<String> banUser(@PathVariable Integer user_id) {
         try {
+            // 💡 Lời khuyên: Logic tìm, sửa, lưu này nên dời sang UserService
             User user = userRepository.findById(user_id)
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
             
@@ -127,10 +132,10 @@ public class AdminController {
         }
     }
 
-    // 3. Approve User (Mở khóa tài khoản)
     @PostMapping("/approve-user/{user_id}")
     public ResponseEntity<String> approveUser(@PathVariable Integer user_id) {
         try {
+            // 💡 Lời khuyên: Logic tìm, sửa, lưu này nên dời sang UserService
             User user = userRepository.findById(user_id)
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
 
@@ -142,6 +147,7 @@ public class AdminController {
             return ResponseEntity.badRequest().body("Lỗi: " + e.getMessage());
         }
     }
+    
     @GetMapping("/users-stats")
     public ResponseEntity<Map<String, Long>> getUserStats() {
         long activeCount = userRepository.countByActive(true);
@@ -153,5 +159,4 @@ public class AdminController {
 
         return ResponseEntity.ok(stats);
     }
-
 }

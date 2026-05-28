@@ -1,7 +1,9 @@
 package com.example.backend.Post;
 
+import com.example.backend.Enum.MediaType;
 import com.example.backend.Enum.Visibility;
 import com.example.backend.Event.NotificationEvent;
+import com.example.backend.PostMedia.PostMedia;
 import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import com.example.backend.VPTLpoint.VptlService;
@@ -21,17 +23,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -76,7 +76,6 @@ class PostServiceTest {
 
         mockSecurityContext("SV001");
 
-        // Lenient để tránh lỗi UnnecessaryStubbingException ở các test không gọi DB
         lenient().when(userRepository.findByStudentCode("SV001")).thenReturn(Optional.of(currentUser));
     }
 
@@ -85,9 +84,6 @@ class PostServiceTest {
         SecurityContextHolder.clearContext();
     }
 
-    /**
-     * HÀM HELPER: Hỗ trợ giả lập các trường hợp đăng nhập khác nhau
-     */
     private void mockSecurityContext(String studentCode) {
         if (studentCode == null) {
             SecurityContextHolder.clearContext();
@@ -102,14 +98,14 @@ class PostServiceTest {
     }
 
     // ==========================================
-    // 1. NHÓM TEST API TẠO BÀI (CREATE) VÀ HELPER
+    // 1. NHÓM TEST API TẠO BÀI (CREATE)
     // ==========================================
 
     @Test
     @DisplayName("Tạo bài viết không nội dung, không media -> Ném lỗi 400")
     void createPost_whenNoContentAndNoMedia_shouldThrowBadRequest() {
         PostRequest req = new PostRequest();
-        req.setContent("   "); // Khoảng trắng sẽ bị trim() thành rỗng
+        req.setContent("   "); 
         req.setVisibility(Visibility.PRIVATE);
         req.setMediaFiles(List.of());
 
@@ -123,7 +119,7 @@ class PostServiceTest {
     @DisplayName("Tạo bài viết với Visibility = PUBLIC -> Ép thành PENDING và không cộng điểm")
     void createPost_whenVisibilityPublic_shouldForcePending_andNotTrackPublicActivity() {
         PostRequest req = new PostRequest();
-        req.setContent(" hello "); // Sẽ tự động trim()
+        req.setContent(" hello "); 
         req.setVisibility(Visibility.PUBLIC);
 
         when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -151,7 +147,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("Tạo bài viết với 4 loại Media khác nhau (Test hàm detectMediaType)")
+    @DisplayName("Tạo bài viết với 4 loại Media khác nhau")
     void createPost_withVariousMediaTypes() {
         MockMultipartFile nullTypeFile = new MockMultipartFile("file", "test", null, "data".getBytes());
         MockMultipartFile videoFile = new MockMultipartFile("file", "test", "video/mp4", "data".getBytes());
@@ -176,7 +172,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("Chuẩn hóa content bị null (Test normalizeContent)")
+    @DisplayName("Chuẩn hóa content bị null")
     void createPost_withNullContent() {
         PostRequest req = new PostRequest();
         req.setContent(null);
@@ -252,6 +248,27 @@ class PostServiceTest {
 
         assertEquals(Visibility.PENDING, res.getVisibility());
         assertEquals(1, post.getMedia().size());
+    }
+
+    // 🟢 BỔ SUNG ĐỂ PHỦ 100% UPDATE
+    @Test
+    @DisplayName("Sửa bài với Visibility = PRIVATE và không có media (nhánh Else)")
+    void updatePost_whenVisibilityPrivate_andNoMedia_shouldUpdateNormally() {
+        Post post = Post.builder().id(10L).author(currentUser).media(new ArrayList<>()).build();
+        post.setVisibility(Visibility.PUBLIC); // Đang public
+
+        when(postRepository.findById(10L)).thenReturn(Optional.of(post));
+        when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PostRequest req = new PostRequest();
+        req.setContent("Updated content");
+        req.setVisibility(Visibility.PRIVATE); // Chuyển về Private
+        req.setMediaFiles(null); // Không có media
+
+        PostResponse res = postService.updatePost(10L, req);
+
+        assertEquals(Visibility.PRIVATE, res.getVisibility());
+        assertTrue(post.getMedia().isEmpty());
     }
 
     @Test
@@ -341,13 +358,25 @@ class PostServiceTest {
         verify(postRepository).decrementLikeCount(10L);
     }
 
+    // 🟢 BỔ SUNG: Lambda orElseThrow của ToggleLike (0%)
+    @Test
+    @DisplayName("Lỗi Toggle Like khi Post không tồn tại")
+    void toggleLike_whenPostNotFound_shouldThrow() {
+        when(postLikeRepository.findByPostIdAndUserId(999L, 1L)).thenReturn(Optional.empty());
+        when(postRepository.findById(999L)).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.toggleLike(999L));
+        assertEquals("Bài viết không tồn tại!", ex.getMessage());
+    }
+
     @Test
     void toggleLike_whenNotLiked_shouldSaveLike_increment_track_andPublishNotification() {
         when(postLikeRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.empty());
         User author = new User();
         author.setId(2);
         Post post = Post.builder().id(10L).author(author).build();
-        when(postRepository.getReferenceById(10L)).thenReturn(post);
+        
+        when(postRepository.findById(10L)).thenReturn(Optional.of(post));
 
         postService.toggleLike(10L);
 
@@ -356,7 +385,7 @@ class PostServiceTest {
         verify(vptlService).trackSocialActivity(1, "LIKE");
         verify(evenPublisher).publishEvent(any(NotificationEvent.class));
     }
-
+    
     @Test
     void sharePost_whenOriginalPostNotFound_shouldThrow() {
         when(postRepository.findById(999L)).thenReturn(Optional.empty());
@@ -435,14 +464,19 @@ class PostServiceTest {
     }
 
     @Test
-    void getAllPostsForAdmin_shouldReturnMappedList() {
+    @DisplayName("Lấy tất cả bài viết cho Admin có phân trang")
+    void getAllPostsForAdmin_shouldReturnMappedPage() { 
+        Pageable pageable = PageRequest.of(0, 10);
         Post p1 = Post.builder().id(1L).author(currentUser).media(new ArrayList<>()).build();
         Post p2 = Post.builder().id(2L).author(currentUser).media(new ArrayList<>()).build();
-        when(postRepository.findAllWithAuthorAndMedia()).thenReturn(List.of(p1, p2));
+        Page<Post> pagedPosts = new PageImpl<>(List.of(p1, p2), pageable, 2);
 
-        List<PostResponse> result = postService.getAllPostsForAdmin();
+        when(postRepository.findAllWithAuthorAndMedia(pageable)).thenReturn(pagedPosts);
 
-        assertEquals(2, result.size());
+        Page<PostResponse> result = postService.getAllPostsForAdmin(pageable);
+
+        assertEquals(2, result.getContent().size());
+        assertEquals(2, result.getTotalElements());
     }
 
     @Test
@@ -464,6 +498,27 @@ class PostServiceTest {
         assertTrue(result.getContent().get(0).isSelfPost());
     }
 
+    // 🟢 BỔ SUNG: getCurrentViewerStudentCode trả về null khi không đăng nhập (50% Branch)
+    @Test
+    @DisplayName("Lấy bài theo mã SV khi KHÔNG đăng nhập (Auth = null)")
+    void getPostsByStudentCode_whenAuthNull_shouldReturnSelfPostFalse() {
+        mockSecurityContext(null); // Gỡ token
+        
+        when(userRepository.existsByStudentCode("SV002")).thenReturn(true);
+        
+        User author2 = new User();
+        author2.setStudentCode("SV002");
+        Post post = Post.builder().id(1L).author(author2).media(new ArrayList<>()).build();
+        
+        when(postRepository.findByAuthorStudentCode(eq("SV002"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(post)));
+
+        PageRequest pageable = PageRequest.of(0, 10);
+        Page<PostResponse> result = postService.getPostsByStudentCode("SV002", pageable);
+
+        assertFalse(result.getContent().get(0).isSelfPost(), "Vì chưa đăng nhập nên isSelfPost phải luôn là false");
+    }
+
     @Test
     @DisplayName("Lấy bài theo mã SV tự động thêm Sort nếu chưa có")
     void getPostsByStudentCode_whenUnsortedPageable_shouldAddSort() {
@@ -471,16 +526,29 @@ class PostServiceTest {
         when(postRepository.findByAuthorStudentCode(eq("SV001"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of()));
 
-        // 🟢 ĐÃ SỬA: Dùng PageRequest.of(0, 10) (Có trang, có size, nhưng CHƯA SORT)
-        // Thay vì dùng Pageable.unpaged() sẽ gây lỗi lấy PageNumber
         Pageable unsortedPageable = PageRequest.of(0, 10);
         postService.getPostsByStudentCode("SV001", unsortedPageable);
 
         ArgumentCaptor<Pageable> pageCaptor = ArgumentCaptor.forClass(Pageable.class);
         verify(postRepository).findByAuthorStudentCode(eq("SV001"), pageCaptor.capture());
 
-        // Kiểm chứng xem Service đã tự động nội suy Sort vào chưa
         assertTrue(pageCaptor.getValue().getSort().isSorted());
+    }
+
+    // 🟢 BỔ SUNG: Nhánh Pageable đã có sẵn Sort (75% -> 100%)
+    @Test
+    @DisplayName("Lấy bài theo mã SV khi Pageable ĐÃ CÓ Sort -> Không ghi đè Sort")
+    void getPostsByStudentCode_whenAlreadySorted_shouldKeepSort() {
+        when(userRepository.existsByStudentCode("SV001")).thenReturn(true);
+        when(postRepository.findByAuthorStudentCode(eq("SV001"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        Pageable sortedPageable = PageRequest.of(0, 10, Sort.by("id").descending());
+        postService.getPostsByStudentCode("SV001", sortedPageable);
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(postRepository).findByAuthorStudentCode(eq("SV001"), captor.capture());
+        assertEquals(Sort.by("id").descending(), captor.getValue().getSort());
     }
 
     @Test
@@ -510,5 +578,57 @@ class PostServiceTest {
 
         String url = postService.uploadFileToS3(mockFile);
         assertEquals("/url", url);
+    }
+
+    // ==========================================
+    // 5. 🟢 NHÓM BỔ SUNG TEST CHO CÁC HÀM MAPPER NỘI BỘ
+    // ==========================================
+
+    @Test
+    @DisplayName("Map Post có OriginalPost -> Kích hoạt buildFlattenedPostResponse và stream Media")
+    void mapToPostResponse_withOriginalPost_shouldBuildFlattened() {
+        User originalAuthor = new User(); 
+        originalAuthor.setId(2); 
+        originalAuthor.setFullName("Tác giả gốc");
+
+        PostMedia media = new PostMedia(); 
+        media.setId(1L); 
+        media.setMediaType(MediaType.IMAGE); 
+        media.setMediaUrl("http://image.url");
+
+        Post originalPost = Post.builder()
+                .id(5L)
+                .author(originalAuthor)
+                .media(List.of(media)) // Cung cấp media để phủ sóng nhánh lambda .map(m -> MediaResponse...)
+                .build();
+
+        Post sharePost = Post.builder()
+                .id(10L)
+                .author(currentUser)
+                .originalPost(originalPost)
+                .media(new ArrayList<>())
+                .build();
+
+        PostResponse res = postService.mapToPostResponse(sharePost);
+
+        assertNotNull(res.getOriginalPost());
+        assertEquals(5L, res.getOriginalPost().getId());
+        assertEquals(1, res.getOriginalPost().getMedia().size(), "Phải map được media của Original Post");
+        assertEquals("IMAGE", res.getOriginalPost().getMedia().get(0).getType());
+    }
+
+    @Test
+    @DisplayName("Map Post tự trỏ OriginalPost = chính nó -> Xóa OriginalPost để tránh đệ quy vô hạn")
+    void mapToPostResponse_withSelfOriginalPost_shouldSetOriginalPostNull() {
+        Post post = Post.builder()
+                .id(10L)
+                .author(currentUser)
+                .media(new ArrayList<>())
+                .build();
+        post.setOriginalPost(post); // Tự share chính mình (Lỗi dữ liệu)
+
+        PostResponse res = postService.mapToPostResponse(post);
+
+        assertNull(res.getOriginalPost(), "Nếu tự trỏ, hệ thống phải clear thành null");
     }
 }

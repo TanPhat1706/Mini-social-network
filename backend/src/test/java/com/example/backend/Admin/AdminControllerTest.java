@@ -12,9 +12,15 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfi
 import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.test.context.support.WithMockUser;
+
 import java.util.List;
 import java.util.Optional;
+
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -84,23 +90,34 @@ class AdminControllerTest extends BaseControllerTest {
 
         mockMvc.perform(post("/api/admin/approve-post/100"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Duyệt bài thành công!"));
+                .andExpect(content().string("Duyệt bài thành công!")); // Đảm bảo AdminController trả về đúng chuỗi này
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    void getAllPosts_shouldReturnList() throws Exception {
+    void getAllPosts_shouldReturnPage() throws Exception {
+        // SỬA: Tạo Mock cho Pageable và bọc List thành PageImpl
         PostResponse pr = PostResponse.builder().id(100L).content("Test Admin").build();
-        when(postService.getAllPostsForAdmin()).thenReturn(List.of(pr));
+        Page<PostResponse> postPage = new PageImpl<>(List.of(pr));
+        
+        when(postService.getAllPostsForAdmin(any(Pageable.class))).thenReturn(postPage);
 
-        mockMvc.perform(get("/api/admin/posts"))
+        mockMvc.perform(get("/api/admin/posts")
+                        .param("page", "0")
+                        .param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(100L));
+                // Lưu ý: Nếu AdminController trả về Page, cấu trúc JSON sẽ có content: [ {id: 100} ]
+                // Nếu Controller của bạn không map lại mà ném thẳng đối tượng Page ra ngoài:
+                .andExpect(jsonPath("$.content[0].id").value(100L));
+                // Nếu Controller tự trích xuất List ra thì dùng: jsonPath("$[0].id").value(100L)
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
     void deletePost_shouldReturnSuccess() throws Exception {
+        // SỬA: Bổ sung giả lập dữ liệu trả về cho hàm deletePost
+        when(postService.deletePost(100L)).thenReturn("Xóa bài thành công.");
+
         mockMvc.perform(delete("/api/admin/delete-post/100")
                         .param("reason", "Vi phạm tiêu chuẩn cộng đồng"))
                 .andExpect(status().isOk())

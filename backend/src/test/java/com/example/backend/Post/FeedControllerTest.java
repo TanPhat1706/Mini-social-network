@@ -11,17 +11,15 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfi
 import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 
 import java.util.List;
 import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -56,14 +54,13 @@ class FeedControllerTest extends BaseControllerTest {
                 .studentCode("1412")
                 .build();
 
-        // 3. Tạo PostResponse - 🟢 CHỈNH LẠI CÁCH SET LIKED
+        // 3. Tạo PostResponse
         mockPostResponse = PostResponse.builder()
                 .id(500L)
                 .content("Hôm nay trời đẹp, đi code thôi sếp ơi!")
                 .author(authorResponse)
                 .build();
 
-        // Gọi setter thủ công vì trường này không nằm trong Builder
         mockPostResponse.setLikedByCurrentUser(true);
     }
 
@@ -72,47 +69,61 @@ class FeedControllerTest extends BaseControllerTest {
     // ==========================================
     @Test
     @WithMockUser(username = "1412")
-    void getNewsFeed_shouldReturnPageOfPosts() throws Exception {
-        // Mock tìm thấy user
+    void getNewsFeed_shouldReturnCursorPage() throws Exception {
         when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(currentUser));
 
-        // Mock dữ liệu Feed
-        Page<PostResponse> page = new PageImpl<>(List.of(mockPostResponse));
-        when(feedService.getNewsFeed(eq(1), any(Pageable.class))).thenReturn(page);
+        CursorPageResponse<PostResponse> cursorResponse = new CursorPageResponse<>(
+                List.of(mockPostResponse), 
+                500L, // nextCursor
+                false // hasNext
+        );
+
+        when(feedService.getNewsFeed(eq(1), nullable(Long.class), anyInt()))
+                .thenReturn(cursorResponse);
 
         mockMvc.perform(get("/api/feed")
+                        .param("size", "10") 
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                // 🟢 ĐÃ SỬA: Phải dùng $.content[0].id vì đây là Page object
+                // 🟢 ĐÃ SỬA: Đổi từ "$.data" sang "$.content" để khớp với CursorPageResponse.java
                 .andExpect(jsonPath("$.content[0].id").value(500L))
-                .andExpect(jsonPath("$.content[0].content").value("Hôm nay trời đẹp, đi code thôi sếp ơi!"));
+                .andExpect(jsonPath("$.content[0].content").value("Hôm nay trời đẹp, đi code thôi sếp ơi!"))
+                .andExpect(jsonPath("$.nextCursor").value(500L))
+                .andExpect(jsonPath("$.hasNext").value(false));
     }
 
     // ==========================================
-    // 2. TEST KHI KHÔNG CÓ BÀI VIẾT NÀO
+    // 2. TEST KHI KHÔNG ĐĂNG NHẬP
     // ==========================================
     @Test
-    @WithMockUser(username = "anonymousUser") // 🟢 MẸO: Ép nó vào trạng thái ẩn danh để test 401
+    @WithMockUser(username = "anonymousUser")
     void getNewsFeed_unauthenticated_shouldFail() throws Exception {
         mockMvc.perform(get("/api/feed"))
                 .andExpect(status().isUnauthorized());
     }
 
     // ==========================================
-    // 3. TEST KHI CHƯA ĐĂNG NHẬP (Lỗi 401/403 tùy config)
+    // 3. TEST KHI BẢNG TIN TRỐNG (KHÔNG CÓ BÀI VIẾT NÀO)
     // ==========================================
     @Test
     @WithMockUser(username = "1412")
-    void getNewsFeed_whenEmpty_shouldReturnEmptyPage() throws Exception {
+    void getNewsFeed_whenEmpty_shouldReturnEmptyCursorPage() throws Exception {
         when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(currentUser));
         
-        // 🟢 ĐÃ SỬA: Đảm bảo trả về Page rỗng nhưng đúng cấu trúc
-        Page<PostResponse> emptyPage = new PageImpl<>(List.of());
-        when(feedService.getNewsFeed(eq(1), any(Pageable.class))).thenReturn(emptyPage);
+        CursorPageResponse<PostResponse> emptyCursorResponse = new CursorPageResponse<>(
+                List.of(), 
+                null, 
+                false
+        );
+
+        when(feedService.getNewsFeed(eq(1), nullable(Long.class), anyInt()))
+                .thenReturn(emptyCursorResponse);
 
         mockMvc.perform(get("/api/feed"))
                 .andExpect(status().isOk())
-                // Page rỗng vẫn có trường "content" là mảng rỗng []
-                .andExpect(jsonPath("$.content").isEmpty());
+                // 🟢 ĐÃ SỬA: Đổi từ "$.data" sang "$.content"
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.nextCursor").doesNotExist()) // Khi null, Spring/Jackson có thể không serialize field này
+                .andExpect(jsonPath("$.hasNext").value(false));
     }
 }

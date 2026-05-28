@@ -13,7 +13,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-@Repository
 public interface PostRepository extends JpaRepository<Post, Long> {
 
     // =========================
@@ -25,13 +24,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                    "ORDER BY p.id DESC")
     List<Post> findCursorBasedNewsFeed(@Param("lastPostId") Long lastPostId, Pageable pageable);
 
+
     // =========================
-    // GENERAL FEED (PAGEABLE)
+    // TÌM TẤT CẢ KÈM THEO MEDIA VÀ TÁC GIẢ (CÓ PHÂN TRANG)
     // =========================
-    @EntityGraph(attributePaths = {"author"})
-    @Query(value = "SELECT p FROM Post p WHERE p.visibility = 'PUBLIC'",
-           countQuery = "SELECT COUNT(p) FROM Post p WHERE p.visibility = 'PUBLIC'")
-    Page<Post> findAllForNewsFeed(Pageable pageable);
+    @EntityGraph(attributePaths = {"author", "media"})
+    @Query(value = "SELECT p FROM Post p", 
+           countQuery = "SELECT COUNT(p) FROM Post p")
+    Page<Post> findAllWithAuthorAndMedia(Pageable pageable);
 
     // =========================
     // PROFILE POSTS

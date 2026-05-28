@@ -238,4 +238,42 @@ class ItemServiceTest {
         assertNull(currentUser.getCurrentNameColor());
         verify(userRepository).save(currentUser);
     }
+    // ==========================================
+    // 4. 🟢 BỔ SUNG: TEST CÁC NHÁNH LAMBDA (.orElseThrow) BỊ MISS
+    // ==========================================
+
+    @Test
+    void unequipFrame_whenUserNotFound_shouldThrow() {
+        when(userRepository.findByStudentCode("GHOST")).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> itemService.unequipFrame("GHOST"));
+        assertEquals("User not found", ex.getMessage());
+    }
+
+    @Test
+    void equipFrame_whenUserNotFound_shouldThrow() {
+        when(userRepository.findByStudentCode("GHOST")).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> itemService.equipFrame("GHOST", 10));
+        assertEquals("User not found", ex.getMessage());
+    }
+
+    @Test
+    void equipFrame_whenItemNotFoundInDb_shouldThrow() {
+        when(userRepository.findByStudentCode("SV001")).thenReturn(Optional.of(currentUser));
+        // Kịch bản: User đã mua đồ (có trong inventory) nhưng Admin lỡ tay xóa mất Item đó khỏi DB
+        when(inventoryRepository.existsByUserIdAndItemId(1, 99)).thenReturn(true);
+        when(itemRepository.findById(99)).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> itemService.equipFrame("SV001", 99));
+        assertEquals("Vật phẩm không tồn tại", ex.getMessage());
+    }
+
+    @Test
+    void getUserInventory_whenUserNotFound_shouldThrow() {
+        when(userRepository.findByStudentCode("GHOST")).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> itemService.getUserInventory("GHOST"));
+        assertEquals("User not found", ex.getMessage());
+    }
 }

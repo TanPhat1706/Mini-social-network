@@ -6,6 +6,7 @@ import com.example.backend.User.UserRepository;
 import com.example.backend.User.UserResponse;
 import com.example.backend.Enum.Visibility;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
@@ -17,10 +18,13 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -105,12 +109,31 @@ class PostControllerTest extends BaseControllerTest {
     }
 
     // ==========================================
-    // 3. TEST CẬP NHẬT BÀI VIẾT (MULTIPART PUT)
+    // 3. TEST UPLOAD MEDIA ĐƠN LẺ LÊN S3
+    // ==========================================
+    @Test
+    @WithMockUser(username = "1412")
+    @DisplayName("Upload file lẻ lên S3 thành công -> Trả về URL")
+    void uploadMedia_shouldReturnUrlAnd201() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "image.png",
+                MediaType.IMAGE_PNG_VALUE, "png data".getBytes());
+
+        // Giả lập service upload thành công và trả về URL
+        when(postService.uploadFileToS3(any(MultipartFile.class))).thenReturn("https://aws.s3.com/image.png");
+
+        mockMvc.perform(multipart("/api/posts/upload-media")
+                        .file(file)
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isCreated())
+                .andExpect(content().string("https://aws.s3.com/image.png"));
+    }
+
+    // ==========================================
+    // 4. TEST CẬP NHẬT BÀI VIẾT (MULTIPART PUT)
     // ==========================================
     @Test
     @WithMockUser(username = "1412")
     void updatePost_shouldReturn200() throws Exception {
-        // MockMvcRequestBuilders.multipart mặc định là POST, cần dùng .with(request -> { request.setMethod("PUT"); return request; })
         MockMultipartFile file = new MockMultipartFile("mediaFiles", "update.jpg", 
                 MediaType.IMAGE_JPEG_VALUE, "updated data".getBytes());
 
@@ -125,7 +148,7 @@ class PostControllerTest extends BaseControllerTest {
     }
 
     // ==========================================
-    // 4. TEST XÓA BÀI VIẾT (DELETE)
+    // 5. TEST XÓA BÀI VIẾT (DELETE)
     // ==========================================
     @Test
     @WithMockUser(username = "1412")
@@ -138,12 +161,11 @@ class PostControllerTest extends BaseControllerTest {
     }
 
     // ==========================================
-    // 5. TEST THẢ TIM (POST LIKE)
+    // 6. TEST THẢ TIM (POST LIKE)
     // ==========================================
     @Test
     @WithMockUser(username = "1412")
     void toggleLike_shouldReturnOk() throws Exception {
-        // Giả lập @AuthenticationPrincipal User
         when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(currentUser));
 
         mockMvc.perform(post("/api/posts/100/like"))
@@ -154,7 +176,7 @@ class PostControllerTest extends BaseControllerTest {
     }
 
     // ==========================================
-    // 6. TEST CHIA SẺ BÀI VIẾT (POST SHARE)
+    // 7. TEST CHIA SẺ BÀI VIẾT (POST SHARE)
     // ==========================================
     @Test
     @WithMockUser(username = "1412")
@@ -171,7 +193,7 @@ class PostControllerTest extends BaseControllerTest {
     }
 
     // ==========================================
-    // 7. TEST LẤY CHI TIẾT BÀI VIẾT (GET BY ID)
+    // 8. TEST LẤY CHI TIẾT BÀI VIẾT (GET BY ID)
     // ==========================================
     @Test
     @WithMockUser(username = "1412")
@@ -186,5 +208,17 @@ class PostControllerTest extends BaseControllerTest {
         mockMvc.perform(get("/api/posts/100"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(100L));
+    }
+
+    @Test
+    @WithMockUser(username = "1412")
+    @DisplayName("Ném lỗi RuntimeException khi bài viết không tồn tại")
+    void getPostById_whenNotFound_shouldThrowException() throws Exception {
+        when(postRepository.findById(999L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/posts/999"))
+                // Kiểm tra exception được ném ra và catch được nguyên nhân gốc
+                .andExpect(result -> assertTrue(result.getResolvedException() instanceof RuntimeException))
+                .andExpect(result -> assertEquals("Bài viết không tồn tại", result.getResolvedException().getMessage()));
     }
 }

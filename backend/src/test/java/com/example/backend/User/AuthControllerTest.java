@@ -548,4 +548,73 @@ class AuthControllerTest extends BaseControllerTest {
                                 .andExpect(status().isBadRequest())
                                 .andExpect(content().string("Lỗi: Lỗi hệ thống"));
         }
+        // ==========================================
+        // 🟢 BỔ SUNG: TEST CÁC NHÁNH LAMBDA (.orElseThrow) BỊ MISS
+        // ==========================================
+
+        @Test
+        @DisplayName("Login - Bắn lỗi 401 khi không tìm thấy User trong DB")
+        void login_whenUserNotFoundInDb_shouldThrowAndReturn401() throws Exception {
+                LoginRequest req = new LoginRequest();
+                req.setIdentifier("1412");
+                req.setPassword("password");
+
+                when(authService.login(any(), anyString())).thenReturn("token");
+
+                // 🟢 Ép Optional.empty() để kích hoạt nhánh .orElseThrow
+                when(userRepository.findByStudentCodeOrEmail(anyString(), anyString())).thenReturn(Optional.empty());
+
+                mockMvc.perform(post("/api/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(req)))
+                                .andExpect(status().isUnauthorized())
+                                .andExpect(content().string("User not found"));
+        }
+
+        @Test
+        @WithMockUser(username = "1412")
+        @DisplayName("Change Password - Bắn lỗi 400 khi User Token không hợp lệ")
+        void changePassword_whenUserNotFound_shouldReturn400() throws Exception {
+                ChangePasswordRequest req = new ChangePasswordRequest();
+                req.setOldPassword("oldPass");
+                req.setNewPassword("newPass");
+                req.setConfirmPassword("newPass");
+
+                // 🟢 Kích hoạt nhánh .orElseThrow
+                when(userRepository.findByStudentCode("1412")).thenReturn(Optional.empty());
+
+                mockMvc.perform(post("/api/auth/change-password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(req)))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.message").value("Người dùng không hợp lệ"));
+        }
+
+        @Test
+        @WithMockUser(username = "1412")
+        @DisplayName("Get Profile - Ném RuntimeException khi không tìm thấy User")
+        void getProfile_whenUserNotFound_shouldThrowException() throws Exception {
+                // 🟢 Kích hoạt nhánh .orElseThrow
+                when(userRepository.findByStudentCode("1412")).thenReturn(Optional.empty());
+
+                mockMvc.perform(get("/api/auth/profile"))
+                                // Vì Controller getProfile không có khối try-catch, Spring sẽ văng thẳng
+                                // exception ra ngoài
+                                .andExpect(result -> org.junit.jupiter.api.Assertions
+                                                .assertTrue(result.getResolvedException() instanceof RuntimeException))
+                                .andExpect(result -> org.junit.jupiter.api.Assertions.assertEquals("User not found",
+                                                result.getResolvedException().getMessage()));
+        }
+
+        @Test
+        @WithMockUser(username = "1412")
+        @DisplayName("Revoke Session - Bắn lỗi 400 khi ID lịch sử không tồn tại")
+        void revokeSession_whenHistoryNotFound_shouldReturn400() throws Exception {
+                // 🟢 Kích hoạt nhánh .orElseThrow
+                when(securityHistoryRepository.findById(999)).thenReturn(Optional.empty());
+
+                mockMvc.perform(post("/api/auth/security-history/999/revoke"))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(content().string("Lỗi: Không tìm thấy lịch sử"));
+        }
 }
