@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, 
+import {
+  Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   Button, Chip, IconButton, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Avatar, Tooltip, CircularProgress, TablePagination, Stack
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -54,26 +54,32 @@ interface SpringPageResponse<T> {
 export const PostManager: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  
+
   // 2. Thêm State quản lý phân trang
   const [page, setPage] = useState<number>(0); // Spring Boot dùng page bắt đầu từ 0
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   const [totalElements, setTotalElements] = useState<number>(0);
-  
+
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
 
   const MEDIA_BASE_URL = getApiBaseUrl();
 
-  // 3. Đưa fetchPosts vào useCallback để tránh re-render và gọi lại khi page/rowsPerPage thay đổi
   const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
-      // Gửi kèm params phân trang xuống backend
-      const response = await api.get<SpringPageResponse<Post>>(`/api/admin/posts?page=${page}&size=${rowsPerPage}`);
-      
-      // Map đúng vào trường content của Spring Boot
+
+      // 🟢 TỐI ƯU: Sử dụng cấu trúc URL sạch hơn
+      // Thêm sort=createdAt,desc để Backend hiểu là lấy bài mới nhất trước
+      const params = new URLSearchParams({
+        page: page.toString(),
+        size: rowsPerPage.toString(),
+        sort: 'createdAt,desc' // Sắp xếp theo thời gian tạo, giảm dần
+      });
+
+      const response = await api.get<SpringPageResponse<Post>>(`/api/admin/posts?${params.toString()}`);
+
       setPosts(response.data.content);
       setTotalElements(response.data.totalElements);
     } catch (error) {
@@ -101,7 +107,7 @@ export const PostManager: React.FC = () => {
   const handleApprove = async (postId: number) => {
     try {
       await api.post(`/api/admin/approve-post/${postId}`);
-      fetchPosts(); 
+      fetchPosts();
     } catch (error) {
       console.error(error);
       alert("Lỗi khi duyệt bài.");
@@ -121,7 +127,7 @@ export const PostManager: React.FC = () => {
         params: { reason: deleteReason }
       });
       setOpenDeleteDialog(false);
-      
+
       // Nếu xóa item cuối cùng của trang, lùi lại 1 trang
       if (posts.length === 1 && page > 0) {
         setPage(page - 1);
@@ -137,9 +143,9 @@ export const PostManager: React.FC = () => {
   // Hàm fomat thời gian chuẩn VN
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleString('vi-VN', { 
-      hour: '2-digit', minute: '2-digit', 
-      day: '2-digit', month: '2-digit', year: 'numeric' 
+    return date.toLocaleString('vi-VN', {
+      hour: '2-digit', minute: '2-digit',
+      day: '2-digit', month: '2-digit', year: 'numeric'
     });
   };
 
@@ -154,7 +160,7 @@ export const PostManager: React.FC = () => {
         {post.media.map((item) => {
           let url = item.url;
           if (!url) return null;
-          
+
           if (url.startsWith('/')) {
             url = `${MEDIA_BASE_URL}${url}`;
           }
@@ -162,19 +168,19 @@ export const PostManager: React.FC = () => {
           const handlePreviewClick = () => window.open(url, '_blank');
 
           if (item.type === 'VIDEO') {
-             return (
-               <Tooltip key={item.id} title="Xem video">
-                 <Box onClick={handlePreviewClick} sx={{ width: 40, height: 40, borderRadius: 1, bgcolor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px solid #ccc' }}>
-                    <PlayCircleOutlineIcon sx={{ color: 'white', fontSize: 20 }} />
-                 </Box>
-               </Tooltip>
-             );
+            return (
+              <Tooltip key={item.id} title="Xem video">
+                <Box onClick={handlePreviewClick} sx={{ width: 40, height: 40, borderRadius: 1, bgcolor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px solid #ccc' }}>
+                  <PlayCircleOutlineIcon sx={{ color: 'white', fontSize: 20 }} />
+                </Box>
+              </Tooltip>
+            );
           } else {
-             return (
-               <Tooltip key={item.id} title="Xem ảnh">
-                  <Avatar variant="rounded" src={url} onClick={handlePreviewClick} sx={{ width: 40, height: 40, border: '1px solid #eee', cursor: 'pointer' }} />
-               </Tooltip>
-             );
+            return (
+              <Tooltip key={item.id} title="Xem ảnh">
+                <Avatar variant="rounded" src={url} onClick={handlePreviewClick} sx={{ width: 40, height: 40, border: '1px solid #eee', cursor: 'pointer' }} />
+              </Tooltip>
+            );
           }
         })}
       </Box>
@@ -199,7 +205,7 @@ export const PostManager: React.FC = () => {
                 <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }} align="center">Hành động</TableCell>
               </TableRow>
             </TableHead>
-            
+
             <TableBody>
               {loading ? (
                 <TableRow>
@@ -214,19 +220,19 @@ export const PostManager: React.FC = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <Avatar src={post.author.avatarUrl || undefined} sx={{ width: 36, height: 36 }} />
                       <Box>
-                          <Typography variant="body2" fontWeight="bold">{post.author.fullName}</Typography>
-                          <Typography variant="caption" color="text.secondary">{post.author.studentCode}</Typography>
+                        <Typography variant="body2" fontWeight="bold">{post.author.fullName}</Typography>
+                        <Typography variant="caption" color="text.secondary">{post.author.studentCode}</Typography>
                       </Box>
                     </Box>
                   </TableCell>
 
                   {/* Nội dung */}
                   <TableCell sx={{ maxWidth: 200 }}>
-                     <Tooltip title={post.content}>
-                       <Typography noWrap variant="body2" sx={{overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                          {post.content || <span style={{color: 'gray', fontStyle: 'italic'}}>Không có văn bản</span>}
-                       </Typography>
-                     </Tooltip>
+                    <Tooltip title={post.content}>
+                      <Typography noWrap variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {post.content || <span style={{ color: 'gray', fontStyle: 'italic' }}>Không có văn bản</span>}
+                      </Typography>
+                    </Tooltip>
                   </TableCell>
 
                   {/* Media */}
@@ -248,11 +254,23 @@ export const PostManager: React.FC = () => {
 
                   {/* Trạng thái */}
                   <TableCell>
-                    <Chip 
-                      label={post.visibility} 
-                      color={post.visibility === 'PUBLIC' ? 'success' : post.visibility === 'PENDING' ? 'warning' : 'default'} 
-                      size="small" 
-                      sx={{ fontWeight: 'bold' }}
+                    <Chip
+                      label={post.visibility === 'PENDING' ? 'Chờ duyệt' : post.visibility}
+                      color={
+                        post.visibility === 'PUBLIC' ? 'success' :
+                          post.visibility === 'PENDING' ? 'warning' : 'default'
+                      }
+                      size="small"
+                      sx={{
+                        fontWeight: 'bold',
+                        // 🟢 HIỆU ỨNG NHẤP NHÁY NHẸ CHO BÀI CHỜ DUYỆT ĐỂ ADMIN CHÚ Ý
+                        animation: post.visibility === 'PENDING' ? 'pulse 2s infinite' : 'none',
+                        '@keyframes pulse': {
+                          '0%': { opacity: 1 },
+                          '50%': { opacity: 0.6 },
+                          '100%': { opacity: 1 },
+                        }
+                      }}
                     />
                   </TableCell>
 
@@ -262,7 +280,7 @@ export const PostManager: React.FC = () => {
                       {post.visibility === 'PENDING' && (
                         <Tooltip title="Duyệt bài">
                           <IconButton size="small" color="success" onClick={() => handleApprove(post.id)}>
-                              <CheckCircleIcon />
+                            <CheckCircleIcon />
                           </IconButton>
                         </Tooltip>
                       )}
@@ -271,7 +289,7 @@ export const PostManager: React.FC = () => {
                       </Tooltip>
                       <Tooltip title="Xóa bài">
                         <IconButton size="small" color="error" onClick={() => handleOpenDelete(post.id)}>
-                            <DeleteIcon />
+                          <DeleteIcon />
                         </IconButton>
                       </Tooltip>
                     </Stack>
@@ -285,7 +303,7 @@ export const PostManager: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
-        
+
         {/* 5. Phân trang Material UI */}
         <TablePagination
           component="div"

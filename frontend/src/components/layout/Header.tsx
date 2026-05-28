@@ -237,6 +237,22 @@ export default function Header() {
     logout();
     navigate('/login');
   };
+  // 🟢 HÀM XỬ LÝ KHI CLICK VÀO HOME HOẶC LOGO
+  const handleHomeClick = () => {
+    if (location.pathname === '/') {
+      // 1. Nếu ĐÃ Ở TRANG CHỦ -> Cuộn mượt lên trên cùng
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+
+      // 2. Bắn một sự kiện cục bộ để báo cho Feed component biết cần lấy lại dữ liệu mới
+      window.dispatchEvent(new CustomEvent('refreshFeed'));
+    } else {
+      // Nếu ĐANG Ở TRANG KHÁC -> Điều hướng về trang chủ
+      navigate('/');
+    }
+  };
 
   return (
     <AppBar position="sticky" sx={{ backgroundColor: '#FFFFFF', color: '#050505', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 1100 }}>
@@ -244,7 +260,7 @@ export default function Header() {
 
         {/* --- VÙNG TRÁI: LOGO & SEARCH --- */}
         <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, position: 'relative' }} ref={searchRef}>
-          <Box onClick={() => navigate('/')} sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', mr: 1 }}>
+          <Box onClick={handleHomeClick} sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', mr: 1 }}>
             <img src="/logo.png" alt="Logo" style={{ height: '40px', width: '40px' }} />
           </Box>
 
@@ -317,7 +333,7 @@ export default function Header() {
 
         {/* --- VÙNG GIỮA: NAV ICONS --- */}
         <Box sx={{ display: { xs: 'none', md: 'flex' }, flex: 1, justifyContent: 'center', height: '56px' }}>
-          <NavIconButton active={location.pathname === '/'} onClick={() => navigate('/')}>
+          <NavIconButton active={location.pathname === '/'} onClick={handleHomeClick}>
             <HomeIcon fontSize="large" />
           </NavIconButton>
         </Box>

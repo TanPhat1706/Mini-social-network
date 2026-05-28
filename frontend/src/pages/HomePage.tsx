@@ -29,7 +29,9 @@ export default function HomePage() {
       setPosts(prev => prev.filter(p => p.id !== deletedPostId));
   };
 
-  const fetchPosts = async (cursor: number | null = null) => {
+  // 🟢 1. BỌC FETCH POSTS VÀO USECALLBACK ĐỂ TRÁNH STALE CLOSURE
+  const fetchPosts = useCallback(async (cursor: number | null = null) => {
+    // Bỏ qua nếu đã hết bài và đang cuộn tiếp
     if (!hasNext && cursor !== null) return;
     
     try {
@@ -41,6 +43,7 @@ export default function HomePage() {
       
       const { content, nextCursor: newCursor, hasNext: moreAvailable } = response.data;
       
+      // Nếu là refresh (cursor === null) thì ghi đè posts cũ, nếu cuộn thì nối thêm
       setPosts(prev => cursor === null ? content : [...prev, ...content]);
       setNextCursor(newCursor);
       setHasNext(moreAvailable);
@@ -50,7 +53,7 @@ export default function HomePage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  };
+  }, [hasNext]); // Đưa dependency vào
 
   // Logic bắt sự kiện cuộn chuột chạm đáy
   const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
@@ -84,6 +87,26 @@ export default function HomePage() {
     fetchPosts(); 
     fetchProfileAndFriends();
   }, []);
+
+  // 🟢 2. CẬP NHẬT LẠI LISTENER LÀM MỚI BẢNG TIN
+  useEffect(() => {
+    const handleRefresh = () => {
+      console.log("Đang làm mới bảng tin...");
+      
+      // Reset lại cờ phân trang để hệ thống biết là bắt đầu lại từ đầu
+      setNextCursor(null);
+      setHasNext(true);
+      
+      // Gọi API lấy bài viết mới nhất (truyền null)
+      fetchPosts(null); 
+    };
+
+    window.addEventListener('refreshFeed', handleRefresh);
+
+    return () => {
+      window.removeEventListener('refreshFeed', handleRefresh);
+    };
+  }, [fetchPosts]); // Gắn fetchPosts vào dependency để nó luôn dùng hàm mới nhất
 
   return (
     <>
