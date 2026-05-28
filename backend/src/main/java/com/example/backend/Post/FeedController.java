@@ -38,7 +38,6 @@ public class FeedController {
 
         String identifier = auth.getName(); // JWT thường lưu studentCode hoặc username ở đây
         
-        // Dùng Short-circuit an toàn: Tìm theo studentCode, nếu không có mới tìm email
         User currentUser = userRepository.findByStudentCode(identifier)
                 .orElseGet(() -> userRepository.findByEmail(identifier).orElse(null));
 
@@ -48,7 +47,6 @@ public class FeedController {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         
-        // Ép kiểu ID sang Long để đồng bộ với Database và tầng Service
         Page<PostResponse> result = feedService.getNewsFeed(Long.valueOf(currentUser.getId()), pageable);
 
         return ResponseEntity.ok(result);

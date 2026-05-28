@@ -5,13 +5,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import org.hibernate.annotations.CreationTimestamp;
-
 import com.example.backend.Enum.ConversationType;
 import com.example.backend.Message.Message;
 import com.example.backend.User.User;
-
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
