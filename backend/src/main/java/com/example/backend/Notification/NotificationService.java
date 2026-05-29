@@ -113,11 +113,11 @@ public class NotificationService {
         User sender = notification.getSender();
 
         // 🟢 KIỂM TRA CỜ ẨN DANH TRƯỚC KHI BUILD DTO
-        Long senderId = notification.isAnonymous() ? 0L : Long.valueOf(sender.getId());
-        String senderName = notification.isAnonymous() ? "Một người dùng ẩn danh" : sender.getFullName();
-        String senderAvatar = notification.isAnonymous() ? "https://ui-avatars.com/api/?name=Anonymous&background=808080&color=fff" : sender.getAvatarUrl();
-        String avatarFrame = notification.isAnonymous() ? null : sender.getCurrentAvatarFrame();
-        String nameColor = notification.isAnonymous() ? null : sender.getCurrentNameColor();
+        Long senderId = notification.getIsAnonymous() ? 0L : Long.valueOf(sender.getId());
+        String senderName = notification.getIsAnonymous() ? "Một người dùng ẩn danh" : sender.getFullName();
+        String senderAvatar = notification.getIsAnonymous() ? "https://ui-avatars.com/api/?name=Anonymous&background=808080&color=fff" : sender.getAvatarUrl();
+        String avatarFrame = notification.getIsAnonymous() ? null : sender.getCurrentAvatarFrame();
+        String nameColor = notification.getIsAnonymous() ? null : sender.getCurrentNameColor();
 
         return NotificationDTO.builder()
                 .id(notification.getId())
@@ -129,7 +129,7 @@ public class NotificationService {
                 .message(messageContent)
                 .targetUrl(targetUrl)
                 .createdAt(notification.getCreatedAt())
-                .isRead(notification.isRead())
+                .isRead(notification.getIsRead())
                 .type(notification.getType())
                 .build();
     }

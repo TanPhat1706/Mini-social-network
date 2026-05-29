@@ -39,9 +39,9 @@ public class Notification extends BaseEntity {
     @Column(columnDefinition = "NVARCHAR(500)") 
     private String metadata; 
 
-    private boolean isRead = false;
+    private Boolean isRead = false;
 
     // 🟢 THÊM CỘT NÀY ĐỂ ĐÁNH DẤU THÔNG BÁO ẨN DANH
     @Column(name = "is_anonymous")
-    private boolean isAnonymous = false;
+    private Boolean isAnonymous = false;
 }
