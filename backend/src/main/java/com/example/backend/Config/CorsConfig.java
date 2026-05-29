@@ -13,6 +13,16 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
 
+    private static void appendCommaSeparatedOrigins(List<String> target, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .forEach(target::add);
+    }
+
     @Value("${cors.allowed.origins:http://localhost:5173,http://localhost:3000}")
     private String corsAllowedOrigins;
 
@@ -27,35 +37,26 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
 
-                // Kết hợp FRONTEND_URL với các CORS origins khác
                 List<String> allowedOriginsList = new ArrayList<>();
-
-                // Thêm FRONTEND_URL (S3)
-                if (frontendUrl != null && !frontendUrl.isEmpty()) {
-                    allowedOriginsList.add(frontendUrl);
+                appendCommaSeparatedOrigins(allowedOriginsList, frontendUrl);
+                appendCommaSeparatedOrigins(allowedOriginsList, corsAllowedOrigins);
+                if (allowedOriginsList.isEmpty()) {
+                    allowedOriginsList.add("http://localhost:5173");
+                    allowedOriginsList.add("http://localhost:3000");
                 }
 
-                // Parse comma-separated CORS origins from environment variable
-                if (corsAllowedOrigins != null && !corsAllowedOrigins.isEmpty()) {
-                    Arrays.stream(corsAllowedOrigins.split(","))
-                            .map(String::trim)
-                            .filter(origin -> !origin.isEmpty())
-                            .forEach(allowedOriginsList::add);
-                }
+                String[] origins = allowedOriginsList.stream().distinct().toArray(String[]::new);
 
-                String[] origins = allowedOriginsList.toArray(new String[0]);
+                registry.addMapping("/api/health/**")
+                        .allowedOriginPatterns("*")
+                        .allowedMethods("GET", "OPTIONS")
+                        .allowedHeaders("*");
 
-                var registration = registry.addMapping("/**")
+                registry.addMapping("/**")
+                        .allowedOriginPatterns(origins)
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                         .allowedHeaders("*")
                         .allowCredentials(true);
-
-                // Support wildcard origins safely with credentials
-                if (Arrays.stream(origins).anyMatch("*"::equals)) {
-                    registration.allowedOriginPatterns(origins);
-                } else {
-                    registration.allowedOrigins(origins);
-                }
             }
         };
     }

@@ -23,6 +23,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -56,53 +58,55 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    private List<String> resolveAllowedOrigins() {
+        List<String> origins = new ArrayList<>();
+        appendCommaSeparatedOrigins(origins, frontendUrl);
+        appendCommaSeparatedOrigins(origins, corsAllowedOrigins);
+        if (origins.isEmpty()) {
+            origins.add("http://localhost:5173");
+            origins.add("http://localhost:3000");
+        }
+        return origins.stream().distinct().toList();
+    }
+
+    private static void appendCommaSeparatedOrigins(List<String> target, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .forEach(target::add);
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        List<String> allowedOrigins = resolveAllowedOrigins();
+
+        CorsConfiguration healthCors = new CorsConfiguration();
+        healthCors.setAllowedOriginPatterns(List.of("*"));
+        healthCors.setAllowedMethods(List.of("GET", "OPTIONS"));
+        healthCors.setAllowedHeaders(List.of("*"));
+        healthCors.setAllowCredentials(false);
+
+        CorsConfiguration appCors = new CorsConfiguration();
+        appCors.setAllowedOriginPatterns(allowedOrigins);
+        appCors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        appCors.setAllowedHeaders(List.of("*"));
+        appCors.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/health/**", healthCors);
+        source.registerCorsConfiguration("/**", appCors);
+        return source;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-        // Kết hợp FRONTEND_URL với các CORS origins khác
-        List<String> allowedOrigins = new ArrayList<>();
-
-        // Thêm FRONTEND_URL (S3)
-        if (frontendUrl != null && !frontendUrl.isEmpty()) {
-            allowedOrigins.add(frontendUrl);
-        }
-
-        // Parse CORS origins from .env
-        if (corsAllowedOrigins != null && !corsAllowedOrigins.isEmpty()) {
-            Arrays.stream(corsAllowedOrigins.split(","))
-                    .map(String::trim)
-                    .filter(origin -> !origin.isEmpty())
-                    .forEach(allowedOrigins::add);
-        }
-
         http
                 .csrf(csrf -> csrf.disable())
-
-                // ✅ CORS
-                .cors(cors -> cors.configurationSource(request -> {
-
-                    CorsConfiguration cfg = new CorsConfiguration();
-
-                    // Support wildcard origins safely
-                    if (allowedOrigins.stream().anyMatch("*"::equals)) {
-                        cfg.setAllowedOriginPatterns(allowedOrigins);
-                    } else {
-                        cfg.setAllowedOrigins(allowedOrigins);
-                    }
-
-                    cfg.setAllowedMethods(List.of(
-                            "GET",
-                            "POST",
-                            "PUT",
-                            "DELETE",
-                            "OPTIONS",
-                            "PATCH"));
-
-                    cfg.setAllowedHeaders(List.of("*"));
-                    cfg.setAllowCredentials(true);
-
-                    return cfg;
-                }))
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 // ✅ Authorization
                 .authorizeHttpRequests(auth -> auth
