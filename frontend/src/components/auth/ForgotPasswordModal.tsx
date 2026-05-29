@@ -25,7 +25,11 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
   const [error, setError] = useState('');
   const [toastOpen, setToastOpen] = useState(false);
 
-  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  // 1. Regex chuẩn và an toàn hơn (Hạn chế ReDoS)
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  // 2. Kiểm tra độ dài an toàn TRƯỚC KHI chạy Regex
+  const isSafeLength = email.length > 0 && email.length <= 254;
+  const isValidEmail = isSafeLength && emailRegex.test(email);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -34,6 +38,11 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
     if (!email.trim()) {
       setError('Email không được để trống');
       return;
+    }
+
+    if (!isSafeLength) {
+       setError('Email quá dài hoặc không hợp lệ');
+       return;
     }
 
     if (!isValidEmail) {
@@ -58,6 +67,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
   return (
     <Modal open onClose={onClose} aria-labelledby="forgot-password-title" disableEnforceFocus>
       <Box sx={style}>
+        {/* ... (Phần UI bên trong giữ nguyên hoàn toàn) ... */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography id="forgot-password-title" variant="h6" component="h2">
             Quên mật khẩu
@@ -79,8 +89,9 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            error={Boolean(email && !isValidEmail)}
-            helperText={email && !isValidEmail ? 'Email không hợp lệ' : ' '}
+            // Cập nhật lại UI error logic một chút cho mượt
+            error={Boolean(email && !isValidEmail && email.length > 0)}
+            helperText={email && !isValidEmail && email.length > 0 ? 'Email không hợp lệ' : ' '}
             margin="normal"
             disabled={loading}
           />

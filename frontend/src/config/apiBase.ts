@@ -3,7 +3,12 @@
  * Dùng cho WebSocket (SockJS), ảnh /uploads, và axios gọi /api/... từ gốc.
  */
 function trimEndSlash(s: string): string {
-  return s.replace(/\/+$/, '');
+  let result = s;
+  // Dùng vòng lặp cắt chuỗi thay vì Regex để tránh rủi ro ReDoS
+  while (result.endsWith('/')) {
+    result = result.slice(0, -1);
+  }
+  return result;
 }
 
 export function getApiBaseUrl(): string {
@@ -14,7 +19,11 @@ export function getApiBaseUrl(): string {
 
   const authUrl = import.meta.env.VITE_API_URL;
   if (authUrl && String(authUrl).includes('/api/auth')) {
-    return trimEndSlash(String(authUrl).replace(/\/api\/auth\/?$/, ''));
+    // Loại bỏ Regex tiềm ẩn rủi ro ở đây luôn cho đồng bộ
+    let base = String(authUrl).trim();
+    if (base.endsWith('/')) base = base.slice(0, -1);
+    if (base.endsWith('/api/auth')) base = base.slice(0, -'/api/auth'.length);
+    return trimEndSlash(base);
   }
 
   return 'http://localhost:8080';

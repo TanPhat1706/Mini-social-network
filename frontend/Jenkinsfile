@@ -19,15 +19,15 @@ pipeline {
             }
         }
 
-        // 2. Chạy Linter hoặc Test (Tùy chọn, để đảm bảo code không lỗi cú pháp trước khi build)
-        stage('Install & Verify (Optional)') {
-            steps {
-                dir('frontend') { // Nếu code nằm ở thư mục gốc thì xóa block dir('frontend') {} này đi nhé
-                    bat 'npm ci'
-                    // bat 'npm run lint' // Mở comment dòng này nếu có dùng Eslint
-                }
-            }
-        }
+        // // 2. Chạy Linter hoặc Test (Tùy chọn, để đảm bảo code không lỗi cú pháp trước khi build)
+        // stage('Install & Verify (Optional)') {
+        //     steps {
+        //         dir('frontend') { // Nếu code nằm ở thư mục gốc thì xóa block dir('frontend') {} này đi nhé
+        //             bat 'npm ci'
+        //             // bat 'npm run lint' // Mở comment dòng này nếu có dùng Eslint
+        //         }
+        //     }
+        // }
 
         // 3. Build Docker Image (Sử dụng Multi-stage siêu nhẹ vừa viết)
         stage('Build Docker Image') {

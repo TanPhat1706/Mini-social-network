@@ -6,17 +6,22 @@ export interface FriendshipStatusResponse {
 }
 
 export const getFriendshipStatus = async (targetUserId: number) => {
-  return axiosClient.get<FriendshipStatusResponse>(`/friends/status/${targetUserId}`);
+  // 1. Mã hóa an toàn ID đầu vào (Ngăn chặn Path Traversal / Injection)
+  const safeTargetUserId = encodeURIComponent(targetUserId);
+  return axiosClient.get<FriendshipStatusResponse>(`/friends/status/${safeTargetUserId}`);
 };
 
 export const sendFriendRequest = async (targetUserId: number) => {
-  return axiosClient.post(`/friends/add/${targetUserId}`);
+  const safeTargetUserId = encodeURIComponent(targetUserId);
+  return axiosClient.post(`/friends/add/${safeTargetUserId}`);
 };
 
 export const acceptFriendRequest = async (targetUserId: number) => {
-  return axiosClient.post(`/friends/accept/${targetUserId}`);
+  const safeTargetUserId = encodeURIComponent(targetUserId);
+  return axiosClient.post(`/friends/accept/${safeTargetUserId}`);
 };
 
 export const removeFriendship = async (targetUserId: number) => {
-  return axiosClient.delete(`/friends/remove/${targetUserId}`);
+  const safeTargetUserId = encodeURIComponent(targetUserId);
+  return axiosClient.delete(`/friends/remove/${safeTargetUserId}`);
 };

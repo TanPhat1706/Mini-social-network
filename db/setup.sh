@@ -19,8 +19,8 @@ for i in $(seq 1 60); do
     sleep 1
 done
 
-# Chạy init script
-if [ -f /docker-entrypoint-initdb.d/init.sql ]; then
+# Chạy init script (ĐÃ VÁ LỖI CODE SMELL BẰNG NGOẶC KÉP)
+if [[ -f "/docker-entrypoint-initdb.d/init.sql" ]]; then
     echo ">>> Running init.sql..."
     /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -C -i /docker-entrypoint-initdb.d/init.sql
     echo ">>> Init complete!"

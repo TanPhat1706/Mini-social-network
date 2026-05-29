@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import axiosClient from '../../api/axiosClient';
 import { useChat } from '../../context/ChatContext';
 import './MessengerDropdown.css';
-
+import { getRecentConversations, markMessageAsRead } from '../../api/messageApi';
 interface Conversation {
   partnerId: number;
   partnerName: string;
@@ -27,7 +26,7 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
   }, []);
 
   const fetchConversations = () => {
-    axiosClient.get('/messages/recent')
+    getRecentConversations() // Sử dụng hàm từ messageApi
       .then(res => setConversations(res.data))
       .catch(console.error);
   };
@@ -52,8 +51,8 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
        
        // 3. Gọi API cập nhật ngầm bên dưới
        try {
-         await axiosClient.put(`/messages/read/${conv.partnerId}`);
-       } catch (e) { console.error(e); }
+        await markMessageAsRead(conv.partnerId); // Sử dụng hàm từ messageApi (Đã được mã hóa an toàn)
+      } catch (e) { console.error(e); }
     }
 
     // 4. Đóng Dropdown

@@ -7,6 +7,7 @@ import { getApiBaseUrl } from '../../config/apiBase';
 import type { User } from '../../types';
 import { useChat } from '../../context/ChatContext';
 import './ChatBox.css';
+import { getMessagesHistory } from '../../api/messageApi';
 
 // IMPORT COMPONENT AVATAR
 import AvatarWithFrame from '../AvatarWithFrame';
@@ -48,16 +49,17 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
     gameSessionId: data.gameSessionId
   });
 
-  /* ================= LOAD HISTORY ================= */
-  useEffect(() => {
-    if (!targetUser) return;
+/* ================= LOAD HISTORY ================= */
+useEffect(() => {
+  if (!targetUser) return;
 
-    setMessages([]);
-    axiosClient
-      .get(`/messages/${currentUser.id}/${targetUser.id}`)
-      .then(res => setMessages(res.data.map(mapMessage)))
-      .catch(console.error);
-  }, [currentUser.id, targetUser]);
+  setMessages([]);
+  
+  // 2. Sử dụng hàm từ messageApi thay vì gọi trực tiếp axiosClient
+  getMessagesHistory(currentUser.id, targetUser.id)
+    .then(res => setMessages(res.data.map(mapMessage)))
+    .catch(console.error);
+}, [currentUser.id, targetUser]);
 
   /* ================= WEBSOCKET ================= */
   useEffect(() => {
