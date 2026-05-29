@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-@Configuration
+//@Configuration
 public class CorsConfig {
 
     private static void appendCommaSeparatedOrigins(List<String> target, String value) {
