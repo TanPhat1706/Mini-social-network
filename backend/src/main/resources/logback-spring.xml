@@ -43,7 +43,7 @@
     </appender>
 
     <!-- ================= APP FILE ================= -->
-    <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_PATH}/app.log</file>
 
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -54,7 +54,7 @@
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger - %msg%n</pattern>
         </encoder>
-    </appender>
+    </appender> -->
 
     <!-- Logger riêng cho SECURITY -->
     <logger name="SECURITY" level="WARN" additivity="false">
