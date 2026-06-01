@@ -1,10 +1,13 @@
-<!-- <?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
+    <!-- Thư mục log -->
     <property name="LOG_PATH" value="logs"/>
 
+    <!-- ================= CONSOLE ================= -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
+            <!-- JSON để dễ demo ELK -->
             <pattern>
                 {"time":"%d{yyyy-MM-dd'T'HH:mm:ss}",
                 "level":"%level",
@@ -13,14 +16,17 @@
         </encoder>
     </appender>
 
+    <!-- ================= SECURITY FILE ================= -->
     <appender name="SECURITY_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_PATH}/security_audit.log</file>
 
+        <!-- rotate theo ngày -->
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${LOG_PATH}/security_audit.%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>7</maxHistory>
         </rollingPolicy>
 
+        <!-- JSON format -->
         <encoder>
             <pattern>
                 {"time":"%d{yyyy-MM-dd'T'HH:mm:ss}",
@@ -30,11 +36,13 @@
             </pattern>
         </encoder>
 
+        <!-- chỉ ghi WARN trở lên -->
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>WARN</level>
         </filter>
     </appender>
 
+    <!-- ================= APP FILE ================= -->
     <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_PATH}/app.log</file>
 
@@ -48,14 +56,16 @@
         </encoder>
     </appender>
 
+    <!-- Logger riêng cho SECURITY -->
     <logger name="SECURITY" level="WARN" additivity="false">
         <appender-ref ref="SECURITY_FILE"/>
         <appender-ref ref="CONSOLE"/>
     </logger>
 
+    <!-- Root -->
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="APP_FILE"/>
     </root>
 
-</configuration> -->
+</configuration>
