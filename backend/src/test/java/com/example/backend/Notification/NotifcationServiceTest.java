@@ -88,20 +88,38 @@ class NotificationServiceTest {
 
     @Test
     void handleNotificationEvent_whenValid_shouldSaveAndSendSocket() {
-        // Happy path thuần túy
-        // 🟢 ĐÃ SỬA: Thêm false vào cuối
-        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.LIKE_POST, 30L, "POST", "", false);
+        // 1. CHUẨN BỊ DỮ LIỆU ĐẦY ĐỦ
+        User sender = new User();
+        sender.setId(1);
+        sender.setFullName("Lê Hồng Phát");
+        sender.setAvatarUrl("avatar.jpg");
 
+        User receiver = new User();
+        receiver.setId(2);
+        receiver.setStudentCode("SV002"); 
+
+        NotificationEvent event = new NotificationEvent(
+                sender, receiver, NotificationType.LIKE_POST, 30L, "POST", "", false);
+
+        // 🟢 SỬA LỖI Ở ĐÂY: Thêm .isRead(false) để tránh NullPointerException khi mapToDTO
         Notification savedNotification = Notification.builder()
-                .id(100L).sender(sender).receiver(receiver).type(NotificationType.LIKE_POST).entityId(30L).build();
+                .id(100L)
+                .sender(sender)       
+                .receiver(receiver)   
+                .type(NotificationType.LIKE_POST)
+                .entityId(30L)
+                .isAnonymous(false) 
+                .isRead(false) // <--- CHÍNH LÀ DÒNG NÀY ĐÃ CỨU SỐNG BÀI TEST
+                .build();
         
         when(notificationRepository.save(any(Notification.class))).thenReturn(savedNotification);
 
+        // 2. THỰC THI
         notificationService.handleNotificationEvent(event);
 
+        // 3. KIỂM CHỨNG
         verify(notificationRepository).save(any(Notification.class));
         
-        // Kiểm tra xem message WebSocket có được gửi đúng địa chỉ không
         ArgumentCaptor<NotificationDTO> dtoCaptor = ArgumentCaptor.forClass(NotificationDTO.class);
         verify(messagingTemplate).convertAndSendToUser(
                 eq("SV002"),
@@ -112,7 +130,7 @@ class NotificationServiceTest {
         NotificationDTO sentDto = dtoCaptor.getValue();
         assertEquals(100L, sentDto.getId());
         assertEquals("Lê Hồng Phát", sentDto.getSenderName());
-        assertEquals("/posts/30", sentDto.getTargetUrl()); // Test luôn logic buildUrl
+        assertEquals("/posts/30", sentDto.getTargetUrl()); 
     }
 
     @Test
