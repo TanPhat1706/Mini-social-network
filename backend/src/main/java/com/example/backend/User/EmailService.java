@@ -18,8 +18,15 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromAddress;
 
+    // 1. Thêm biến này để Spring Boot lấy URL từ cấu hình
+    // Nếu không tìm thấy biến môi trường, nó sẽ tự động dùng mặc định là localhost:5173
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
+
     public void sendPasswordResetEmail(String toEmail, String clearTextToken) {
-        String link = "http://localhost:5173/reset-password?token=" + clearTextToken;
+        
+        // 2. Thay thế link gán cứng bằng biến frontendUrl
+        String link = frontendUrl + "/reset-password?token=" + clearTextToken;
 
         SimpleMailMessage msg = new SimpleMailMessage();
         msg.setFrom(fromAddress); // MUST match the authenticated Gmail account
