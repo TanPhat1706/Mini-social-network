@@ -10,6 +10,7 @@ import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import api from '../../api/api';
+import { showError } from '../../utils/swal';
 
 import AvatarWithFrame from '../AvatarWithFrame';
 import ColoredName from '../ColoredName';
