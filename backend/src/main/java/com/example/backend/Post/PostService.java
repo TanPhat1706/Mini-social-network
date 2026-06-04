@@ -75,7 +75,7 @@ public class PostService {
         if (request.getMediaFiles() != null && !request.getMediaFiles().isEmpty()) {
             List<PostMedia> mediaList = new ArrayList<>();
             for (MultipartFile file : request.getMediaFiles()) {
-                String fileUrl = fileStorageService.storeFile(file);
+                String fileUrl = fileStorageService.storeFile(file, "posts");
                 PostMedia media = new PostMedia();
                 media.setPost(post);
                 media.setMediaUrl(fileUrl);
@@ -118,7 +118,7 @@ public class PostService {
 
         if (request.getMediaFiles() != null && !request.getMediaFiles().isEmpty()) {
             for (MultipartFile file : request.getMediaFiles()) {
-                String fileUrl = fileStorageService.storeFile(file);
+                String fileUrl = fileStorageService.storeFile(file, "posts");
                 PostMedia media = new PostMedia();
                 media.setPost(post);
                 media.setMediaUrl(fileUrl);
@@ -253,7 +253,7 @@ public class PostService {
     }
 
     public String uploadFileToS3(MultipartFile file) {
-        return fileStorageService.storeFile(file);
+        return fileStorageService.storeFile(file, "posts");
     }
 
     public PostResponse mapToPostResponse(Post post) {

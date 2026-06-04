@@ -1,20 +1,16 @@
 package com.example.backend.User;
 
-import org.junit.jupiter.api.BeforeEach;
+import com.example.backend.Storage.FileStorageService;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,17 +33,11 @@ class AuthServiceTest {
     @Mock
     private JwtUtil jwtUtil;
 
+    @Mock
+    private FileStorageService fileStorageService;
+
     @InjectMocks
     private AuthService authService;
-
-    @TempDir
-    Path tempDir;
-
-    @BeforeEach
-    void setUp() {
-        // Tránh ghi file thật ra workspace khi test updateProfile/saveFile
-        ReflectionTestUtils.setField(authService, "uploadDir", tempDir.toString());
-    }
 
     // ... (Các test case register giữ nguyên vì không bị ảnh hưởng) ...
     @Test
@@ -373,12 +363,12 @@ class AuthServiceTest {
         MockMultipartFile validFile = new MockMultipartFile(
                 "file", "test.png", "image/png", "dummy image content".getBytes(StandardCharsets.UTF_8)
         );
+        when(fileStorageService.storeFile(validFile, null)).thenReturn("https://cdn.example.com/test.png");
 
         String path = authService.saveFile(validFile);
 
-        assertNotNull(path);
-        assertTrue(path.startsWith("/uploads/"));
-        assertTrue(path.endsWith("_test.png"));
+        assertEquals("https://cdn.example.com/test.png", path);
+        verify(fileStorageService).storeFile(validFile, null);
     }
 
     @Test
@@ -442,9 +432,8 @@ class AuthServiceTest {
         u.setStudentCode("SV001");
         when(userRepository.findByStudentCode("SV001")).thenReturn(Optional.of(u));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        AuthService spy = Mockito.spy(authService);
-        doReturn("/uploads/avatar.png", "/uploads/cover.png").when(spy).saveFile(any());
+        when(fileStorageService.storeFile(any(MockMultipartFile.class), eq("avatars"))).thenReturn("https://cdn.example.com/avatars/avatar.png");
+        when(fileStorageService.storeFile(any(MockMultipartFile.class), eq("covers"))).thenReturn("https://cdn.example.com/covers/cover.png");
 
         MockMultipartFile avatar = new MockMultipartFile(
                 "avatar", "a.png", "image/png", "a".getBytes(StandardCharsets.UTF_8)
@@ -453,12 +442,13 @@ class AuthServiceTest {
                 "cover", "c.png", "image/png", "c".getBytes(StandardCharsets.UTF_8)
         );
 
-        User saved = spy.updateProfile("SV001", null, null, null, avatar, cover);
+        User saved = authService.updateProfile("SV001", null, null, null, avatar, cover);
 
-        assertEquals("/uploads/avatar.png", saved.getAvatarUrl());
-        assertEquals("/uploads/cover.png", saved.getCoverPhotoUrl());
+        assertEquals("https://cdn.example.com/avatars/avatar.png", saved.getAvatarUrl());
+        assertEquals("https://cdn.example.com/covers/cover.png", saved.getCoverPhotoUrl());
         verify(userRepository).save(any(User.class));
-        verify(spy, times(2)).saveFile(any());
+        verify(fileStorageService).storeFile(avatar, "avatars");
+        verify(fileStorageService).storeFile(cover, "covers");
     }
     // ==========================================
     // 🟢 BỔ SUNG TEST CASE: SECURITY HISTORY (Nhánh thiết bị di động & Chuỗi rỗng)

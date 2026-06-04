@@ -24,7 +24,7 @@ public class LocalFileStorageService implements FileStorageService {
     }
 
     @Override
-    public String storeFile(MultipartFile file) {
+    public String storeFile(MultipartFile file, String directory) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File is empty or missing");
         }
@@ -34,9 +34,10 @@ public class LocalFileStorageService implements FileStorageService {
                 .orElse("file");
         String safeFileName = Paths.get(originalFileName).getFileName().toString();
         String fileName = UUID.randomUUID().toString() + "_" + safeFileName;
+        String normalizedDirectory = normalizeDirectory(directory);
 
         try {
-            Path uploadPath = Paths.get(uploadDir);
+            Path uploadPath = resolveUploadPath(normalizedDirectory);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
@@ -44,8 +45,7 @@ public class LocalFileStorageService implements FileStorageService {
             Path filePath = uploadPath.resolve(fileName);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            // Trả về đường dẫn tương đối (WebMvcConfig sẽ serve static file này)
-            return "/uploads/" + fileName;
+            return buildPublicPath(normalizedDirectory, fileName);
         } catch (IOException e) {
             throw new RuntimeException("Lỗi lưu file vào thư mục local", e);
         }
@@ -54,5 +54,41 @@ public class LocalFileStorageService implements FileStorageService {
     @Override
     public boolean isValidFile(MultipartFile file) {
         return file != null && !file.isEmpty();
+    }
+
+    private Path resolveUploadPath(String directory) {
+        Path uploadPath = Paths.get(uploadDir);
+        if (directory == null || directory.isBlank()) {
+            return uploadPath;
+        }
+
+        for (String segment : directory.split("/")) {
+            if (!segment.isBlank()) {
+                uploadPath = uploadPath.resolve(segment);
+            }
+        }
+        return uploadPath;
+    }
+
+    private String buildPublicPath(String directory, String fileName) {
+        if (directory == null || directory.isBlank()) {
+            return "/uploads/" + fileName;
+        }
+        return "/uploads/" + directory + "/" + fileName;
+    }
+
+    private String normalizeDirectory(String directory) {
+        if (directory == null || directory.isBlank()) {
+            return "";
+        }
+
+        String normalized = directory.trim().replace("\\", "/");
+        while (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 }

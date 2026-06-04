@@ -40,7 +40,10 @@ class UserProfileControllerTest extends BaseControllerTest {
                 "Nguyễn Văn Target",
                 "target@test.com",
                 "/avatar.jpg",
+                "/cover.jpg",
                 "Bio của Target",
+                "CNTT K17",
+                "2026-05-15T10:30:00",
                 "05/2026",
                 false,
                 "gold_frame",
@@ -66,6 +69,8 @@ class UserProfileControllerTest extends BaseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("TARGET_SV")) // 🟢 SỬA THÀNH username
                 .andExpect(jsonPath("$.fullName").value("Nguyễn Văn Target"))
+                .andExpect(jsonPath("$.className").value("CNTT K17"))
+                .andExpect(jsonPath("$.coverPhotoUrl").value("/cover.jpg"))
                 .andExpect(jsonPath("$.isSelfProfile").value(false));
     }
 

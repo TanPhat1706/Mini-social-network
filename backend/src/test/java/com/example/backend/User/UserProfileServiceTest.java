@@ -64,7 +64,10 @@ class UserProfileServiceTest {
         assertEquals("Nguyễn Văn A", response.fullName());
         assertEquals("nva@example.com", response.email());
         assertEquals("/avatar.png", response.avatarUrl());
+        assertEquals("/cover.png", response.coverPhotoUrl());
         assertEquals("Hello World", response.bio());
+        assertEquals("K17CNTT", response.className());
+        assertEquals("2023-05-15T10:30", response.createdAt());
         assertEquals("frame_gold", response.currentAvatarFrame());
         assertEquals("#FF0000", response.currentNameColor());
     }
@@ -116,7 +119,9 @@ class UserProfileServiceTest {
         user.setFullName("Nguyễn Văn A");
         user.setEmail("nva@example.com");
         user.setAvatarUrl("/avatar.png");
+        user.setCoverPhotoUrl("/cover.png");
         user.setBio("Hello World");
+        user.setClassName("K17CNTT");
         user.setCurrentAvatarFrame("frame_gold");
         user.setCurrentNameColor("#FF0000");
         // Giả lập ngày tạo tài khoản là 15/05/2023

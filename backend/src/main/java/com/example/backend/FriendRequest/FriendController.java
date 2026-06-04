@@ -78,4 +78,5 @@ public class FriendController {
     public ResponseEntity<?> getFriendsList() {
         return ResponseEntity.ok(friendshipService.getUserFriends(getCurrentUserId()));
     }
+    
 }

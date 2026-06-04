@@ -1,23 +1,18 @@
 package com.example.backend.User;
 
+import com.example.backend.Storage.FileStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import ua_parser.Parser;
 import ua_parser.Client;
-
-import java.util.List;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.time.LocalDateTime;
-import java.util.stream.Collectors;
-import org.springframework.beans.factory.annotation.Value;
-import java.nio.file.Path;
-import java.io.IOException;
-import java.util.UUID;
+import ua_parser.Parser;
 
 @Service
 public class AuthService {
@@ -34,9 +29,8 @@ public class AuthService {
     @Autowired
     private SecurityHistoryRepository securityHistoryRepository;
 
-    // Lấy đường dẫn thư mục uploads từ file config (mặc định là "uploads")
-    @Value("${app.upload.dir:uploads}")
-    private String uploadDir;
+    @Autowired
+    private FileStorageService fileStorageService;
 
     // --- ĐĂNG KÝ ---
     public User register(RegisterRequest req) {
@@ -136,25 +130,13 @@ public class AuthService {
     }
 
     public String saveFile(MultipartFile file) throws IOException {
+        return saveFile(file, null);
+    }
+
+    public String saveFile(MultipartFile file, String directory) throws IOException {
         if (file == null || file.isEmpty())
             return null;
-
-        // Tạo tên file độc nhất để tránh trùng lặp
-        String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-
-        // Tạo đường dẫn tuyệt đối đến thư mục uploads
-        Path uploadPath = Paths.get(uploadDir);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-        }
-
-        // Lưu file
-        Path filePath = uploadPath.resolve(fileName);
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-        // Trả về đường dẫn tương đối để lưu vào DB (ví dụ: /uploads/abc.jpg)
-        // Lưu ý: WebMvcConfig đã map "/uploads/**" vào thư mục này
-        return "/uploads/" + fileName;
+        return fileStorageService.storeFile(file, directory);
     }
 
     // --- MỚI: HÀM CẬP NHẬT PROFILE ---
@@ -189,13 +171,13 @@ public class AuthService {
 
         // Cập nhật Avatar nếu có upload
         if (avatar != null && !avatar.isEmpty()) {
-            String avatarPath = saveFile(avatar);
+            String avatarPath = saveFile(avatar, "avatars");
             user.setAvatarUrl(avatarPath);
         }
 
         // Cập nhật Ảnh bìa nếu có upload
         if (cover != null && !cover.isEmpty()) {
-            String coverPath = saveFile(cover);
+            String coverPath = saveFile(cover, "covers");
             user.setCoverPhotoUrl(coverPath);
         }
 

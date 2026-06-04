@@ -7,7 +7,19 @@ export interface UserInfo {
   studentCode: string;
   fullName: string;
   role: string;
+  email?: string;
+  className?: string;
+  bio?: string;
   avatarUrl?: string;
+  coverPhotoUrl?: string;
+  active?: boolean;
+  createdAt?: string;
+  lastLogin?: string;
+  level?: number;
+  exp?: number;
+  vptlPoints?: number;
+  currentAvatarFrame?: string | null;
+  currentNameColor?: string | null;
 }
 
 // 2. Cập nhật Interface Context

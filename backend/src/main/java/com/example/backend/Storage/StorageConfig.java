@@ -33,8 +33,10 @@ public class StorageConfig {
             @Value("${aws.access-key-id}") String accessKey,
             @Value("${aws.secret-access-key}") String secretKey,
             @Value("${aws.region}") String region,
-            @Value("${aws.bucket-name}") String bucketName) {
+            @Value("${aws.bucket-name}") String bucketName,
+            @Value("${aws.endpoint:}") String endpoint,
+            @Value("${aws.url:}") String publicBaseUrl) {
         System.out.println("🟢 [STORAGE] Đang sử dụng chế độ: AWS S3 (bucket: " + bucketName + ")");
-        return new S3StorageService(accessKey, secretKey, region, bucketName);
+        return new S3StorageService(accessKey, secretKey, region, bucketName, endpoint, publicBaseUrl);
     }
 }

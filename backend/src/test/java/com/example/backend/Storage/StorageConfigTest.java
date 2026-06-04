@@ -21,7 +21,7 @@ class StorageConfigTest {
     void s3FileStorageService_shouldReturnS3Instance() {
         StorageConfig config = new StorageConfig();
         FileStorageService service = config.s3FileStorageService(
-                "access", "secret", "ap-southeast-1", "bucket"
+                "access", "secret", "ap-southeast-1", "bucket", "", ""
         );
         
         assertTrue(service instanceof S3StorageService);

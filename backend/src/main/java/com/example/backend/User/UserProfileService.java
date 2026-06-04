@@ -17,16 +17,20 @@ public class UserProfileService {
 
         boolean isSelfProfile = viewerStudentCode != null && viewerStudentCode.equals(targetUser.getStudentCode());
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/yyyy");
+        String createdAt = targetUser.getCreatedAt() != null ? targetUser.getCreatedAt().toString() : null;
+        String joinedAt = targetUser.getCreatedAt() != null ? targetUser.getCreatedAt().format(formatter) : null;
 
-        // 🟢 CẬP NHẬT: Truyền thêm 2 tham số vào constructor
         return new UserProfileResponse(
                 targetUser.getId(),
                 targetUser.getStudentCode(),
                 targetUser.getFullName(),
                 targetUser.getEmail(),
                 targetUser.getAvatarUrl(),
+                targetUser.getCoverPhotoUrl(),
                 targetUser.getBio(),
-                targetUser.getCreatedAt().format(formatter),
+                targetUser.getClassName(),
+                createdAt,
+                joinedAt,
                 isSelfProfile,
                 targetUser.getCurrentAvatarFrame(), // Truyền viền vào
                 targetUser.getCurrentNameColor() // Truyền màu tên vào

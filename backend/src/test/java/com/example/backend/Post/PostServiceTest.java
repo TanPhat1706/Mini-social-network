@@ -159,7 +159,7 @@ class PostServiceTest {
         req.setVisibility(Visibility.PRIVATE);
         req.setMediaFiles(List.of(nullTypeFile, videoFile, audioFile, imageFile));
 
-        when(fileStorageService.storeFile(any())).thenReturn("url");
+        when(fileStorageService.storeFile(any(MultipartFile.class), eq("posts"))).thenReturn("url");
         when(postRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         PostResponse res = postService.createPost(req);
@@ -192,7 +192,8 @@ class PostServiceTest {
         req.setVisibility(Visibility.PRIVATE);
 
         MultipartFile badFile = mock(MultipartFile.class);
-        when(fileStorageService.storeFile(any())).thenThrow(new RuntimeException("S3 upload failed"));
+        when(fileStorageService.storeFile(any(MultipartFile.class), eq("posts")))
+                .thenThrow(new RuntimeException("S3 upload failed"));
         req.setMediaFiles(List.of(badFile));
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.createPost(req));
@@ -237,7 +238,7 @@ class PostServiceTest {
 
         when(postRepository.findById(10L)).thenReturn(Optional.of(post));
         when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(fileStorageService.storeFile(any())).thenReturn("https://s3/url");
+        when(fileStorageService.storeFile(any(MultipartFile.class), eq("posts"))).thenReturn("https://s3/url");
 
         PostRequest req = new PostRequest();
         req.setContent("new");
@@ -574,7 +575,7 @@ class PostServiceTest {
     @Test
     void uploadFileToS3_shouldCallStorageService() {
         MultipartFile mockFile = mock(MultipartFile.class);
-        when(fileStorageService.storeFile(mockFile)).thenReturn("/url");
+        when(fileStorageService.storeFile(mockFile, "posts")).thenReturn("/url");
 
         String url = postService.uploadFileToS3(mockFile);
         assertEquals("/url", url);
