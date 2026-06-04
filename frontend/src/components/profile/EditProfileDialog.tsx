@@ -68,7 +68,9 @@ export default function EditProfileDialog({ open, onClose, currentUser, onUpdate
       if (selectedFile) formData.append('avatar', selectedFile);
 
       const res = await api.put('/api/auth/profile', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        // ⭐ Không set Content-Type thủ công — browser tự gắn boundary
+        headers: { 'Content-Type': undefined },
+        timeout: 60000,
       });
       
       onUpdateSuccess(res.data);

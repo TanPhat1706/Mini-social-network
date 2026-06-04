@@ -70,7 +70,9 @@ export default function ProfileHeader({ profileUser, isSelfProfile, onUpdateProf
       const formData = new FormData();
       formData.append(type, file);
       const res = await api.put('/api/auth/profile', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        // ⭐ Không set Content-Type thủ công — browser tự gắn boundary
+        headers: { 'Content-Type': undefined },
+        timeout: 60000,
       });
       
       if (typeof res.data === 'string' || !res.data.avatarUrl) {

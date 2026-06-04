@@ -96,7 +96,11 @@ export default function CreatePost() {
       });
 
       await api.post('/api/posts', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        // ⭐ KHÔNG set Content-Type thủ công khi gửi FormData.
+        // Browser sẽ tự gắn "multipart/form-data; boundary=..." (có boundary đúng).
+        // Nếu set tay sẽ thiếu boundary → server không parse được file → Network Error.
+        headers: { 'Content-Type': undefined },
+        timeout: 60000, // 60s cho upload ảnh lên S3
       });
 
       handleClose();
