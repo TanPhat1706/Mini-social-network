@@ -133,9 +133,35 @@ public class S3StorageService implements FileStorageService {
         }
 
         String normalized = value.trim();
+        if (isDisabledValue(normalized)) {
+            return null;
+        }
+
+        if (!hasScheme(normalized)) {
+            normalized = "https://" + normalized;
+        }
+
         while (normalized.endsWith("/")) {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
+
+        URI uri = URI.create(normalized);
+        if (uri.getScheme() == null || uri.getHost() == null || uri.getHost().isBlank()) {
+            return null;
+        }
         return normalized;
+    }
+
+    private boolean hasScheme(String value) {
+        int schemeSeparatorIndex = value.indexOf("://");
+        return schemeSeparatorIndex > 0;
+    }
+
+    private boolean isDisabledValue(String value) {
+        String normalized = value.trim();
+        return normalized.isEmpty()
+                || "null".equalsIgnoreCase(normalized)
+                || "undefined".equalsIgnoreCase(normalized)
+                || normalized.startsWith("${");
     }
 }

@@ -97,4 +97,41 @@ class S3StorageServiceTest {
         assertTrue(s3StorageService.isValidFile(validFile));
         assertFalse(s3StorageService.isValidFile(null));
     }
+
+    @Test
+    @DisplayName("Tự thêm https khi endpoint/public URL chỉ có hostname")
+    void constructor_whenEndpointHasNoScheme_shouldAutoPrefixHttps() {
+        S3StorageService service = new S3StorageService(
+                "dummyAccessKey",
+                "dummySecretKey",
+                region,
+                bucketName,
+                "s3.ap-southeast-1.amazonaws.com",
+                null
+        );
+
+        assertEquals(
+                "https://s3.ap-southeast-1.amazonaws.com/" + bucketName + "/avatars/test.png",
+                service.buildFileUrl("avatars/test.png")
+        );
+    }
+
+    @Test
+    @DisplayName("Bỏ qua endpoint rỗng giả và fallback về URL S3 mặc định")
+    void constructor_whenEndpointIsDisabledValue_shouldFallbackToDefaultAwsUrl() {
+        S3StorageService service = new S3StorageService(
+                "dummyAccessKey",
+                "dummySecretKey",
+                region,
+                bucketName,
+                "null",
+                "${AWS_URL}"
+        );
+
+        String resultUrl = service.buildFileUrl("covers/test.png");
+        assertEquals(
+                "https://my-aws-bucket.s3.ap-southeast-1.amazonaws.com/covers/test.png",
+                resultUrl
+        );
+    }
 }
