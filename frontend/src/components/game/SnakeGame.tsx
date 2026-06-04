@@ -194,12 +194,9 @@ const SnakeGame: React.FC = () => {
         if (score === 0) return;
 
         try {
-            isSavedRef.current = true; 
-            const userStr = localStorage.getItem('user');
-            if (!userStr) return;
-
-            const user = JSON.parse(userStr);
-            await gameApi.saveScore({ userId: user.id, gameKey: "SNAKE", score: score });
+            isSavedRef.current = true;
+            // Không cần gửi userId — backend tự lấy từ JWT token
+            await gameApi.saveScore({ gameKey: "SNAKE", score: score });
             fetchLeaderboard();
         } catch (error) {
             console.error("Lỗi lưu điểm", error);
