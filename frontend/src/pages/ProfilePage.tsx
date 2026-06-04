@@ -45,7 +45,10 @@ interface ProfileUser extends User {
 
 const ProfilePage: React.FC = () => {
   const { studentCode } = useParams<{ studentCode?: string }>();
-  const { user: currentUser } = useAuth();
+  
+  // 🎯 CẬP NHẬT 1: Lấy thêm hàm cập nhật user từ AuthContext (Ví dụ: updateUser hoặc setAuthUser)
+  // Lưu ý: Hãy đổi chữ `updateUser` thành đúng tên hàm mà bạn đã định nghĩa trong AuthContext.tsx của bạn nhé!
+  const { user: currentUser, updateUser } = useAuth() as any; 
 
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [friends, setFriends] = useState<User[]>([]);
@@ -116,8 +119,19 @@ const ProfilePage: React.FC = () => {
     fetchPostsAndFriends();
   }, [profileUser, profileCode, isBlocked]);
 
+
+  // 🎯 CẬP NHẬT 2: Viết lại hàm xử lý cập nhật Profile để đồng bộ cả 2 nơi
   const handleUpdateProfile = (updatedUser: User) => {
-    setProfileUser({ ...profileUser, ...updatedUser });
+    // 1. Cập nhật giao diện trang cá nhân hiện tại (Dùng callback prev để tránh lỗi tham chiếu chéo)
+    setProfileUser(prev => prev ? { ...prev, ...updatedUser } : null);
+
+    // 2. Nếu người dùng đang tự cập nhật trang của chính họ -> Đồng bộ lên thanh Navbar (Global Context)
+    if (profileUser?.isSelfProfile && updateUser) {
+       updateUser({
+         ...currentUser,
+         ...updatedUser
+       });
+    }
   };
 
   if (loading && !profileUser) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>;

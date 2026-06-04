@@ -27,17 +27,23 @@ public interface PostRepository extends JpaRepository<Post, Long> {
        // =========================
        // TÌM TẤT CẢ KÈM THEO MEDIA VÀ TÁC GIẢ (CÓ PHÂN TRANG)
        // =========================
+
        // 🟢 Cập nhật findAllWithAuthorAndMedia
-       @EntityGraph(attributePaths = { "author", "media" })
-       @Query(value = "SELECT p FROM Post p ORDER BY p.createdAt DESC", countQuery = "SELECT COUNT(p) FROM Post p")
+       // Bỏ "media" khỏi EntityGraph để tránh in-memory pagination
+       @EntityGraph(attributePaths = { "author" })
+       @Query(value = "SELECT p FROM Post p", countQuery = "SELECT COUNT(p) FROM Post p")
        Page<Post> findAllWithAuthorAndMedia(Pageable pageable);
 
        // 🟢 Cập nhật findByAuthorId
-       @Query(value = "SELECT p FROM Post p LEFT JOIN FETCH p.media WHERE p.author.id = :authorId ORDER BY p.createdAt DESC", countQuery = "SELECT COUNT(DISTINCT p) FROM Post p WHERE p.author.id = :authorId")
+       // Bỏ LEFT JOIN FETCH và ORDER BY. Việc Sort sẽ do Pageable tự động gắn vào.
+       @EntityGraph(attributePaths = { "author" })
+       @Query(value = "SELECT p FROM Post p WHERE p.author.id = :authorId", countQuery = "SELECT COUNT(p) FROM Post p WHERE p.author.id = :authorId")
        Page<Post> findByAuthorId(@Param("authorId") Integer authorId, Pageable pageable);
 
        // 🟢 Cập nhật findByAuthorStudentCode
-       @Query(value = "SELECT p FROM Post p LEFT JOIN FETCH p.media WHERE p.author.studentCode = :studentCode ORDER BY p.createdAt DESC", countQuery = "SELECT COUNT(DISTINCT p) FROM Post p WHERE p.author.studentCode = :studentCode")
+       // Tương tự, bỏ FETCH và ORDER BY đi.
+       @EntityGraph(attributePaths = { "author" })
+       @Query(value = "SELECT p FROM Post p WHERE p.author.studentCode = :studentCode", countQuery = "SELECT COUNT(p) FROM Post p WHERE p.author.studentCode = :studentCode")
        Page<Post> findByAuthorStudentCode(@Param("studentCode") String studentCode, Pageable pageable);
 
        // =========================

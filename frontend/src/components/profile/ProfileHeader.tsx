@@ -24,10 +24,18 @@ import ColoredName from '../ColoredName'; // Fix đường dẫn
 import type { User } from '../../types';
 import { useChat } from '../../context/ChatContext';
 
+// Gắn thêm tham số ?t=... để ép trình duyệt không dùng cache
 const getImageUrl = (url: string | undefined) => {
   if (!url) return undefined;
-  if (url.startsWith('http')) return url;
-  return `${getApiBaseUrl()}${url}`;
+  
+  // Tạo một chuỗi thời gian ngẫu nhiên
+  const timestamp = new Date().getTime();
+
+  if (url.startsWith('http')) {
+      // Nếu link đã có dấu ? rồi thì dùng &, chưa có thì dùng ?
+      return url.includes('?') ? `${url}&t=${timestamp}` : `${url}?t=${timestamp}`;
+  }
+  return `${getApiBaseUrl()}${url}?t=${timestamp}`;
 };
 
 interface ProfileHeaderProps {
@@ -52,7 +60,10 @@ export default function ProfileHeader({ profileUser, isSelfProfile, onUpdateProf
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'cover') => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    
+    // 1. Thêm dòng này để TypeScript biết chắc chắn profileUser không bị null
+    if (!file || !profileUser) return; 
+    
     setIsUploading(true);
     closeMenus();
     try {
@@ -61,7 +72,16 @@ export default function ProfileHeader({ profileUser, isSelfProfile, onUpdateProf
       const res = await api.put('/api/auth/profile', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      onUpdateProfile(res.data);
+      
+      if (typeof res.data === 'string' || !res.data.avatarUrl) {
+         const newAvatarUrl = res.data.avatarUrl || res.data as User;
+         
+         // 2. Thêm "as User" để ép kiểu, nói với TypeScript: "Yên tâm, đây chuẩn là User rồi!"
+         onUpdateProfile({ ...profileUser, avatarUrl: newAvatarUrl } as User); 
+      } else {
+         onUpdateProfile(res.data);
+      }
+      
     } catch (error) {
       showError("Không thể tải ảnh lên.");
     } finally {
