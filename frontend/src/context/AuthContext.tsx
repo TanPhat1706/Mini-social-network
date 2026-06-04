@@ -13,9 +13,11 @@ export interface UserInfo {
 // 2. Cập nhật Interface Context
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: UserInfo | null; // Thêm biến user
-  login: (token: string, userInfo: UserInfo) => void; // Hàm login nhận thêm userInfo
+  user: UserInfo | null;
+  login: (token: string, userInfo: UserInfo) => void;
   logout: () => void;
+  // 🎯 THÊM MỚI: Hàm để cập nhật thông tin user (dùng Partial để chỉ cần truyền trường muốn đổi)
+  updateUser: (updatedInfo: Partial<UserInfo>) => void; 
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -54,8 +56,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setUser(null);
   };
 
+  // 🎯 THÊM MỚI: Logic cập nhật thông tin người dùng đang đăng nhập
+  const updateUser = (updatedInfo: Partial<UserInfo>) => {
+    setUser((prevUser) => {
+      if (!prevUser) return null;
+      
+      // Trộn thông tin cũ và thông tin mới lại với nhau
+      const newUser = { ...prevUser, ...updatedInfo };
+      
+      // Lưu đè lại vào LocalStorage để F5 không bị mất
+      localStorage.setItem('user', JSON.stringify(newUser));
+      
+      return newUser;
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+    // 🎯 THÊM updateUser vào Provider
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
