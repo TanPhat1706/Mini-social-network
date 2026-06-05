@@ -1,6 +1,8 @@
 package com.example.backend.Game;
 
 import com.example.backend.Integration.BaseControllerTest;
+import com.example.backend.User.User;
+import com.example.backend.User.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
@@ -12,6 +14,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -33,13 +36,23 @@ class GameControllerTest extends BaseControllerTest {
     @MockBean
     private GameService gameService;
 
+    // ✅ Thêm mock UserRepository — GameController dùng để lookup user từ studentCode
+    @MockBean
+    private UserRepository userRepository;
+
     private GameScore gameScore;
+    private User mockUser;
 
     @BeforeEach
     void setUp() {
-        // Tui giữ nguyên constructor của bạn, giả sử tham số thứ 2 là userId (Integer)
         gameScore = new GameScore("snake", 1412, "Test STUDENT", "avatar.png", 321);
         gameScore.setPlayedAt(LocalDateTime.of(2026, 5, 4, 18, 0));
+
+        // User giả khớp với @WithMockUser(username = "1412") — studentCode = "1412"
+        mockUser = new User();
+        mockUser.setId(1412);
+        mockUser.setStudentCode("1412");
+        mockUser.setFullName("Test STUDENT");
     }
 
     // ==========================================
@@ -62,13 +75,15 @@ class GameControllerTest extends BaseControllerTest {
     // 2. TEST GHI ĐIỂM THÀNH CÔNG (CẦN ĐĂNG NHẬP)
     // ==========================================
     @Test
-    @WithMockUser(username = "1412") // 🟢 Tiêm thẳng danh tính "1412" vào Context
+    @WithMockUser(username = "1412") // JWT subject = studentCode
     void submitScore_whenAuthenticated_shouldReturnSavedScore() throws Exception {
         ScoreRequest request = new ScoreRequest();
         request.setGameKey("snake");
         request.setScore(321);
 
-        // Lưu ý: Mock tham số đầu tiên là chuỗi "1412" vì Controller đã được sửa lấy studentCode
+        // Stub: studentCode "1412" → mockUser (id=1412)
+        when(userRepository.findByStudentCode(eq("1412"))).thenReturn(Optional.of(mockUser));
+        // Stub: gameService nhận đúng userId=1412 (Integer) từ mockUser.getId()
         when(gameService.saveScore(eq(1412), eq("snake"), eq(321))).thenReturn(gameScore);
 
         mockMvc.perform(post("/api/games/score")
@@ -91,6 +106,8 @@ class GameControllerTest extends BaseControllerTest {
         request.setGameKey("snake");
         request.setScore(-50); // Điểm âm không hợp lệ
 
+        // Stub lookup user trước — controller cần tìm user trước khi gọi service
+        when(userRepository.findByStudentCode(eq("1412"))).thenReturn(Optional.of(mockUser));
         when(gameService.saveScore(eq(1412), eq("snake"), eq(-50)))
                 .thenThrow(new RuntimeException("Điểm số không hợp lệ"));
 
@@ -100,4 +117,4 @@ class GameControllerTest extends BaseControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Điểm số không hợp lệ"));
     }
-}
+}
