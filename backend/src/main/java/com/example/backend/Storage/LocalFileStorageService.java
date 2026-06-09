@@ -5,14 +5,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Optional;
-import java.util.UUID;
 
 import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Lưu file vào thư mục local trên server.
- * URL trả về dạng: /uploads/uuid_filename.png
+ * URL trả về dạng: /uploads/uuid.png
  * WebMvcConfig đã map "/uploads/**" vào thư mục này.
  */
 public class LocalFileStorageService implements FileStorageService {
@@ -29,11 +27,7 @@ public class LocalFileStorageService implements FileStorageService {
             throw new IllegalArgumentException("File is empty or missing");
         }
 
-        String originalFileName = Optional.ofNullable(file.getOriginalFilename())
-                .filter(name -> !name.isBlank())
-                .orElse("file");
-        String safeFileName = Paths.get(originalFileName).getFileName().toString();
-        String fileName = UUID.randomUUID().toString() + "_" + safeFileName;
+        String fileName = generateSafeFileName(file);
         String normalizedDirectory = normalizeDirectory(directory);
 
         try {
@@ -48,6 +42,24 @@ public class LocalFileStorageService implements FileStorageService {
             return buildPublicPath(normalizedDirectory, fileName);
         } catch (IOException e) {
             throw new RuntimeException("Lỗi lưu file vào thư mục local", e);
+        }
+    }
+
+    @Override
+    public void deleteFile(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return;
+        }
+
+        try {
+            String relativePath = fileUrl.replaceFirst("^/?uploads/", "");
+            Path filePath = Paths.get(uploadDir).resolve(relativePath).normalize();
+            if (!filePath.startsWith(Paths.get(uploadDir).normalize())) {
+                throw new SecurityException("Invalid file path: " + fileUrl);
+            }
+            Files.deleteIfExists(filePath);
+        } catch (IOException e) {
+            throw new RuntimeException("Error deleting file from local storage", e);
         }
     }
 

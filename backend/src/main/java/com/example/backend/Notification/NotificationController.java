@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -36,5 +37,12 @@ public class NotificationController {
             .collect(Collectors.toList());
 
         return ResponseEntity.ok(dtos);
+    }
+
+    @PutMapping("/read-all")
+    public ResponseEntity<Void> markAllAsRead() {
+        User currentUser = getCurrentUser();
+        notificationService.markAllAsRead(Long.valueOf(currentUser.getId()));
+        return ResponseEntity.ok().build();
     }
 }

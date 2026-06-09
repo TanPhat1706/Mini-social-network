@@ -2,7 +2,6 @@ package com.example.backend.Storage;
 
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -14,6 +13,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 // Không dùng @Service ở đây — Bean được tạo bởi StorageConfig (theo điều kiện STORAGE_TYPE=s3)
@@ -66,10 +66,7 @@ public class S3StorageService implements FileStorageService {
             throw new IllegalArgumentException("File is empty or missing");
         }
 
-        String originalFileName = Optional.ofNullable(file.getOriginalFilename())
-                .filter(name -> !name.isBlank())
-                .orElse("file");
-        String safeFileName = Paths.get(originalFileName).getFileName().toString();
+        String safeFileName = generateSafeFileName(file);
         String normalizedDirectory = normalizeDirectory(directory);
         String objectKey = buildObjectKey(normalizedDirectory, safeFileName);
 
@@ -86,6 +83,29 @@ public class S3StorageService implements FileStorageService {
             return buildFileUrl(objectKey);
         } catch (IOException e) {
             throw new RuntimeException("Failed to upload file to S3", e);
+        }
+    }
+
+    @Override
+    public void deleteFile(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return;
+        }
+
+        try {
+            String objectKey = extractObjectKeyFromUrl(fileUrl);
+            if (objectKey == null || objectKey.isBlank()) {
+                return;
+            }
+
+            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .build();
+
+            s3Client.deleteObject(deleteObjectRequest);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete file from S3", e);
         }
     }
 
@@ -163,5 +183,37 @@ public class S3StorageService implements FileStorageService {
                 || "null".equalsIgnoreCase(normalized)
                 || "undefined".equalsIgnoreCase(normalized)
                 || normalized.startsWith("${");
+    }
+
+    private String extractObjectKeyFromUrl(String fileUrl) {
+        try {
+            // TH1: Dùng publicBaseUrl (VD: https://cdn.domain.com/posts/abc.png)
+            if (publicBaseUrl != null && fileUrl.startsWith(publicBaseUrl)) {
+                return fileUrl.substring(publicBaseUrl.length() + 1); // +1 để bỏ dấu '/'
+            }
+
+            URI uri = new URI(fileUrl);
+            String path = uri.getPath();
+
+            // Xóa dấu '/' ở đầu path
+            if (path.startsWith("/")) {
+                path = path.substring(1);
+            }
+
+            // TH2: Dùng custom endpoint (VD:
+            // https://minio.domain.com/my-bucket/posts/abc.png)
+            if (endpoint != null && publicBaseUrl == null) {
+                if (path.startsWith(bucketName + "/")) {
+                    return path.substring(bucketName.length() + 1);
+                }
+            }
+
+            // TH3: AWS S3 Default (VD:
+            // https://my-bucket.s3.ap-southeast-1.amazonaws.com/posts/abc.png)
+            // Path lúc này chính là objectKey
+            return path;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

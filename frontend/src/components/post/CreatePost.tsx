@@ -31,26 +31,26 @@ const FakeInputButton = styled(Button)(({ theme }) => ({
 
 export default function CreatePost() {
   // ⭐️ State cho User Info
-  const [user, setUser] = useState(null); 
-  
+  const [user, setUser] = useState(null);
+
   const [open, setOpen] = useState(false);
   const [postContent, setPostContent] = useState('');
   const [selectedFiles, setSelectedFiles] = useState([]);
-  const [previewUrls, setPreviewUrls] = useState([]);
+  const [previewUrls, setPreviewUrls] = useState<{ url: string, type: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
   const fileInputRef = useRef(null);
+  const MAX_FILE_SIZE = import.meta.env.VITE_APP_MAX_FILE_SIZE;
 
   // ⭐️ FETCH USER PROFILE TẠI ĐÂY
   useEffect(() => {
     const fetchUserProfile = async () => {
-        try {
-            const response = await api.get('/api/auth/profile');
-            setUser(response.data);
-        } catch (err) {
-            console.error("Failed to fetch user profile in CreatePost:", err);
-            // Có thể set user mặc định nếu lỗi
-        }
+      try {
+        const response = await api.get('/api/auth/profile');
+        setUser(response.data);
+      } catch (err) {
+        console.error("Failed to fetch user profile in CreatePost:", err);
+        // Có thể set user mặc định nếu lỗi
+      }
     };
     fetchUserProfile();
   }, []);
@@ -70,17 +70,50 @@ export default function CreatePost() {
     setPreviewUrls([]);
   };
 
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files);
+  const handleFileSelect = (e: any) => {
+    const files = Array.from(e.target.files) as File[];
     if (files.length === 0) return;
-    setSelectedFiles(prev => [...prev, ...files]);
-    const newPreviewUrls = files.map(file => URL.createObjectURL(file));
+
+    const validFiles: File[] = [];
+    const newPreviewUrls: { url: string, type: string }[] = [];
+    let hasOversizedFile = false;
+
+    files.forEach(file => {
+      if (file.size > MAX_FILE_SIZE) {
+        hasOversizedFile = true;
+      } else {
+        validFiles.push(file);
+        newPreviewUrls.push({
+          url: URL.createObjectURL(file),
+          type: file.type
+        });
+      }
+    });
+
+    if (hasOversizedFile) {
+      import('sweetalert2').then((Swal) => {
+        Swal.default.fire({
+          icon: 'error',
+          title: 'File quá lớn!',
+          text: 'Một hoặc nhiều file vượt quá giới hạn 100MB và đã bị loại bỏ.',
+          customClass: {
+            container: 'swal-z-index-fix'
+          }
+        });
+      });
+    }
+
+    setSelectedFiles(prev => [...prev, ...validFiles] as any);
     setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
+
+    if (fileInputRef.current) {
+      (fileInputRef.current as any).value = '';
+    }
   };
 
-  const handleRemoveImage = (index) => {
+  const handleRemoveImage = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-    URL.revokeObjectURL(previewUrls[index]);
+    URL.revokeObjectURL(previewUrls[index].url);
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -139,27 +172,27 @@ export default function CreatePost() {
       <Paper
         data-testid="create-post-trigger"
         elevation={0}
-        sx={{ border: '1px solid #E0E0E0', p: 2, mb: 3, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' }}}
+        sx={{ border: '1px solid #E0E0E0', p: 2, mb: 3, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
         onClick={handleClickOpen}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
           {/* ⭐️ Hiển thị Skeleton nếu chưa load xong user */}
           {user ? (
-             <Box sx={{ mr: 1.5 }}>
-                 <AvatarWithFrame 
-                     src={userAvatar} 
-                     name={userName} 
-                     frameClass={(user as any)?.currentAvatarFrame} 
-                     size={40} 
-                 />
-             </Box>
+            <Box sx={{ mr: 1.5 }}>
+              <AvatarWithFrame
+                src={userAvatar}
+                name={userName}
+                frameClass={(user as any)?.currentAvatarFrame}
+                size={40}
+              />
+            </Box>
           ) : (
-             <Skeleton variant="circular" width={40} height={40} sx={{ mr: 1.5 }} />
+            <Skeleton variant="circular" width={40} height={40} sx={{ mr: 1.5 }} />
           )}
-          
+
           <FakeInputButton fullWidth>
             {user ? (
-                <><ColoredName name={userName} colorClass={(user as any)?.currentNameColor} />‎ ơi, bạn đang nghĩ gì thế?</>
+              <><ColoredName name={userName} colorClass={(user as any)?.currentNameColor} />‎ ơi, bạn đang nghĩ gì thế?</>
             ) : 'Đang tải...'}
           </FakeInputButton>
         </Box>
@@ -188,25 +221,25 @@ export default function CreatePost() {
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        
+
         <Divider />
-        
+
         <DialogContent>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <AvatarWithFrame 
-                src={userAvatar} 
-                name={userName} 
-                frameClass={(user as any)?.currentAvatarFrame} 
-                size={40} 
+            <AvatarWithFrame
+              src={userAvatar}
+              name={userName}
+              frameClass={(user as any)?.currentAvatarFrame}
+              size={40}
             />
             <Box sx={{ ml: 1.5 }}>
               <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                  <ColoredName name={userName} colorClass={(user as any)?.currentNameColor} />
+                <ColoredName name={userName} colorClass={(user as any)?.currentNameColor} />
               </Typography>
               <Typography variant="caption" color="text.secondary">Công khai</Typography>
             </Box>
           </Box>
-          
+
           <TextField
             data-testid="create-post-content"
             autoFocus
@@ -223,20 +256,38 @@ export default function CreatePost() {
 
           {previewUrls.length > 0 && (
             <Paper variant="outlined" sx={{ p: 1, mb: 2, maxHeight: 200, overflowY: 'auto' }}>
-                <ImageList cols={3} rowHeight={100} gap={8}>
-                    {previewUrls.map((url, index) => (
-                        <ImageListItem key={index}>
-                            <img src={url} alt={`Preview ${index}`} loading="lazy" style={{ height: '100px', objectFit: 'cover', borderRadius: 4 }} />
-                            <IconButton 
-                                size="small"
-                                sx={{ position: 'absolute', top: 0, right: 0, bgcolor: 'rgba(0,0,0,0.5)', color: 'white' }}
-                                onClick={() => handleRemoveImage(index)}
-                            >
-                                <CloseIcon fontSize="small"/>
-                            </IconButton>
-                        </ImageListItem>
-                    ))}
-                </ImageList>
+              <ImageList cols={3} rowHeight={100} gap={8}>
+                {previewUrls.map((fileData, index) => (
+                  <ImageListItem key={index} sx={{ position: 'relative' }}>
+                    {/* Phân tách logic render Image / Video */}
+                    {fileData.type.startsWith('video/') ? (
+                      <video
+                        src={fileData.url}
+                        muted
+                        autoPlay
+                        loop
+                        style={{ height: '100px', width: '100%', objectFit: 'cover', borderRadius: 4 }}
+                      />
+                    ) : (
+                      <img
+                        src={fileData.url}
+                        alt={`Preview ${index}`}
+                        loading="lazy"
+                        style={{ height: '100px', width: '100%', objectFit: 'cover', borderRadius: 4 }}
+                      />
+                    )}
+
+                    {/* Nút xóa */}
+                    <IconButton
+                      size="small"
+                      sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.6)', color: 'white', '&:hover': { bgcolor: 'rgba(0,0,0,0.8)' } }}
+                      onClick={() => handleRemoveImage(index)}
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </ImageListItem>
+                ))}
+              </ImageList>
             </Paper>
           )}
 
@@ -256,7 +307,7 @@ export default function CreatePost() {
             </Box>
           </Paper>
         </DialogContent>
-        
+
         <DialogActions sx={{ p: 2 }}>
           <Button
             data-testid="create-post-submit"
@@ -265,7 +316,7 @@ export default function CreatePost() {
             onClick={handlePost}
             disabled={(!postContent.trim() && selectedFiles.length === 0) || isLoading}
           >
-            {isLoading ? <CircularProgress size={24} color="inherit"/> : "Đăng"}
+            {isLoading ? <CircularProgress size={24} color="inherit" /> : "Đăng"}
           </Button>
         </DialogActions>
       </Dialog>

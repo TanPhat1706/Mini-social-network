@@ -18,13 +18,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(
-        value = S3Controller.class,
+        value = StorageController.class,
         excludeAutoConfiguration = {
                 SecurityAutoConfiguration.class,
                 SecurityFilterAutoConfiguration.class
         }
 )
-class S3ControllerTest extends BaseControllerTest {
+class StorageControllerTest extends BaseControllerTest {
 
     // Mock cái Interface này, Spring sẽ không quan tâm bên dưới là S3 hay Local nữa
     @MockBean

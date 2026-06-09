@@ -49,13 +49,17 @@ public class PostController {
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public PostResponse updatePost(@PathVariable Long id, @ModelAttribute @Valid PostRequest request) {
-        return postService.updatePost(id, request);
+    public ResponseEntity<PostResponse> updatePost(
+            @PathVariable Long id, 
+            @ModelAttribute @Valid PostRequest request) {
+        System.out.println("Updating post with ID: " + id);
+        return ResponseEntity.ok(postService.updatePost(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public String deletePost(@PathVariable Long id) {
-        return postService.deletePost(id);
+    public ResponseEntity<Void> deletePost(@PathVariable Long id) {
+        postService.deletePost(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{postId}/like")

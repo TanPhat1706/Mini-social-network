@@ -12,7 +12,6 @@ import { showError } from '../utils/swal';
 interface WebSocketContextType {
     notifications: any[];
     unreadCount: number;
-    setUnreadCount: (count: number) => void;
     markAllAsRead: () => void;
     refreshNotifications: () => void;
     setNotifications: React.Dispatch<React.SetStateAction<any[]>>;
@@ -26,8 +25,7 @@ interface WebSocketContextType {
 export const WebSocketContext = createContext<WebSocketContextType | null>(null);
 
 export const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
-    const navigate = useNavigate(); // 🔴 MỚI THÊM
-
+    const navigate = useNavigate();
     const [notifications, setNotifications] = useState<any[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [currentGame, setCurrentGame] = useState<GameSession | null>(null);
@@ -46,7 +44,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
         message: data.message,
         createdAt: data.createdAt || data.timestamp || new Date().toISOString(),
         targetUrl: data.targetUrl || (data.type === 'FRIEND_REQUEST' ? `/profile/${data.senderStudentCode || data.senderId}` : '#'),
-        isRead: data.isRead || false,
+        isRead: data.read || false,
         type: data.type
     });
 
@@ -64,6 +62,26 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
             setUnreadCount(listMapped.filter((n: any) => !n.isRead).length);
         } catch (error) {
             console.error(">>> [API ERROR] Lỗi fetch notification:", error);
+        }
+    };
+
+    // 🟢 HÀM XỬ LÝ "ĐÃ ĐỌC TẤT CẢ" CHUẨN KIẾN TRÚC SSoT (Single Source of Truth)
+    const markAllAsRead = async () => {
+        if (unreadCount === 0) return; // Nếu không có thông báo chưa đọc thì không làm gì cả
+
+        // 1. [OPTIMISTIC UI] Update UI ngay lập tức cho mượt
+        setUnreadCount(0);
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+
+        // 2. [BACKGROUND SYNC] Gọi API xuống backend cập nhật SQL Server
+        try {
+            // Lưu ý em dùng axiosClient hay axios tùy config của em nhé
+            await axios.put(`${getApiBaseUrl()}/api/notifications/read-all`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            console.log(">>> [DB SYNC] Đã cập nhật thành công trạng thái đọc xuống Database");
+        } catch (err) {
+            console.error(">>> [API ERROR] Lỗi đồng bộ trạng thái thông báo:", err);
         }
     };
 
@@ -122,8 +140,8 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
 
                     if (event.type === 'ERROR') {
                         showError(`Lỗi: ${event.message}`);
-                       
-                        
+
+
                         // 🔴 MỚI THÊM: CHUYỂN HƯỚNG CẢ 2 NGƯỜI VÀO PHÒNG CÙNG LÚC
                         navigate(`/games/tic-tac-toe/${event.session.id}`);
                     }
@@ -143,14 +161,14 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
         };
     }, [token]);
 
-    const markAllAsRead = () => {
-        setUnreadCount(0);
-        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-    };
+    // const markAllAsRead = () => {
+    //     setUnreadCount(0);
+    //     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    // };
 
     return (
-        <WebSocketContext.Provider value={{ 
-            notifications, unreadCount, setUnreadCount, markAllAsRead, refreshNotifications: fetchHistory, setNotifications, currentGame, setCurrentGame, subscribeToRoom, sendGameAction, isConnected
+        <WebSocketContext.Provider value={{
+            notifications, unreadCount, markAllAsRead, refreshNotifications: fetchHistory, setNotifications, currentGame, setCurrentGame, subscribeToRoom, sendGameAction, isConnected
         }}>
             {children}
         </WebSocketContext.Provider>

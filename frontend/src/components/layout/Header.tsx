@@ -110,7 +110,7 @@ export default function Header() {
   const searchRef = useRef<HTMLDivElement>(null);
 
   const [showMsgDropdown, setShowMsgDropdown] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const msgRef = useRef<HTMLDivElement>(null);
   const notiRef = useRef<HTMLDivElement>(null);
   const { notifications } = useWebSocket();
@@ -166,13 +166,7 @@ export default function Header() {
     };
   }, [searchQuery]);
 
-  useEffect(() => {
-    if (notifications.length > 0) {
-      fetchUnreadCount();
-    }
-  }, [notifications]);
-
-  const fetchUnreadCount = async () => {
+  const fetchUnreadMessageCount = async () => {
     try {
       const res = await axiosClient.get('/messages/recent');
       const data = res.data;
@@ -186,7 +180,7 @@ export default function Header() {
         ? convs.filter(c => c.isRead === false).length
         : 0;
 
-      setUnreadCount(count);
+      setUnreadMessageCount(count);
     } catch (err) {
       console.error("Lỗi lấy tin nhắn:", err);
     }
@@ -194,11 +188,11 @@ export default function Header() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchUnreadCount();
+      fetchUnreadMessageCount();
       axiosClient.get('/profile')
         .then(res => setLiveUser(res.data))
         .catch(console.error);
-      const interval = setInterval(fetchUnreadCount, 5000);
+      const interval = setInterval(fetchUnreadMessageCount, 5000);
       return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
@@ -216,7 +210,7 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleMessageRead = () => { setUnreadCount(prev => Math.max(0, prev - 1)); };
+  const handleMessageRead = () => { setUnreadMessageCount(prev => Math.max(0, prev - 1)); };
 
   // 🟢 HỢP NHẤT HÀM XỬ LÝ MENU SETTINGS
   const handleSettingsClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -354,7 +348,7 @@ export default function Header() {
               <Box sx={{ position: 'relative' }} ref={msgRef}>
                 <Tooltip title="Tin nhắn">
                   <ActionIconButton onClick={() => setShowMsgDropdown(!showMsgDropdown)}>
-                    <Badge badgeContent={unreadCount} color="error" max={9}>
+                    <Badge badgeContent={unreadMessageCount} color="error" max={9}>
                       <ChatBubbleIcon />
                     </Badge>
                   </ActionIconButton>
