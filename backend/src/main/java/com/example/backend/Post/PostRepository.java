@@ -46,6 +46,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
        @Query(value = "SELECT p FROM Post p WHERE p.author.studentCode = :studentCode", countQuery = "SELECT COUNT(p) FROM Post p WHERE p.author.studentCode = :studentCode")
        Page<Post> findByAuthorStudentCode(@Param("studentCode") String studentCode, Pageable pageable);
 
+       @EntityGraph(attributePaths = { "author" })
+       @Query(value = "SELECT p FROM Post p WHERE p.author.studentCode = :studentCode AND p.visibility = 'PUBLIC'", countQuery = "SELECT COUNT(p) FROM Post p WHERE p.author.studentCode = :studentCode AND p.visibility = 'PUBLIC'")
+       Page<Post> findPublicByAuthorStudentCode(@Param("studentCode") String studentCode, Pageable pageable);
+
        // =========================
        // OPTIMIZED MEDIA LOADING
        // =========================
@@ -79,4 +83,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
        @Modifying
        @Query("UPDATE Post p SET p.commentCount = p.commentCount - 1 WHERE p.id = :postId AND p.commentCount > 0")
        void decrementCommentCount(@Param("postId") Long postId);
+
+       @Modifying
+       @Query("UPDATE Post p SET p.originalPost = NULL WHERE p.originalPost.id = :postId")
+       void unlinkSharedPosts(@Param("postId") Long postId);
 }

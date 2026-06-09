@@ -2,6 +2,8 @@ package com.example.backend;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import com.example.backend.Storage.StorageException;
 import com.example.backend.User.BadRequestException;
 import com.example.backend.User.UserProfileNotFoundException;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +13,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @Slf4j // 🟢 BẬT LOG: Rất quan trọng cho môi trường AWS
 @RestControllerAdvice
@@ -48,10 +51,25 @@ public class GlobalExceptionHandler {
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             fieldErrors.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
-        
+
         // Trả về chi tiết các field bị lỗi cho Frontend dễ parse
         errorResponse.put("details", fieldErrors);
 
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleMaxSizeException(MaxUploadSizeExceededException ex) {
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", "Payload Too Large");
+        errorResponse.put("message", "Kích thước file vượt quá giới hạn cho phép.");
+        return new ResponseEntity<>(errorResponse, HttpStatus.PAYLOAD_TOO_LARGE);
+    }
+
+    @ExceptionHandler(StorageException.class)
+    public ResponseEntity<Map<String, String>> handleStorageException(StorageException ex) {
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("message", ex.getMessage());
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
@@ -60,14 +78,16 @@ public class GlobalExceptionHandler {
     // ==========================================
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGlobalException(Exception ex) {
-        // 🟢 MỞ COMMENT BẮT BUỘC: Nếu không ghi log ở đây, khi lên Cloud bạn sẽ "mù rờ" không biết vì sao app sập
+        // 🟢 MỞ COMMENT BẮT BUỘC: Nếu không ghi log ở đây, khi lên Cloud bạn sẽ "mù rờ"
+        // không biết vì sao app sập
         log.error("Lỗi hệ thống nghiêm trọng (500 Internal Server Error): ", ex);
 
         Map<String, String> errorResponse = new HashMap<>();
         errorResponse.put("error", "Internal Server Error");
-        // Giấu chi tiết lỗi thực sự với người dùng để bảo mật (Không leak database/code info)
+        // Giấu chi tiết lỗi thực sự với người dùng để bảo mật (Không leak database/code
+        // info)
         errorResponse.put("message", "Hệ thống đang gặp sự cố, vui lòng thử lại sau.");
-        
+
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

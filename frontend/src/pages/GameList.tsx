@@ -12,7 +12,7 @@ const GAMES = [
         id: 'snake',
         title: 'Rắn Săn Mồi',
         description: 'Trò chơi kinh điển. Điều khiển rắn ăn mồi và tránh va chạm!',
-        image: 'https://images.unsplash.com/photo-1628277613967-6bc520d95e78?q=80&w=600&auto=format&fit=crop',
+        image: 'https://s3-api.fpt.vn/fptvn-storage/2025-12-01/1764574515_tro-ran-san-moi-tren-google-11.jpg',
         path: '/games/snake',
         category: 'Arcade',
         status: 'Active'
@@ -21,7 +21,7 @@ const GAMES = [
         id: 'tictactoe',
         title: 'Tic Tac Toe Online',
         description: 'Thách đấu bạn bè trong trận chiến cờ ca-rô 3x3 kinh điển, thời gian thực!',
-        image: 'https://images.unsplash.com/photo-1611996598518-87593b2173d2?q=80&w=600&auto=format&fit=crop',
+        image: 'https://imgs.search.brave.com/hJXtzJelyBX5YhTf-NiKIwYMFJMq50T12SmGrDuYauI/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9tZWRp/YS5nZXR0eWltYWdl/cy5jb20vaWQvMjAz/MjUzNzY4MC9waG90/by90aWMtdGFjLXRv/ZS1nYW1lLW9uLW9y/YW5nZS5qcGc_cz02/MTJ4NjEyJnc9MCZr/PTIwJmM9eE8xMHJI/eElxZWhjMFNsNENY/T2hvNlp0Y3dxRjF0/MFdVcTFMRGNqNjdM/QT0',
         path: '/games/tic-tac-toe', // Đây là tiền tố đường dẫn
         category: 'Multiplayer',
         status: 'Active'

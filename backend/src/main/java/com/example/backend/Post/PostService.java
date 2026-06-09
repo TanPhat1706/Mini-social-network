@@ -106,15 +106,31 @@ public class PostService {
 
         post.setContent(normalizeContent(request.getContent()));
 
-        // ⭐️ CHIÊU 1 (Lặp lại): Khi sửa bài, nếu đổi sang PUBLIC cũng phải duyệt lại
-        if (request.getVisibility() == Visibility.PUBLIC) {
-            post.setVisibility(Visibility.PENDING);
-        } else {
-            post.setVisibility(request.getVisibility());
+        Visibility oldVisibility = post.getVisibility();
+        Visibility newVisibility = request.getVisibility();
+
+        if (newVisibility != oldVisibility) {
+            if (newVisibility == Visibility.PUBLIC) {
+                post.setVisibility(Visibility.PENDING);
+            } else {
+                post.setVisibility(newVisibility);
+            }
+
+            if (newVisibility == Visibility.PRIVATE && oldVisibility == Visibility.PUBLIC) {
+                // Xu ly cac tinh huong khi tu PUBLIC -> PRIVATE (an cac like, comment, share)
+            }
         }
 
-        var currentMediaList = post.getMedia();
-        currentMediaList.clear();
+        List<PostMedia> currentMediaList = post.getMedia();
+        List<Long> retainedMediaIds = request.getRetainedMediaIds() != null ? request.getRetainedMediaIds()
+                : new ArrayList<>();
+        List<PostMedia> mediaToRemove = currentMediaList.stream()
+                .filter(media -> !retainedMediaIds.contains(media.getId()))
+                .collect(Collectors.toList());
+
+        for (PostMedia media : mediaToRemove) {
+            fileStorageService.deleteFile(media.getMediaUrl());
+        }
 
         if (request.getMediaFiles() != null && !request.getMediaFiles().isEmpty()) {
             for (MultipartFile file : request.getMediaFiles()) {
@@ -132,7 +148,7 @@ public class PostService {
     }
 
     @Transactional
-    public String deletePost(Long postId) {
+    public void deletePost(Long postId) {
         User currentUser = getCurrentUser();
 
         Post post = postRepository.findById(postId)
@@ -143,8 +159,14 @@ public class PostService {
             throw new RuntimeException("Bạn không có quyền xóa bài viết này!");
         }
 
+        if (post.getMedia() != null) {
+            for (PostMedia media : post.getMedia()) {
+                fileStorageService.deleteFile(media.getMediaUrl());
+            }
+        }
+
+        postRepository.unlinkSharedPosts(postId);
         postRepository.delete(post);
-        return "Xóa bài viết thành công";
     }
 
     @Transactional(readOnly = true)
@@ -213,7 +235,7 @@ public class PostService {
         share.setOriginalPost(rootPost);
         share.setVisibility(Visibility.PUBLIC);
         rootPost.setShareCount(rootPost.getShareCount() + 1);
-        
+
         Post savedShare = postRepository.save(share);
         vptlService.trackSocialActivity(currentUser.getId(), "SHARE");
         evenPublisher.publishEvent(new NotificationEvent(
@@ -247,8 +269,15 @@ public class PostService {
                     Sort.by("createdAt").descending());
         }
 
-        boolean isSelfPost = studentCode.equals(getCurrentViewerStudentCode());
-        Page<Post> posts = postRepository.findByAuthorStudentCode(studentCode, pageable);
+        String currentViewer = getCurrentViewerStudentCode();
+        boolean isSelfPost = studentCode.equals(currentViewer);
+
+        Page<Post> posts;
+        if (isSelfPost) {
+            posts = postRepository.findByAuthorStudentCode(studentCode, pageable);
+        } else {
+            posts = postRepository.findPublicByAuthorStudentCode(studentCode, pageable);
+        }
         return posts.map(post -> mapToPostResponse(post, isSelfPost));
     }
 
@@ -257,7 +286,13 @@ public class PostService {
     }
 
     public PostResponse mapToPostResponse(Post post) {
-        return mapToPostResponse(post, false);
+        String currentViewerStudentCode = getCurrentViewerStudentCode();
+        boolean isSelfPost = false;
+
+        if (currentViewerStudentCode != null) {
+            isSelfPost = post.getAuthor().getStudentCode().equals(currentViewerStudentCode);
+        }
+        return mapToPostResponse(post, isSelfPost);
     }
 
     public PostResponse mapToPostResponse(Post post, boolean isSelfPost) {
@@ -270,7 +305,8 @@ public class PostService {
         authorDto.setCurrentAvatarFrame(author.getCurrentAvatarFrame());
         authorDto.setCurrentNameColor(author.getCurrentNameColor());
 
-        // List<PostMedia> mediaList = post.getMedia() == null ? new ArrayList<>() : post.getMedia();
+        // List<PostMedia> mediaList = post.getMedia() == null ? new ArrayList<>() :
+        // post.getMedia();
 
         List<MediaResponse> mediaDtos = post.getMedia().stream()
                 .map(m -> MediaResponse.builder()
@@ -362,8 +398,10 @@ public class PostService {
 
     private void validatePostPayload(PostRequest request) {
         String content = normalizeContent(request.getContent());
-        boolean hasMedia = request.getMediaFiles() != null && !request.getMediaFiles().isEmpty();
-        if (content.isEmpty() && !hasMedia) {
+        boolean hasNewMedia = request.getMediaFiles() != null && !request.getMediaFiles().isEmpty();
+        boolean hasRetainedMedia = request.getRetainedMediaIds() != null && !request.getRetainedMediaIds().isEmpty();
+        boolean visibilitySelected = request.getVisibility() != null;
+        if (content.isEmpty() && !hasNewMedia && !hasRetainedMedia && !visibilitySelected) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bài viết phải có nội dung hoặc hình ảnh/video.");
         }
     }

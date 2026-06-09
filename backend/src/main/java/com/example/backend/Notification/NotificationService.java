@@ -163,4 +163,13 @@ public class NotificationService {
                 return "/";
         }
     }
+
+    public void markAllAsRead(Long receiverId) {
+        try {
+            notificationRepository.markAllAsReadByReceiverId(receiverId);
+            log.info(">>> [DB SYNC] Marked all notifications as read for User ID: {}", receiverId);
+        } catch (Exception e) {
+            log.error(">>> [DB ERROR] Failed to mark notifications as read for User ID: {}", receiverId, e);
+        }
+    }
 }

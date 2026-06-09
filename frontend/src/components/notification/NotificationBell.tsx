@@ -11,9 +11,10 @@ import axiosClient from '../../api/axiosClient';
 // 🔴 IMPORT MA THUẬT GIAO DIỆN
 import AvatarWithFrame from '../AvatarWithFrame';
 import ColoredName from '../ColoredName';
+import { showError } from '../../utils/swal';
 
 export default function NotificationBell() {
-  const { notifications, unreadCount, setUnreadCount } = useWebSocket();
+  const { notifications, unreadCount, markAllAsRead } = useWebSocket();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   
   // State lưu trạng thái xử lý của từng nút (để hiện loading xoay xoay)
@@ -30,10 +31,7 @@ export default function NotificationBell() {
   const handleClick = async (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
     
-    // Reset số lượng chưa đọc
-    if (unreadCount > 0) {
-      setUnreadCount(0);
-    }
+    markAllAsRead();
 
     // --- LOGIC QUAN TRỌNG: Kiểm tra lại trạng thái bạn bè của các thông báo đang hiển thị ---
     // Lọc ra danh sách ID những người gửi lời mời kết bạn trong list thông báo
