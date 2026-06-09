@@ -15,6 +15,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(
@@ -47,13 +48,14 @@ class StorageControllerTest extends BaseControllerTest {
 
         // Kịch bản: Khi Controller gọi Service, luôn trả về 1 URL giả định
         String expectedUrl = "https://my-aws-bucket.s3.amazonaws.com/uuid_test-image.jpg";
-        when(fileStorageService.storeFile(any())).thenReturn(expectedUrl);
+        // Controller gọi storeFile(file, "posts") - cần mock đúng 2-arg signature
+        when(fileStorageService.storeFile(any(), any())).thenReturn(expectedUrl);
 
         // Bắn request (Lưu ý dùng multipart() thay vì post() thông thường)
         mockMvc.perform(multipart("/api/storage/upload")
                         .file(mockFile))
                 .andExpect(status().isCreated()) // Kỳ vọng HTTP 201
-                .andExpect(content().string(expectedUrl)); // Kỳ vọng body chứa URL
+                .andExpect(jsonPath("$.url").value(expectedUrl)); // Controller trả về Map{"url":"..."}
     }
 
     // ==========================================
@@ -71,12 +73,11 @@ class StorageControllerTest extends BaseControllerTest {
                 new byte[0]
         );
 
-        // Kịch bản: Service ném lỗi giống hệt như logic thật
-        when(fileStorageService.storeFile(any()))
+        // Kịch bản: Service ném lỗi - mock đúng 2-arg signature mà controller gọi
+        when(fileStorageService.storeFile(any(), any()))
                 .thenThrow(new IllegalArgumentException("File is empty or missing"));
 
-        // Controller của bạn không có khối try-catch, nên lỗi sẽ bị văng thẳng ra ngoài
-        // và rơi vào cái GlobalExceptionHandler mà chúng ta đã setup lúc nãy (Exception.class -> 500)
+        // Controller không có try-catch, GlobalExceptionHandler.handleGlobalException bắt Exception -> 500
         mockMvc.perform(multipart("/api/storage/upload")
                         .file(emptyFile))
                 .andExpect(status().isInternalServerError()); // HTTP 500

@@ -26,6 +26,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -153,11 +154,10 @@ class PostControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser(username = "1412")
     void deletePost_shouldReturnSuccessString() throws Exception {
-        when(postService.deletePost(100L)).thenReturn("Xóa bài viết thành công");
+        doNothing().when(postService).deletePost(100L);
 
         mockMvc.perform(delete("/api/posts/100"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("Xóa bài viết thành công"));
+                .andExpect(status().isNoContent());
     }
 
     // ==========================================

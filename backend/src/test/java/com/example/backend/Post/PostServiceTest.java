@@ -105,7 +105,7 @@ class PostServiceTest {
     @DisplayName("Tạo bài viết không nội dung, không media -> Ném lỗi 400")
     void createPost_whenNoContentAndNoMedia_shouldThrowBadRequest() {
         PostRequest req = new PostRequest();
-        req.setContent("   "); 
+        req.setContent("   ");
         req.setVisibility(Visibility.PRIVATE);
         req.setMediaFiles(List.of());
 
@@ -119,7 +119,7 @@ class PostServiceTest {
     @DisplayName("Tạo bài viết với Visibility = PUBLIC -> Ép thành PENDING và không cộng điểm")
     void createPost_whenVisibilityPublic_shouldForcePending_andNotTrackPublicActivity() {
         PostRequest req = new PostRequest();
-        req.setContent(" hello "); 
+        req.setContent(" hello ");
         req.setVisibility(Visibility.PUBLIC);
 
         when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -298,8 +298,7 @@ class PostServiceTest {
         Post post = Post.builder().id(10L).author(other).build();
         when(postRepository.findById(10L)).thenReturn(Optional.of(post));
 
-        String msg = postService.deletePost(10L);
-        assertEquals("Xóa bài viết thành công", msg);
+        postService.deletePost(10L);
         verify(postRepository).delete(post);
     }
 
@@ -308,8 +307,7 @@ class PostServiceTest {
         Post post = Post.builder().id(10L).author(currentUser).build();
         when(postRepository.findById(10L)).thenReturn(Optional.of(post));
 
-        String msg = postService.deletePost(10L);
-        assertEquals("Xóa bài viết thành công", msg);
+        postService.deletePost(10L);
         verify(postRepository).delete(post);
     }
 
@@ -376,7 +374,7 @@ class PostServiceTest {
         User author = new User();
         author.setId(2);
         Post post = Post.builder().id(10L).author(author).build();
-        
+
         when(postRepository.findById(10L)).thenReturn(Optional.of(post));
 
         postService.toggleLike(10L);
@@ -386,7 +384,7 @@ class PostServiceTest {
         verify(vptlService).trackSocialActivity(1, "LIKE");
         verify(evenPublisher).publishEvent(any(NotificationEvent.class));
     }
-    
+
     @Test
     void sharePost_whenOriginalPostNotFound_shouldThrow() {
         when(postRepository.findById(999L)).thenReturn(Optional.empty());
@@ -466,7 +464,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("Lấy tất cả bài viết cho Admin có phân trang")
-    void getAllPostsForAdmin_shouldReturnMappedPage() { 
+    void getAllPostsForAdmin_shouldReturnMappedPage() {
         Pageable pageable = PageRequest.of(0, 10);
         Post p1 = Post.builder().id(1L).author(currentUser).media(new ArrayList<>()).build();
         Post p2 = Post.builder().id(2L).author(currentUser).media(new ArrayList<>()).build();
@@ -499,19 +497,21 @@ class PostServiceTest {
         assertTrue(result.getContent().get(0).isSelfPost());
     }
 
-    // 🟢 BỔ SUNG: getCurrentViewerStudentCode trả về null khi không đăng nhập (50% Branch)
+    // 🟢 BỔ SUNG: getCurrentViewerStudentCode trả về null khi không đăng nhập (50%
+    // Branch)
     @Test
     @DisplayName("Lấy bài theo mã SV khi KHÔNG đăng nhập (Auth = null)")
     void getPostsByStudentCode_whenAuthNull_shouldReturnSelfPostFalse() {
         mockSecurityContext(null); // Gỡ token
-        
+
         when(userRepository.existsByStudentCode("SV002")).thenReturn(true);
-        
+
         User author2 = new User();
         author2.setStudentCode("SV002");
         Post post = Post.builder().id(1L).author(author2).media(new ArrayList<>()).build();
-        
-        when(postRepository.findByAuthorStudentCode(eq("SV002"), any(Pageable.class)))
+
+        // Khi không đăng nhập, isSelfPost = false -> gọi findPublicByAuthorStudentCode
+        when(postRepository.findPublicByAuthorStudentCode(eq("SV002"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(post)));
 
         PageRequest pageable = PageRequest.of(0, 10);
@@ -588,13 +588,13 @@ class PostServiceTest {
     @Test
     @DisplayName("Map Post có OriginalPost -> Kích hoạt buildFlattenedPostResponse và stream Media")
     void mapToPostResponse_withOriginalPost_shouldBuildFlattened() {
-        User originalAuthor = new User(); 
-        originalAuthor.setId(2); 
+        User originalAuthor = new User();
+        originalAuthor.setId(2);
         originalAuthor.setFullName("Tác giả gốc");
 
-        PostMedia media = new PostMedia(); 
-        media.setId(1L); 
-        media.setMediaType(MediaType.IMAGE); 
+        PostMedia media = new PostMedia();
+        media.setId(1L);
+        media.setMediaType(MediaType.IMAGE);
         media.setMediaUrl("http://image.url");
 
         Post originalPost = Post.builder()

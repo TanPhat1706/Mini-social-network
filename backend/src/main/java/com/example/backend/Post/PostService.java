@@ -400,8 +400,7 @@ public class PostService {
         String content = normalizeContent(request.getContent());
         boolean hasNewMedia = request.getMediaFiles() != null && !request.getMediaFiles().isEmpty();
         boolean hasRetainedMedia = request.getRetainedMediaIds() != null && !request.getRetainedMediaIds().isEmpty();
-        boolean visibilitySelected = request.getVisibility() != null;
-        if (content.isEmpty() && !hasNewMedia && !hasRetainedMedia && !visibilitySelected) {
+        if (content.isEmpty() && !hasNewMedia && !hasRetainedMedia) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bài viết phải có nội dung hoặc hình ảnh/video.");
         }
     }

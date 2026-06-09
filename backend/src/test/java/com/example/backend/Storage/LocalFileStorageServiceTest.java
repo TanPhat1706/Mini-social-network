@@ -35,11 +35,11 @@ class LocalFileStorageServiceTest {
                 "file", "avatar.png", "image/png", "dummy content".getBytes(StandardCharsets.UTF_8)
         );
 
-        String resultUrl = localFileStorageService.storeFile(validFile);
+        String resultUrl = localFileStorageService.storeFile(validFile, "posts");
 
         assertNotNull(resultUrl);
-        assertTrue(resultUrl.startsWith("/uploads/"));
-        assertTrue(resultUrl.endsWith("_avatar.png"));
+        assertTrue(resultUrl.startsWith("/uploads/"), "URL phải bắt đầu bằng /uploads/");
+        assertTrue(resultUrl.endsWith(".png"), "URL phải kết thúc bằng đuôi .png");
     }
 
     @Test
@@ -58,8 +58,11 @@ class LocalFileStorageServiceTest {
                 "file", "", "image/png", "data".getBytes()
         );
 
-        String resultUrl = localFileStorageService.storeFile(fileWithNoName);
-        assertTrue(resultUrl.endsWith("_file"));
+        String resultUrl = localFileStorageService.storeFile(fileWithNoName, "posts");
+        // generateSafeFileName returns uuid (no extension when originalFilename is blank)
+        assertNotNull(resultUrl);
+        assertFalse(resultUrl.isBlank(), "URL không được rỗng");
+        assertTrue(resultUrl.startsWith("/uploads/"), "URL phải bắt đầu bằng /uploads/");
     }
 
     @Test

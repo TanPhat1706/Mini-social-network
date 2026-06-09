@@ -64,8 +64,9 @@ class S3StorageServiceTest {
 
         // Đảm bảo URL trả về đúng format của AWS S3
         assertNotNull(resultUrl);
-        assertTrue(resultUrl.startsWith("https://my-aws-bucket.s3.ap-southeast-1.amazonaws.com/"));
-        assertTrue(resultUrl.endsWith("_cover.jpg"));
+        assertTrue(resultUrl.startsWith("https://my-aws-bucket.s3.ap-southeast-1.amazonaws.com/"),
+                "URL phải bắt đầu bằng S3 endpoint chuẩn");
+        assertTrue(resultUrl.endsWith(".jpg"), "URL phải kết thúc bằng đuôi .jpg");
     }
 
     @Test

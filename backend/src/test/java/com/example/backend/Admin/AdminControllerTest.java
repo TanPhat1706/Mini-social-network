@@ -23,6 +23,7 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.hamcrest.Matchers.containsString;
@@ -115,8 +116,8 @@ class AdminControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void deletePost_shouldReturnSuccess() throws Exception {
-        // SỬA: Bổ sung giả lập dữ liệu trả về cho hàm deletePost
-        when(postService.deletePost(100L)).thenReturn("Xóa bài thành công.");
+        // AdminController calls postService.deletePost() (void) then returns its own String
+        doNothing().when(postService).deletePost(100L);
 
         mockMvc.perform(delete("/api/admin/delete-post/100")
                         .param("reason", "Vi phạm tiêu chuẩn cộng đồng"))
