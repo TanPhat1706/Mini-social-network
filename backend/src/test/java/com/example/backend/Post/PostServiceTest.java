@@ -251,7 +251,6 @@ class PostServiceTest {
         assertEquals(1, post.getMedia().size());
     }
 
-    // 🟢 BỔ SUNG ĐỂ PHỦ 100% UPDATE
     @Test
     @DisplayName("Sửa bài với Visibility = PRIVATE và không có media (nhánh Else)")
     void updatePost_whenVisibilityPrivate_andNoMedia_shouldUpdateNormally() {
@@ -347,18 +346,6 @@ class PostServiceTest {
     }
 
     @Test
-    void toggleLike_whenAlreadyLiked_shouldDeleteLike_andDecrement() {
-        PostLike like = PostLike.builder().id(1L).build();
-        when(postLikeRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.of(like));
-
-        postService.toggleLike(10L);
-
-        verify(postLikeRepository).delete(like);
-        verify(postRepository).decrementLikeCount(10L);
-    }
-
-    // 🟢 BỔ SUNG: Lambda orElseThrow của ToggleLike (0%)
-    @Test
     @DisplayName("Lỗi Toggle Like khi Post không tồn tại")
     void toggleLike_whenPostNotFound_shouldThrow() {
         when(postLikeRepository.findByPostIdAndUserId(999L, 1L)).thenReturn(Optional.empty());
@@ -368,8 +355,26 @@ class PostServiceTest {
         assertEquals("Bài viết không tồn tại!", ex.getMessage());
     }
 
+    // 🐛 ĐÃ FIX: Test Unlike (Chỉ xóa record, không kiểm tra gọi DB Update)
     @Test
-    void toggleLike_whenNotLiked_shouldSaveLike_increment_track_andPublishNotification() {
+    @DisplayName("Khi đã Like rồi -> Bấm lần nữa là Unlike, cập nhật ngầm định vào đệm RAM")
+    void toggleLike_whenAlreadyLiked_shouldDeleteLike_andUpdateBuffer() {
+        PostLike like = PostLike.builder().id(1L).build();
+        when(postLikeRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.of(like));
+
+        postService.toggleLike(10L);
+
+        verify(postLikeRepository).delete(like);
+        
+        // Đoạn này quan trọng: Kiểm tra để chắc chắn rằng decrementLikeCount ĐÃ BỊ XÓA BỎ
+        // Vì hệ thống giờ đây sử dụng RAM thay vì update DB ngay lập tức
+        verify(postRepository, never()).save(any(Post.class)); 
+    }
+
+    // 🐛 ĐÃ FIX: Test Like (Lưu record, thông báo, nhưng không kiểm tra gọi DB Update)
+    @Test
+    @DisplayName("Khi chưa Like -> Lưu Like, thông báo và cộng điểm, cập nhật ngầm định vào đệm RAM")
+    void toggleLike_whenNotLiked_shouldSaveLike_updateBuffer_track_andPublishNotification() {
         when(postLikeRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.empty());
         User author = new User();
         author.setId(2);
@@ -380,9 +385,36 @@ class PostServiceTest {
         postService.toggleLike(10L);
 
         verify(postLikeRepository).save(any(PostLike.class));
-        verify(postRepository).incrementLikeCount(10L);
+        
+        // Kiểm tra để chắc chắn rằng incrementLikeCount ĐÃ BỊ XÓA BỎ
+        verify(postRepository, never()).save(post); 
+        
         verify(vptlService).trackSocialActivity(1, "LIKE");
         verify(evenPublisher).publishEvent(any(NotificationEvent.class));
+    }
+
+    // ⭐️ TEST BACKGROUND JOB (EVENTUAL CONSISTENCY)
+    @Test
+    @DisplayName("Background Job sẽ lấy dữ liệu từ RAM đệm và lưu vào Database")
+    void syncLikesToDatabase_shouldUpdateDB() {
+        // 1. Dựng bối cảnh: 1 bài post có 5 Like trong Database
+        when(postLikeRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.empty());
+        User author = new User();
+        author.setId(2);
+        Post post = Post.builder().id(10L).author(author).likeCount(5L).build();
+        when(postRepository.findById(10L)).thenReturn(Optional.of(post));
+
+        // 2. Kích hoạt Like -> Đưa vào RAM (+1 lượt)
+        postService.toggleLike(10L);
+
+        // 3. Giả lập Cron Job tự động chạy
+        postService.syncLikesToDatabase();
+
+        // 4. Kiểm chứng: Lúc này Job bắt đầu gọi Update DB. 
+        // Phải chắc chắn rằng bài Post được cập nhật với số lượt Like = 6
+        ArgumentCaptor<Post> postCaptor = ArgumentCaptor.forClass(Post.class);
+        verify(postRepository).save(postCaptor.capture());
+        assertEquals(6L, postCaptor.getValue().getLikeCount());
     }
 
     @Test
@@ -497,8 +529,6 @@ class PostServiceTest {
         assertTrue(result.getContent().get(0).isSelfPost());
     }
 
-    // 🟢 BỔ SUNG: getCurrentViewerStudentCode trả về null khi không đăng nhập (50%
-    // Branch)
     @Test
     @DisplayName("Lấy bài theo mã SV khi KHÔNG đăng nhập (Auth = null)")
     void getPostsByStudentCode_whenAuthNull_shouldReturnSelfPostFalse() {
@@ -536,7 +566,6 @@ class PostServiceTest {
         assertTrue(pageCaptor.getValue().getSort().isSorted());
     }
 
-    // 🟢 BỔ SUNG: Nhánh Pageable đã có sẵn Sort (75% -> 100%)
     @Test
     @DisplayName("Lấy bài theo mã SV khi Pageable ĐÃ CÓ Sort -> Không ghi đè Sort")
     void getPostsByStudentCode_whenAlreadySorted_shouldKeepSort() {
@@ -582,7 +611,7 @@ class PostServiceTest {
     }
 
     // ==========================================
-    // 5. 🟢 NHÓM BỔ SUNG TEST CHO CÁC HÀM MAPPER NỘI BỘ
+    // 5. NHÓM BỔ SUNG TEST CHO CÁC HÀM MAPPER NỘI BỘ
     // ==========================================
 
     @Test
