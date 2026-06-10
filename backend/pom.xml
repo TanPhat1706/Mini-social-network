@@ -202,6 +202,7 @@
                         <exclude>com/example/backend/Item/Item.class</exclude>
                         <exclude>com/example/backend/Item/UserInventory.class</exclude>
                         <exclude>com/example/backend/Test/TestController.class</exclude>
+                        <exclude>com/example/backend/Controller/InternalTestController.class</exclude>
 
                         <exclude>**/Config/**</exclude>
                         <exclude>**/HealthCheck/**</exclude>

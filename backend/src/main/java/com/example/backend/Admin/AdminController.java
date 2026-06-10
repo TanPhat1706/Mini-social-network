@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort; // 🟢 THÊM IMPORT NÀY
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/admin")
-@RequiredArgsConstructor // 🟢 Tối ưu Injection: Thay thế toàn bộ @Autowired
+@RequiredArgsConstructor
 public class AdminController {
 
     private final PostService postService;
@@ -52,9 +53,12 @@ public class AdminController {
     @GetMapping("/posts")
     public ResponseEntity<?> getAllPosts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) { // 🟢 SỬA LỖI: Nhận page/size động từ request
+            @RequestParam(defaultValue = "10") int size) {
         try {
-            Pageable pageable = PageRequest.of(page, size); 
+            // 🟢 TỐI ƯU HIỆU NĂNG & LOGIC: Cố định sắp xếp giảm dần theo 'id'
+            // ID auto-increment nên ID lớn nhất = bài viết mới nhất. Sort theo ID nhanh hơn sort theo createdAt.
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id")); 
+            
             Page<PostResponse> posts = postService.getAllPostsForAdmin(pageable);
             return ResponseEntity.ok(posts);
         } catch (Exception e) {
@@ -65,7 +69,7 @@ public class AdminController {
     @DeleteMapping("/delete-post/{post_id}")
     public ResponseEntity<String> deletePost(
             @PathVariable Long post_id, 
-            @RequestParam(required = false) String reason) { // 🟢 TỐI ƯU: Cho phép reason không bắt buộc, hoặc truyền vào Service
+            @RequestParam(required = false) String reason) {
         try {
             // Lý tưởng nhất là: postService.deletePost(post_id, reason);
             postService.deletePost(post_id); 
@@ -119,7 +123,6 @@ public class AdminController {
     @PostMapping("/ban-user/{user_id}")
     public ResponseEntity<String> banUser(@PathVariable Integer user_id) {
         try {
-            // 💡 Lời khuyên: Logic tìm, sửa, lưu này nên dời sang UserService
             User user = userRepository.findById(user_id)
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
             
@@ -135,7 +138,6 @@ public class AdminController {
     @PostMapping("/approve-user/{user_id}")
     public ResponseEntity<String> approveUser(@PathVariable Integer user_id) {
         try {
-            // 💡 Lời khuyên: Logic tìm, sửa, lưu này nên dời sang UserService
             User user = userRepository.findById(user_id)
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
 

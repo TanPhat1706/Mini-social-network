@@ -87,4 +87,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
        @Modifying
        @Query("UPDATE Post p SET p.originalPost = NULL WHERE p.originalPost.id = :postId")
        void unlinkSharedPosts(@Param("postId") Long postId);
+
+       @Modifying
+       @Query("DELETE FROM Post p WHERE p.author.id = :authorId")
+       void deleteByAuthorId(@Param("authorId") Integer authorId);
 }
