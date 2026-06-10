@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap; // 👈 Import Thread-safe Map
+import java.util.Map;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -15,6 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.scheduling.annotation.Scheduled; // 👈 Import Scheduled
+import org.springframework.dao.DataIntegrityViolationException; // 👈 Import bắt lỗi
+
 import com.example.backend.Enum.MediaType;
 import com.example.backend.Enum.NotificationType;
 import com.example.backend.Enum.Visibility;
@@ -26,6 +32,7 @@ import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import com.example.backend.User.UserResponse;
 import com.example.backend.VPTLpoint.VptlService;
+
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -37,6 +44,12 @@ public class PostService {
     private final ApplicationEventPublisher evenPublisher;
     private final FileStorageService fileStorageService;
     private final VptlService vptlService;
+
+    // ⭐️ BỘ ĐỆM RAM: Lưu trữ số lượt Like thay đổi (+1 hoặc -1) của từng bài viết
+    private final ConcurrentHashMap<Long, Integer> likeCountBuffer = new ConcurrentHashMap<>();
+    // 🛡️ KHIÊN CHỐNG SPAM: Lưu trạng thái xem User này có đang thao tác Like trên
+    // Post này không
+    private final ConcurrentHashMap<String, Boolean> actionLock = new ConcurrentHashMap<>();
 
     private User getCurrentUser() {
         String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -191,29 +204,90 @@ public class PostService {
     public void toggleLike(Long postId) {
         User currentUser = getCurrentUser();
         Long userId = Long.valueOf(currentUser.getId());
-        Optional<PostLike> existingLike = postLikeRepository.findByPostIdAndUserId(postId, userId);
+        
+        // 1. Tạo chìa khóa duy nhất cho hành động này: "PostID_UserID" (VD: "10074_1")
+        String lockKey = postId + "_" + userId;
 
-        if (existingLike.isPresent()) {
-            postLikeRepository.delete(existingLike.get());
-            postRepository.decrementLikeCount(postId);
-        } else {
-            Post post = postRepository.findById(postId)
-                    .orElseThrow(() -> new RuntimeException("Bài viết không tồn tại!"));
-            User user = getCurrentUser();
-            User author = post.getAuthor();
-
-            PostLike newLike = PostLike.builder()
-                    .post(post)
-                    .user(user)
-                    .build();
-
-            postLikeRepository.save(newLike);
-            postRepository.incrementLikeCount(postId);
-            vptlService.trackSocialActivity(currentUser.getId(), "LIKE");
-            evenPublisher.publishEvent(new NotificationEvent(
-                    currentUser, author, NotificationType.LIKE_POST, postId, "POST", "đã thích bài viết của bạn",
-                    false));
+        // 2. Kiểm tra khóa chống Spam (Debounce)
+        // Nếu putIfAbsent trả về giá trị (khác null), nghĩa là khóa đã tồn tại 
+        // -> User này đang có 1 luồng request Like khác chạy chưa xong.
+        if (actionLock.putIfAbsent(lockKey, true) != null) {
+            System.out.println("🛡️ Đã chặn Auto-Clicker từ user: " + currentUser.getStudentCode());
+            return; // Thoát ngay lập tức. API vẫn trả về HTTP 200 OK mượt mà nhưng không làm gì DB.
         }
+
+        try {
+            // 3. Logic xử lý Like/Unlike bình thường (Chỉ 1 request duy nhất lọt vào đây)
+            Optional<PostLike> existingLike = postLikeRepository.findByPostIdAndUserId(postId, userId);
+
+            if (existingLike.isPresent()) {
+                // UNLIKE: Xóa khỏi bảng post_likes
+                postLikeRepository.delete(existingLike.get());
+
+                // Gom vào đệm RAM thay vì trừ thẳng Database
+                likeCountBuffer.merge(postId, -1, Integer::sum);
+
+            } else {
+                // LIKE
+                Post post = postRepository.findById(postId)
+                        .orElseThrow(() -> new RuntimeException("Bài viết không tồn tại!"));
+                User author = post.getAuthor();
+
+                PostLike newLike = PostLike.builder()
+                        .post(post)
+                        .user(currentUser)
+                        .build();
+
+                // Lưu bình thường (không cần saveAndFlush hay try-catch DB nữa vì khóa đã chặn request trùng)
+                postLikeRepository.save(newLike); 
+
+                // Gom vào đệm RAM thay vì cộng thẳng Database
+                likeCountBuffer.merge(postId, 1, Integer::sum);
+
+                vptlService.trackSocialActivity(currentUser.getId(), "LIKE");
+                evenPublisher.publishEvent(new NotificationEvent(
+                        currentUser, author, NotificationType.LIKE_POST, postId, "POST", "đã thích bài viết của bạn",
+                        false));
+            }
+        } finally {
+            // 4. LUÔN LUÔN mở khóa ở block finally
+            // Đảm bảo dù logic bên trong có lỗi (VD: không tìm thấy post), khóa vẫn được gỡ
+            // để user có thể click Like lại ở lần sau.
+            actionLock.remove(lockKey);
+        }
+    }
+    
+    // ⭐️ BACKGROUND JOB: Cứ mỗi 5 giây, lấy dữ liệu từ RAM đổ một lần xuống DB
+    @Scheduled(fixedDelay = 3000)
+    @Transactional
+    public void syncLikesToDatabase() {
+        if (likeCountBuffer.isEmpty()) {
+            return; // Không có ai like thì ngủ tiếp
+        }
+
+        // Tạo một bản sao (snapshot) của đệm hiện tại và xóa đệm cũ để đón lượt like
+        // mới
+        ConcurrentHashMap<Long, Integer> snapshot = new ConcurrentHashMap<>(likeCountBuffer);
+        likeCountBuffer.clear();
+
+        for (Map.Entry<Long, Integer> entry : snapshot.entrySet()) {
+            Long postId = entry.getKey();
+            Integer delta = entry.getValue();
+
+            // Chỉ gọi UPDATE DB nếu tổng lượt thay đổi khác 0 (VD: Like xong lại Unlike
+            // ngay thì delta = 0)
+            if (delta != 0) {
+                // Tùy theo logic của bạn, thay vì gọi hàm repo, ta có thể dùng custom query
+                // (nếu bạn đã định nghĩa)
+                // Hoặc update thủ công:
+                postRepository.findById(postId).ifPresent(post -> {
+                    long newCount = post.getLikeCount() + delta;
+                    post.setLikeCount(newCount < 0 ? 0 : newCount);
+                    postRepository.save(post);
+                });
+            }
+        }
+        System.out.println("🔄 [Eventual Consistency] Đã đồng bộ " + snapshot.size() + " bài viết xuống DB.");
     }
 
     @Transactional
@@ -269,16 +343,22 @@ public class PostService {
                     Sort.by("createdAt").descending());
         }
 
+        // Lấy mã sinh viên của người đang xem
         String currentViewer = getCurrentViewerStudentCode();
-        boolean isSelfPost = studentCode.equals(currentViewer);
+
+        // 🐛 ĐÃ FIX: Xác định xem user có đang xem profile của chính mình hay không
+        boolean isViewingOwnProfile = Objects.equals(currentViewer, studentCode);
 
         Page<Post> posts;
-        if (isSelfPost) {
+        if (isViewingOwnProfile) {
+            // Nếu xem nhà mình -> Lấy cả bài PRIVATE/PENDING
             posts = postRepository.findByAuthorStudentCode(studentCode, pageable);
         } else {
+            // Nếu xem nhà người khác -> Chỉ lấy bài PUBLIC
             posts = postRepository.findPublicByAuthorStudentCode(studentCode, pageable);
         }
-        return posts.map(post -> mapToPostResponse(post, isSelfPost));
+
+        return posts.map(post -> mapToPostResponse(post, isViewingOwnProfile));
     }
 
     public String uploadFileToS3(MultipartFile file) {
@@ -289,9 +369,12 @@ public class PostService {
         String currentViewerStudentCode = getCurrentViewerStudentCode();
         boolean isSelfPost = false;
 
-        if (currentViewerStudentCode != null) {
-            isSelfPost = post.getAuthor().getStudentCode().equals(currentViewerStudentCode);
+        // 🐛 ĐÃ FIX: Chống NullPointerException bằng Objects.equals và check an toàn
+        // Author
+        if (currentViewerStudentCode != null && post.getAuthor() != null) {
+            isSelfPost = Objects.equals(currentViewerStudentCode, post.getAuthor().getStudentCode());
         }
+
         return mapToPostResponse(post, isSelfPost);
     }
 
