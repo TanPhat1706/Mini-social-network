@@ -1,74 +1,64 @@
 pipeline {
     agent any
 
-    // 🟢 CẤU HÌNH BIẾN MÔI TRƯỜNG AWS CHO FRONTEND
+    // 🟢 Kích hoạt luồng tự động nhận sự kiện từ GitHub Webhook
+    triggers {
+        githubPush()
+    }
+
     environment {
-        AWS_ACCOUNT_ID = "295662439915" // nhớ thay bằng dãy 12 số nhé!
-        AWS_REGION     = "ap-southeast-1"
-        ECR_REPO_NAME  = "minisocial-frontend"       // 👈 Chú ý: Tên repo ECR dành cho Frontend
-        IMAGE_TAG      = "latest" 
-        ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-        IMAGE_URI      = "${ECR_REGISTRY}/${ECR_REPO_NAME}:${IMAGE_TAG}"
+        // Đã cập nhật chính xác theo Output CloudFormation của bạn
+        AWS_REGION         = "us-east-1" 
+        S3_BUCKET_NAME     = "minisocial-frontend-254201323904-us-east-1" 
+        CLOUDFRONT_DIST_ID = "EWX6GZ5SX7LMZ" 
     }
 
     stages {
-        // 1. Kéo code mới nhất từ nhánh main
         stage('Checkout Code') {
             steps {
                 checkout scm
             }
         }
 
-        // // 2. Chạy Linter hoặc Test (Tùy chọn, để đảm bảo code không lỗi cú pháp trước khi build)
-        // stage('Install & Verify (Optional)') {
-        //     steps {
-        //         dir('frontend') { // Nếu code nằm ở thư mục gốc thì xóa block dir('frontend') {} này đi nhé
-        //             bat 'npm ci'
-        //             // bat 'npm run lint' // Mở comment dòng này nếu có dùng Eslint
-        //         }
-        //     }
-        // }
-
-        // 3. Build Docker Image (Sử dụng Multi-stage siêu nhẹ vừa viết)
-        stage('Build Docker Image') {
+        stage('Install & Build Frontend') {
             steps {
                 dir('frontend') {
-                    echo "Building Frontend Docker image..."
-                    bat "docker build -t ${IMAGE_URI} ."
+                    echo "Cài đặt thư viện npm..."
+                    bat 'npm ci' // Bắt buộc dùng bat trên Windows
+                    
+                    echo "Build React App ra thư mục dist/..."
+                    bat 'npm run build'
                 }
             }
         }
 
-        // 4. Kết nối AWS và "Bắn" Image lên mây
-        stage('Push to AWS ECR') {
+        stage('Deploy to S3 & Invalidate Cache') {
             steps {
+                // Sử dụng credential an toàn từ Jenkins
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-credentials', // Phải khớp với ID đã tạo trong Jenkins
+                    credentialsId: 'aws-credentials', // Phải khớp với ID trong Jenkins
                     accessKeyVariable: 'AWS_ACCESS_KEY_ID',
                     secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
                 ]]) {
-                    echo "Logging into AWS ECR..."
-                    bat "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
-                    
-                    echo "Pushing frontend image to ECR..."
-                    bat "docker push ${IMAGE_URI}"
+                    dir('frontend') {
+                        echo "Đồng bộ file tĩnh lên AWS S3 (Xóa file cũ không còn tồn tại)..."
+                        bat "aws s3 sync dist/ s3://%S3_BUCKET_NAME% --delete --region %AWS_REGION%"
+                        
+                        echo "Xóa bộ nhớ đệm (Cache) trên CloudFront để người dùng thấy giao diện mới ngay lập tức..."
+                        bat "aws cloudfront create-invalidation --distribution-id %CLOUDFRONT_DIST_ID% --paths \"/*\" --region %AWS_REGION%"
+                    }
                 }
             }
         }
     }
 
-    // 🟢 DỌN DẸP CHIẾN TRƯỜNG SAU KHI XONG VIỆC
     post {
         success {
-            echo "🎉 XUẤT SẮC! Giao diện (Frontend) đã được build và đẩy lên mây thành công rực rỡ!"
+            echo "🎉 XUẤT SẮC! Giao diện mới đã được lên sóng tự động tại https://d1u4n9cczkts22.cloudfront.net với độ trễ cache = 0!"
         }
         failure {
-            echo "❌ ÁI CHÀ! Có lỗi xảy ra ở luồng Frontend rồi, hãy vào xem log nhé!"
-        }
-        always {
-            // Xóa image rác trên máy Jenkins để tránh đầy ổ cứng
-            bat "docker image prune -f"
+            echo "❌ ÁI CHÀ! Có lỗi xảy ra ở luồng Frontend. Hãy xem log nhé."
         }
     }
 }
