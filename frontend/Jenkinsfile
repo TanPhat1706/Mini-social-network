@@ -34,10 +34,10 @@ pipeline {
 
         stage('Deploy to S3 & Invalidate Cache') {
             steps {
-                // Sử dụng credential an toàn từ Jenkins
+                // 🟢 ĐÃ FIX: Sử dụng credential dành riêng cho Frontend mà bạn vừa tạo
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-credentials', // Phải khớp với ID trong Jenkins
+                    credentialsId: 'aws-frontend-creds', // 👈 Thay đổi quan trọng nhất nằm ở đây!
                     accessKeyVariable: 'AWS_ACCESS_KEY_ID',
                     secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
                 ]]) {
