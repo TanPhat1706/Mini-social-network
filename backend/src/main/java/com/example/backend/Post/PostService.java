@@ -177,7 +177,8 @@ public class PostService {
                 fileStorageService.deleteFile(media.getMediaUrl());
             }
         }
-
+        
+        postLikeRepository.deleteAllByPostId(postId);
         postRepository.unlinkSharedPosts(postId);
         postRepository.delete(post);
     }
