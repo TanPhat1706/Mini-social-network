@@ -10,6 +10,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
 import ArticleIcon from '@mui/icons-material/Article';
 import LogoutIcon from '@mui/icons-material/Logout';
+import GppBadIcon from '@mui/icons-material/GppBad'; // 🟢 THÊM ICON
 
 const drawerWidth = 240;
 
@@ -31,6 +32,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
     { text: 'Quản lý Người dùng', icon: <PeopleIcon />, path: '/admin/users' },
     { text: 'Quản lý Bài viết', icon: <ArticleIcon />, path: '/admin/posts' },
+    // 🟢 THÊM MENU QUẢN LÝ TỪ KHÓA
+    { text: 'Quản lý Từ khóa', icon: <GppBadIcon />, path: '/admin/blacklists' }, 
   ];
 
   return (
@@ -60,8 +63,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   to={item.path}
                   selected={location.pathname === item.path}
                 >
-                  <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.text} />
+                  <ListItemIcon sx={{ color: location.pathname === item.path ? 'primary.main' : 'inherit' }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={item.text} 
+                    sx={{ color: location.pathname === item.path ? 'primary.main' : 'inherit', fontWeight: location.pathname === item.path ? 'bold' : 'normal' }}
+                  />
                 </ListItemButton>
               </ListItem>
             ))}
@@ -82,7 +90,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </Box>
       </Drawer>
 
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+      <Box component="main" sx={{ flexGrow: 1, p: 3, bgcolor: '#f4f6f8', minHeight: '100vh' }}>
         <Toolbar />
         {children}
       </Box>

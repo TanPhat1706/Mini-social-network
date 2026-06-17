@@ -141,27 +141,71 @@
   border-bottom-left-radius: 6px;
 }
 
-/* timestamp hover */
-.fb-message-time {
-  position: absolute;
-  bottom: -16px;
-  font-size: 11px;
+/* ================= WRAPPER & TƯƠNG TÁC TIN NHẮN ================= */
+.fb-message-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Khoảng cách giữa bong bóng và bộ nút tương tác */
+  max-width: 100%;
+}
+
+/* Tin của mình: Đảo ngược flex -> Bong bóng ép sát Phải, Nút tương tác qua Trái */
+.my-wrapper {
+  flex-direction: row-reverse; 
+}
+
+/* Tin của họ: Flex bình thường -> Bong bóng ép sát Trái, Nút tương tác qua Phải */
+.their-wrapper {
+  flex-direction: row; 
+}
+
+/* ================= TƯƠNG TÁC TIN NHẮN ================= */
+.fb-message-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0; 
+  visibility: hidden; 
+  transition: opacity 0.2s ease, visibility 0.2s ease;
   color: var(--messenger-sub);
-  opacity: 0;
-  transition: 0.2s;
-  white-space: nowrap;
 }
 
-.fb-my-bubble .fb-message-time {
-  right: 0;
+.actions-me {
+  flex-direction: row-reverse;
 }
-.fb-their-bubble .fb-message-time {
-  left: 0;
+.actions-their {
+  flex-direction: row;
 }
 
-.fb-message-bubble:hover .fb-message-time {
+.fb-message-wrapper:hover .fb-message-actions {
   opacity: 1;
+  visibility: visible;
 }
+
+.action-icon {
+  padding: 4px; 
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.action-icon:hover {
+  background-color: var(--messenger-grey);
+  color: var(--messenger-text);
+  transform: scale(1.1);
+}
+
+/* Style cho nút Game */
+.fb-game-btn {
+  background-color: #31a24c;
+  color: white;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.fb-game-btn:hover { background-color: #2b8f43; }
 
 /* ================= FOOTER ================= */
 .fb-chat-footer {
@@ -246,4 +290,84 @@
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ================= REACTION & REVOKE ================= */
+
+/* Container bọc riêng Bubble để định vị Reaction Badge */
+.fb-message-bubble-container {
+  position: relative;
+  display: inline-block;
+  max-width: 70%;
+  transition: margin-bottom 0.2s ease; /* 🟢 Hiệu ứng đẩy xuống mượt mà */
+}
+
+/* 🟢 Khi có cảm xúc, tự động cộng thêm margin để tạo khoảng không gian cho Badge */
+.fb-message-bubble-container.has-reaction {
+  margin-bottom: 14px; 
+}
+
+/* Đè lại max-width của bubble bên trong vì container đã gánh max-width rồi */
+.fb-message-bubble-container .fb-message-bubble {
+  max-width: 100%; 
+}
+
+/* Style cho tin nhắn đã thu hồi (Rỗng, viền xám) */
+.fb-revoked-bubble {
+  background-color: transparent !important;
+  color: var(--messenger-sub) !important;
+  border: 1px solid #ced0d4;
+}
+
+/* Thanh popover chứa các Emoji chọn cảm xúc */
+.fb-reaction-bar-popup {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #fff;
+  border-radius: 30px;
+}
+
+.fb-reaction-emoji-btn {
+  font-size: 24px;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.fb-reaction-emoji-btn:hover {
+  transform: scale(1.3) translateY(-4px);
+}
+
+/* Huy hiệu (Badge) hiển thị reaction đang có trên tin nhắn */
+.fb-reaction-badge {
+  position: absolute;
+  bottom: -16px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: white;
+  padding: 2px 6px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  z-index: 10;
+  border: 1px solid #fff;
+}
+
+.badge-me {
+  left: -8px; /* Nếu là tin mình gửi, badge nằm bên góc trái */
+}
+
+.badge-their {
+  right: -8px; /* Nếu là họ gửi, badge nằm góc phải */
+}
+
+.fb-reaction-icon-small {
+  font-size: 13px;
+}
+
+.fb-reaction-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--messenger-sub);
+  margin-left: 2px;
 }

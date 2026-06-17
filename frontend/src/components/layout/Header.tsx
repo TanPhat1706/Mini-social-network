@@ -28,6 +28,7 @@ import MessengerDropdown from '../messenger/MessengerDropdown';
 import { useWebSocket } from '../../context/useWebSocket';
 import FriendButton from '../friend/FriendButton';
 import ChangePasswordModal from '../auth/ChangePasswordModal';
+import { useProfileNavigation } from '../../utils/useProfileNavigation';
 
 // 🔴 IMPORT COMPONENT AVATAR MA THUẬT
 import AvatarWithFrame from '../AvatarWithFrame';
@@ -72,12 +73,26 @@ const SearchDropdown = styled(Paper)(({ theme }) => ({
   right: 0,
   marginTop: '8px',
   maxHeight: '450px',
-  overflowY: 'auto',
   zIndex: 1300,
   boxShadow: '0 12px 28px 0 rgba(0, 0, 0, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.1)',
   borderRadius: '8px',
   width: '360px',
   [theme.breakpoints.down('sm')]: { width: '100%' },
+
+  /* --- CÁCH 1: ẨN HOÀN TOÀN THANH CUỘN NHƯNG VẪN CHO PHÉP CUỘN --- */
+  overflowY: 'auto',
+  
+  // Dành cho Chrome, Edge, Safari
+  '&::-webkit-scrollbar': {
+    display: 'none', 
+    width: '0px',
+  },
+  
+  // Dành cho Firefox
+  scrollbarWidth: 'none',
+  
+  // Dành cho IE / Edge cũ
+  msOverflowStyle: 'none',
 }));
 
 const NavIconButton = styled(IconButton)<{ active?: boolean }>(({ theme, active }) => ({
@@ -102,7 +117,7 @@ export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toggleColorMode, mode } = useColorMode();
-
+  const navigateToProfile = useProfileNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -286,7 +301,7 @@ export default function Header() {
                       >
                         <Box
                           sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer', flex: 1, minWidth: 0 }}
-                          onClick={() => { navigate(`/profile/${result.studentCode}`); setShowSearchDropdown(false); }}
+                          onClick={() => { navigateToProfile(result.studentCode); setShowSearchDropdown(false); }}
                         >
                           <AvatarWithFrame
                             src={result.avatarUrl}
@@ -382,7 +397,7 @@ export default function Header() {
 
               <Tooltip title={liveUser?.fullName || user?.fullName || 'Tài khoản'}>
                 <Box
-                  onClick={() => navigate('/profile')}
+                  onClick={() => navigateToProfile()}
                   sx={{
                     display: 'flex',
                     alignItems: 'center',

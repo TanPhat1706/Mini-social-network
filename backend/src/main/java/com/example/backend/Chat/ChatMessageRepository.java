@@ -12,16 +12,20 @@ import java.util.List;
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
-    // Lấy lịch sử chat
-    List<ChatMessage> findBySenderIdAndReceiverIdOrSenderIdAndReceiverIdOrderByTimestampAsc(
-            Integer senderId1, Integer receiverId1,
-            Integer senderId2, Integer receiverId2);
+    // 🟢 ĐÃ CẬP NHẬT: Lọc bỏ những tin nhắn mà requester (người gọi API) đã xoá 1 chiều
+    @Query("SELECT m FROM ChatMessage m " +
+           "WHERE ((m.senderId = :u1 AND m.receiverId = :u2) " +
+           "   OR (m.senderId = :u2 AND m.receiverId = :u1)) " +
+           "AND (m.deletedBySenderId IS NULL OR m.deletedBySenderId != :requesterId) " +
+           "ORDER BY m.timestamp ASC")
+    List<ChatMessage> getHistoryWithRevokeFilter(
+            @Param("u1") Integer u1, 
+            @Param("u2") Integer u2, 
+            @Param("requesterId") Integer requesterId);
 
-    // Lấy tin nhắn gần đây cho Inbox
     @Query("SELECT m FROM ChatMessage m WHERE (m.senderId = :userId OR m.receiverId = :userId) ORDER BY m.timestamp DESC")
     List<ChatMessage> findRecentMessages(@Param("userId") Integer userId);
 
-    // --- HÀM MỚI: Đánh dấu tin nhắn từ Partner gửi cho Mình là ĐÃ ĐỌC ---
     @Modifying
     @Transactional
     @Query("UPDATE ChatMessage m SET m.isRead = true WHERE m.senderId = :senderId AND m.receiverId = :receiverId")

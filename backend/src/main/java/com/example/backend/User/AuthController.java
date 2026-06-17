@@ -5,9 +5,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
@@ -290,5 +292,41 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi: " + e.getMessage());
         }
+    }
+    // 🟢 THÊM MỚI: API Gỡ ảnh bìa
+    @DeleteMapping("/profile/cover") // (Lưu ý đường dẫn, nếu class đã có @RequestMapping("/api/auth") thì chỉ cần "/profile/cover")
+    public ResponseEntity<UserResponse> removeCoverPhoto() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String studentCode = auth.getName();
+        
+        User currentUser = userRepository.findByStudentCode(studentCode)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        // Xóa URL ảnh bìa
+        currentUser.setCoverPhotoUrl(null);
+        userRepository.save(currentUser);
+
+        // Chuyển đổi User sang UserResponse để trả về cho Frontend
+        UserResponse response = UserResponse.builder()
+                .id(currentUser.getId())
+                .studentCode(currentUser.getStudentCode())
+                .email(currentUser.getEmail())
+                .fullName(currentUser.getFullName())
+                .className(currentUser.getClassName())
+                .role(currentUser.getRole())
+                .avatarUrl(currentUser.getAvatarUrl())
+                .coverPhotoUrl(currentUser.getCoverPhotoUrl()) // Lúc này sẽ là null
+                .bio(currentUser.getBio())
+                .active(currentUser.getActive())
+                .createdAt(currentUser.getCreatedAt())
+                .lastLogin(currentUser.getLastLogin())
+                .level(currentUser.getLevel())
+                .exp(currentUser.getExp())
+                .vptlPoints(currentUser.getVptlPoints())
+                .currentAvatarFrame(currentUser.getCurrentAvatarFrame())
+                .currentNameColor(currentUser.getCurrentNameColor())
+                .build();
+
+        return ResponseEntity.ok(response);
     }
 }

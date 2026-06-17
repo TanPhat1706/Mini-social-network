@@ -4,7 +4,9 @@ import type { User } from '../../types';
 import FriendButton from './FriendButton';
 import AvatarWithFrame from '../AvatarWithFrame';
 import ColoredName from '../ColoredName'; 
-import { useTheme } from '@mui/material/styles'; // 🟢 IMPORT THÊM HOOK THEME
+import { useTheme } from '@mui/material/styles';
+// 🟢 1. IMPORT HOOK ĐIỀU HƯỚNG
+import { useProfileNavigation } from '../../utils/useProfileNavigation';
 
 interface Props {
   currentUserId: number;
@@ -15,8 +17,10 @@ const SuggestedFriends: React.FC<Props> = ({ currentUserId }) => {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   
-  // 🟢 LẤY THÔNG TIN THEME TỪ MUI
   const theme = useTheme();
+  
+  // 🟢 2. KHỞI TẠO HOOK
+  const navigateToProfile = useProfileNavigation();
 
   const fetchSuggestions = (page: number) => {
     axiosClient.get(`/friends/suggested?page=${page}&size=5`)
@@ -38,10 +42,8 @@ const SuggestedFriends: React.FC<Props> = ({ currentUserId }) => {
   };
 
   return (
-    // 🟢 ĐÃ SỬA: Đổi màu nền (background.paper)
     <div style={{ background: theme.palette.background.paper, borderRadius: '8px', padding: '16px', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        {/* 🟢 ĐÃ SỬA: Đổi màu chữ (text.secondary) */}
         <h3 style={{ color: theme.palette.text.secondary, fontSize: '16px', fontWeight: 'bold', margin: 0 }}>Gợi ý kết bạn</h3>
         {totalPages > 1 && (
           <button
@@ -56,7 +58,12 @@ const SuggestedFriends: React.FC<Props> = ({ currentUserId }) => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {users.map(u => (
           <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+            
+            {/* 🟢 3. GẮN SỰ KIỆN CLICK VÀ CON TRỎ CHUỘT VÀO KHỐI THÔNG TIN NÀY */}
+            <div 
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, cursor: 'pointer' }}
+              onClick={() => navigateToProfile(u.studentCode)}
+            >
               <div style={{ flexShrink: 0 }}>
                 <AvatarWithFrame
                   src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.fullName}`}
@@ -68,16 +75,16 @@ const SuggestedFriends: React.FC<Props> = ({ currentUserId }) => {
               <div style={{ overflow: 'hidden' }}>
                 <div style={{
                   fontWeight: '600', fontSize: '14px',
-                  color: theme.palette.text.primary, // 🟢 ĐÃ SỬA: Tên người dùng thành màu động
+                  color: theme.palette.text.primary,
                   whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden'
                 }}>
                   <ColoredName name={u.fullName} colorClass={(u as any).currentNameColor} />
                 </div>
-                {/* 🟢 ĐÃ SỬA: Mã số sinh viên thành màu động phụ */}
                 <div style={{ fontSize: '12px', color: theme.palette.text.secondary }}>{u.studentCode}</div>
               </div>
             </div>
 
+            {/* Khối nút kết bạn đứng độc lập, không bị ảnh hưởng bởi sự kiện onClick ở trên */}
             <div style={{ flexShrink: 0, width: '120px' }}>
               <FriendButton targetUserId={u.id} currentUserId={currentUserId} />
             </div>

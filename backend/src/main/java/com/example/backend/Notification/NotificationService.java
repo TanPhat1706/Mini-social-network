@@ -106,18 +106,23 @@ public class NotificationService {
         }
     }
 
-// 2. CẬP NHẬT HÀM MAP TO DTO (Ghi đè thông tin người gửi nếu là ẩn danh)
+    // 2. CẬP NHẬT HÀM MAP TO DTO (Ghi đè thông tin người gửi nếu là ẩn danh)
     NotificationDTO mapToDTO(Notification notification) {
         String messageContent = buildMessageContent(notification);
         String targetUrl = buildTargetUrl(notification);
         User sender = notification.getSender();
 
-        // 🟢 KIỂM TRA CỜ ẨN DANH TRƯỚC KHI BUILD DTO
-        Long senderId = notification.getIsAnonymous() ? 0L : Long.valueOf(sender.getId());
-        String senderName = notification.getIsAnonymous() ? "Một người dùng ẩn danh" : sender.getFullName();
-        String senderAvatar = notification.getIsAnonymous() ? "https://ui-avatars.com/api/?name=Anonymous&background=808080&color=fff" : sender.getAvatarUrl();
-        String avatarFrame = notification.getIsAnonymous() ? null : sender.getCurrentAvatarFrame();
-        String nameColor = notification.getIsAnonymous() ? null : sender.getCurrentNameColor();
+        // 🟢 CHỐT CHẶN BẢO MẬT: Bọc Boolean.TRUE.equals() để chống lỗi
+        // NullPointerException
+        boolean isAnon = Boolean.TRUE.equals(notification.getIsAnonymous());
+
+        // 🟢 DÙNG BIẾN isAnon ĐÃ ĐƯỢC XỬ LÝ ĐỂ GÁN GIÁ TRỊ
+        Long senderId = isAnon ? 0L : Long.valueOf(sender.getId());
+        String senderName = isAnon ? "Một người dùng ẩn danh" : sender.getFullName();
+        String senderAvatar = isAnon ? "https://ui-avatars.com/api/?name=Anonymous&background=808080&color=fff"
+                : sender.getAvatarUrl();
+        String avatarFrame = isAnon ? null : sender.getCurrentAvatarFrame();
+        String nameColor = isAnon ? null : sender.getCurrentNameColor();
 
         return NotificationDTO.builder()
                 .id(notification.getId())
@@ -129,11 +134,12 @@ public class NotificationService {
                 .message(messageContent)
                 .targetUrl(targetUrl)
                 .createdAt(notification.getCreatedAt())
-                .isRead(notification.getIsRead())
+                .isRead(notification.getIsRead() != null ? notification.getIsRead() : false) // 🟢 Bảo vệ luôn isRead
+                                                                                             // cho chắc chắn
                 .type(notification.getType())
                 .build();
     }
-    
+
     private String buildMessageContent(Notification n) {
         switch (n.getType()) {
             case LIKE_POST:

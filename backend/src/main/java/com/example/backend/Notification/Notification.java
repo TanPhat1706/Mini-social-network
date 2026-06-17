@@ -44,4 +44,11 @@ public class Notification extends BaseEntity {
     // 🟢 THÊM CỘT NÀY ĐỂ ĐÁNH DẤU THÔNG BÁO ẨN DANH
     @Column(name = "is_anonymous")
     private Boolean isAnonymous = false;
+
+    // Trong file Notification.java
+    @PrePersist
+    public void prePersist() {
+        if (this.isRead == null) this.isRead = false;
+        if (this.isAnonymous == null) this.isAnonymous = false;
+    }
 }

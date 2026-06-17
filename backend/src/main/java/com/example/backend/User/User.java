@@ -73,6 +73,10 @@ public class User {
     @Column(name = "current_name_color")
     private String currentNameColor;
 
+    // 🟢 THÊM CỘT LAST ACTIVE (Cho tính năng trạng thái hoạt động)
+    @Column(name = "last_active_at")
+    private LocalDateTime lastActiveAt;
+
     public Integer getId() {
         return this.id;
     }

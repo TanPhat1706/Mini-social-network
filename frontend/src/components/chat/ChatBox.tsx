@@ -1,17 +1,30 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import SockJS from 'sockjs-client';
-import Stomp from 'stompjs';
-import { useNavigate } from 'react-router-dom'; // MỚI THÊM: Để chuyển hướng vào phòng game
+import { Client, type IMessage } from '@stomp/stompjs';
+import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
+import api from '../../api/api';
 import { getApiBaseUrl } from '../../config/apiBase';
 import type { User } from '../../types';
 import { useChat } from '../../context/ChatContext';
 import './ChatBox.css';
 import { getMessagesHistory } from '../../api/messageApi';
+// 🟢 IMPORT THÊM CÁC HÀM TÍNH KHOẢNG CÁCH THỜI GIAN
+import { format, isToday, isYesterday, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
+import { vi } from 'date-fns/locale';
+import { Tooltip, Menu, MenuItem, Popover } from '@mui/material';
+import ReplyIcon from '@mui/icons-material/Reply';
+import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 
-// IMPORT COMPONENT AVATAR
 import AvatarWithFrame from '../AvatarWithFrame';
 import ColoredName from '../ColoredName';
+import { useProfileNavigation } from '../../utils/useProfileNavigation';
+
+interface ChatReaction {
+  userId: number;
+  reactionType: string;
+}
 
 interface Message {
   id?: number;
@@ -21,24 +34,76 @@ interface Message {
   timestamp?: string;
   messageType?: string;
   gameSessionId?: number;
+  isDeletedEveryone?: boolean;
+  deletedBySenderId?: number;
+  reactions?: ChatReaction[];
 }
 
 interface Props {
   currentUser: User;
 }
 
+// 🟢 INTERFACE CHO PRESENCE (CHẤM XANH)
+interface UserPresence {
+  studentCode: string;
+  online: boolean; // Chú ý: Backend Java biến isOnline sẽ được Jackson parse thành 'online'
+  lastSeen?: string;
+}
+
+const REACTION_EMOJIS: Record<string, string> = {
+  LOVE: '❤️', HAHA: '😆', WOW: '😮', SAD: '😢', ANGRY: '😡', LIKE: '👍'
+};
+
+const formatMessageTime = (timestamp?: string) => {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  if (isToday(date)) return format(date, 'HH:mm');
+  if (isYesterday(date)) return `Hôm qua ${format(date, 'HH:mm')}`;
+  const formattedDate = format(date, 'EEEE, dd/MM HH:mm', { locale: vi });
+  return formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+};
+
+// 🟢 HÀM XỬ LÝ TEXT TRẠNG THÁI HOẠT ĐỘNG
+const formatLastSeen = (online: boolean, lastSeen?: string) => {
+  if (online) return 'Đang hoạt động';
+  if (!lastSeen) return 'Ngoại tuyến';
+
+  const lastDate = new Date(lastSeen);
+  const mins = differenceInMinutes(new Date(), lastDate);
+
+  if (mins < 1) return 'Hoạt động vài giây trước';
+  if (mins < 60) return `Hoạt động ${mins} phút trước`;
+
+  const hours = differenceInHours(new Date(), lastDate);
+  if (hours < 24) return `Hoạt động ${hours} giờ trước`;
+
+  const days = differenceInDays(new Date(), lastDate);
+  if (days < 7) return `Hoạt động ${days} ngày trước`;
+
+  return `Hoạt động từ ${format(lastDate, 'dd/MM/yyyy')}`;
+};
+
 const ChatBox: React.FC<Props> = ({ currentUser }) => {
   const { chatTarget, closeChat, isMinimized, setIsMinimized } = useChat();
   const targetUser = chatTarget;
-  const navigate = useNavigate(); // MỚI THÊM
+  const navigate = useNavigate();
+  const navigateToProfile = useProfileNavigation();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  const [isConnected, setIsConnected] = useState(false);
+  
+  // 🟢 STATE LƯU TRẠNG THÁI ONLINE CỦA BẠN CHAT
+  const [presence, setPresence] = useState<UserPresence | null>(null);
 
-  const stompClientRef = useRef<any>(null);
+  const [anchorElMore, setAnchorElMore] = useState<null | HTMLElement>(null);
+  const [selectedMsgForMore, setSelectedMsgForMore] = useState<Message | null>(null);
+  const [anchorElReact, setAnchorElReact] = useState<null | HTMLElement>(null);
+  const [selectedMsgForReact, setSelectedMsgForReact] = useState<Message | null>(null);
+
+  const stompClientRef = useRef<Client | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  /* ================= MAP MESSAGE ================= */
   const mapMessage = (data: any): Message => ({
     id: data.id,
     content: data.content,
@@ -46,143 +111,287 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
     senderId: data.senderId || data.sender?.id,
     receiverId: data.receiverId || data.receiver?.id,
     messageType: data.messageType,
-    gameSessionId: data.gameSessionId
+    gameSessionId: data.gameSessionId,
+    isDeletedEveryone: data.isDeletedEveryone || data.deletedEveryone,
+    deletedBySenderId: data.deletedBySenderId,
+    reactions: data.reactions || []
   });
 
-/* ================= LOAD HISTORY ================= */
-useEffect(() => {
-  if (!targetUser) return;
+  // 🟢 EFFECT THEO DÕI TRẠNG THÁI (PRESENCE POLLING)
+  useEffect(() => {
+    if (!targetUser?.studentCode) return;
 
-  setMessages([]);
-  
-  // 2. Sử dụng hàm từ messageApi thay vì gọi trực tiếp axiosClient
-  getMessagesHistory(currentUser.id, targetUser.id)
-    .then(res => setMessages(res.data.map(mapMessage)))
-    .catch(console.error);
-}, [currentUser.id, targetUser]);
+    const fetchPresence = async () => {
+      try {
+        // 🟢 FIX URL CHÍNH XÁC: Dùng api.get và ghi đầy đủ /api/users/...
+        const res = await api.get(`/api/users/${targetUser.studentCode}/presence`);
+        setPresence(res.data);
+      } catch (error) {
+        console.error("Lỗi lấy trạng thái hoạt động", error);
+      }
+    };
 
-  /* ================= WEBSOCKET ================= */
+    fetchPresence();
+    const interval = setInterval(fetchPresence, 60000);
+
+    return () => clearInterval(interval);
+  }, [targetUser?.studentCode]);
+
+  useEffect(() => {
+    if (!targetUser?.id || !currentUser?.id) return;
+    setMessages([]);
+    getMessagesHistory(currentUser.id, targetUser.id)
+      .then(res => {
+        if (res.data && Array.isArray(res.data)) {
+          setMessages(res.data.map(mapMessage));
+        }
+      })
+      .catch(console.error);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id, targetUser?.id]);
+
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (!targetUser || !token) return;
+    if (!targetUser?.id || !currentUser?.id || !token) return;
 
     const socket = new SockJS(`${getApiBaseUrl()}/ws`);
-    const client = Stomp.over(socket);
-    client.debug = () => {};
-
-    client.connect(
-      { Authorization: `Bearer ${token}` },
-      () => {
-        // 1. Lắng nghe tin nhắn Chat thông thường
-        client.subscribe('/user/queue/messages', payload => {
+    const client = new Client({
+      webSocketFactory: () => socket,
+      connectHeaders: { Authorization: `Bearer ${token}` },
+      debug: () => { },
+      onConnect: () => {
+        setIsConnected(true);
+        client.subscribe('/user/queue/messages', (payload: IMessage) => {
           const newMsg = mapMessage(JSON.parse(payload.body));
-          setMessages(prev => [...prev, newMsg]);
+          setMessages(prev => {
+            const existingIndex = prev.findIndex(m => m.id === newMsg.id);
+            if (existingIndex !== -1) {
+              const updatedMessages = [...prev];
+              updatedMessages[existingIndex] = newMsg;
+              return updatedMessages;
+            }
+            return [...prev, newMsg];
+          });
         });
 
-        // 2. MỚI THÊM: Lắng nghe tín hiệu Game (Khi đối thủ ấn Chấp nhận)
-        client.subscribe('/user/queue/game-events', payload => {
+        client.subscribe('/user/queue/game-events', (payload: IMessage) => {
           const event = JSON.parse(payload.body);
           if (event.type === 'GAME_INVITE_ACCEPTED' && event.session?.id) {
-            // Đóng khung chat và chuyển hướng cả 2 người vào phòng
             closeChat();
             navigate(`/games/tic-tac-toe/${event.session.id}`);
           }
         });
-      }
-    );
+      },
+      onWebSocketClose: () => setIsConnected(false)
+    });
 
+    client.activate();
     stompClientRef.current = client;
-    return () => {
-      client.disconnect(() => {});
-    };
-  }, [currentUser.id, targetUser, navigate, closeChat]);
 
-  /* ================= AUTO SCROLL ================= */
+    return () => { client.deactivate(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id, targetUser?.id, navigate, closeChat]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isMinimized]);
 
-  /* ================= SEND MESSAGE ================= */
-  const sendMessage = () => {
-    if (!input.trim() || !stompClientRef.current || !targetUser) return;
+  const handleMarkAsRead = async () => {
+    if (!targetUser) return;
+    try {
+      await axiosClient.put(`/messages/read/${targetUser.id}`);
+    } catch (err) {
+      console.error("Lỗi đánh dấu đã đọc", err);
+    }
+  };
 
-    stompClientRef.current.send(
-      '/app/chat',
-      {},
-      JSON.stringify({
+  const sendMessage = () => {
+    if (!input.trim() || !stompClientRef.current || !targetUser || !isConnected) return;
+    stompClientRef.current.publish({
+      destination: '/app/chat',
+      body: JSON.stringify({
         senderId: currentUser.id,
         receiverId: targetUser.id,
         content: input,
         messageType: 'TEXT'
       })
-    );
+    });
     setInput('');
   };
 
-  /* ================= SEND GAME INVITE ================= */
   const sendGameInvite = () => {
-    if (!stompClientRef.current || !targetUser) return;
-
-    stompClientRef.current.send(
-      '/app/chat',
-      {},
-      JSON.stringify({
+    if (!stompClientRef.current || !targetUser || !isConnected) return;
+    stompClientRef.current.publish({
+      destination: '/app/chat',
+      body: JSON.stringify({
         senderId: currentUser.id,
         receiverId: targetUser.id,
-        content: 'GameInvite', // Gửi không dấu để tránh lỗi SQL
+        content: 'GameInvite',
         messageType: 'GAME_INVITE'
       })
-    );
+    });
   };
 
-  /* ================= HANDLE ACCEPT INVITE (MỚI THÊM) ================= */
   const handleAcceptInvite = (msgId?: number) => {
-    if (!stompClientRef.current || !msgId) return;
-
-    // Bắn request lên Controller của Backend
-    stompClientRef.current.send(
-      '/app/game.invite.accept',
-      {},
-      JSON.stringify({ inviteMessageId: msgId })
-    );
+    if (!stompClientRef.current || !msgId || !isConnected) return;
+    stompClientRef.current.publish({
+      destination: '/app/game.invite.accept',
+      body: JSON.stringify({ inviteMessageId: msgId })
+    });
   };
 
-  /* ================= GUARD ================= */
+  const handleRevoke = (revokeType: 'EVERYONE' | 'SELF') => {
+    if (!stompClientRef.current || !selectedMsgForMore?.id || !isConnected) return;
+    stompClientRef.current.publish({
+      destination: '/app/chat.revoke',
+      body: JSON.stringify({
+        messageId: selectedMsgForMore.id,
+        requesterId: currentUser.id,
+        revokeType: revokeType
+      })
+    });
+    setAnchorElMore(null);
+  };
+
+  const handleReact = (reactionType: string) => {
+    if (!stompClientRef.current || !selectedMsgForReact?.id || !isConnected) return;
+    stompClientRef.current.publish({
+      destination: '/app/chat.react',
+      body: JSON.stringify({
+        messageId: selectedMsgForReact.id,
+        userId: currentUser.id,
+        reactionType: reactionType
+      })
+    });
+    setAnchorElReact(null);
+  };
+
+  const renderedMessages = useMemo(() => {
+    const visibleMessages = messages.filter(
+      msg => msg.deletedBySenderId !== currentUser.id && msg.messageType !== 'SYSTEM'
+    );
+
+    return visibleMessages.map((msg, index) => {
+      const isMe = msg.senderId === currentUser.id;
+
+      const reactionTypes = Array.from(new Set(msg.reactions?.map(r => r.reactionType) || []));
+      const reactionCount = msg.reactions?.length || 0;
+
+      return (
+        <div key={index} className={`fb-message-row ${isMe ? 'fb-my-row' : 'fb-their-row'}`}>
+          <Tooltip
+            title={formatMessageTime(msg.timestamp)}
+            placement={isMe ? "left" : "right"}
+            arrow={false}
+            enterDelay={400}
+            leaveDelay={0}
+            slotProps={{
+              popper: { sx: { zIndex: 3000 } },
+              tooltip: {
+                sx: {
+                  bgcolor: '#E4E6EB', color: '#050505', fontSize: '12px', fontWeight: 500,
+                  padding: '6px 10px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  whiteSpace: 'nowrap', margin: isMe ? '0 12px 0 0 !important' : '0 0 0 12px !important'
+                }
+              }
+            }}
+          >
+            <div className={`fb-message-wrapper ${isMe ? 'my-wrapper' : 'their-wrapper'}`}>
+
+              <div className={`fb-message-bubble-container ${(!msg.isDeletedEveryone && reactionCount > 0) ? 'has-reaction' : ''}`}>
+                <div className={`fb-message-bubble ${msg.isDeletedEveryone ? 'fb-revoked-bubble' : (isMe ? 'fb-my-bubble' : 'fb-their-bubble')}`}>
+                  {msg.isDeletedEveryone ? (
+                    <span style={{ fontStyle: 'italic', color: '#65676b' }}>Tin nhắn đã thu hồi</span>
+                  ) : msg.messageType === 'GAME_INVITE' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ fontWeight: 'bold' }}>🎮 Cùng chơi Tic Tac Toe!</div>
+                      {isMe ? (
+                        <span style={{ fontSize: '13px', fontStyle: 'italic', opacity: 0.9 }}>Đang chờ đối thủ...</span>
+                      ) : (
+                        <button onClick={() => handleAcceptInvite(msg.id)} className="fb-game-btn">Vào chơi ngay</button>
+                      )}
+                    </div>
+                  ) : (
+                    msg.content
+                  )}
+                </div>
+
+                {!msg.isDeletedEveryone && reactionCount > 0 && (
+                  <div className={`fb-reaction-badge ${isMe ? 'badge-me' : 'badge-their'}`}>
+                    {reactionTypes.map((type, i) => (
+                      <span key={i} className="fb-reaction-icon-small">{REACTION_EMOJIS[type]}</span>
+                    ))}
+                    {reactionCount > 1 && <span className="fb-reaction-count">{reactionCount}</span>}
+                  </div>
+                )}
+              </div>
+
+              {!msg.isDeletedEveryone && (
+                <div className={`fb-message-actions ${isMe ? 'actions-me' : 'actions-their'}`}>
+                  <Tooltip title="Thêm biểu tượng cảm xúc" placement="top" arrow slotProps={{ popper: { sx: { zIndex: 3000 } } }}>
+                    <SentimentSatisfiedAltIcon
+                      sx={{ fontSize: 24 }}
+                      className="action-icon"
+                      onClick={(e) => { setAnchorElReact(e.currentTarget as any); setSelectedMsgForReact(msg); }}
+                    />
+                  </Tooltip>
+                  <Tooltip title="Trả lời" placement="top" arrow slotProps={{ popper: { sx: { zIndex: 3000 } } }}>
+                    <ReplyIcon sx={{ fontSize: 24 }} className="action-icon" />
+                  </Tooltip>
+                  <Tooltip title="Xem thêm" placement="top" arrow slotProps={{ popper: { sx: { zIndex: 3000 } } }}>
+                    <MoreVertIcon
+                      sx={{ fontSize: 24 }}
+                      className="action-icon"
+                      onClick={(e) => { setAnchorElMore(e.currentTarget as any); setSelectedMsgForMore(msg); }}
+                    />
+                  </Tooltip>
+                </div>
+              )}
+
+            </div>
+          </Tooltip>
+        </div>
+      );
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, currentUser.id]);
+
   if (!targetUser) return null;
 
-  /* ================= MINIMIZED ================= */
   if (isMinimized) {
     return (
       <div className="chat-bubble-container" onClick={() => setIsMinimized(false)}>
-        <AvatarWithFrame 
+        <AvatarWithFrame
           src={targetUser.avatarUrl || `https://ui-avatars.com/api/?name=${targetUser.fullName}`}
           frameClass={(targetUser as any).currentAvatarFrame}
-          size={56} 
+          size={56}
         />
+        {/* 🟢 Render chấm xanh khi thu nhỏ nếu họ đang online */}
+        {presence?.online && <span className="fb-online-dot-minimized" style={{ position: 'absolute', bottom: 4, right: 4, width: 12, height: 12, backgroundColor: '#31a24c', borderRadius: '50%', border: '2px solid white' }} />}
         <div className="chat-bubble-close" onClick={(e) => { e.stopPropagation(); closeChat(); }}>✖</div>
       </div>
     );
   }
 
-  /* ================= FULL CHAT ================= */
   return (
     <div className="fb-chat-container">
-      {/* ===== HEADER ===== */}
       <div className="fb-chat-header">
-        <div className="fb-chat-user">
+        <div className="fb-chat-user" onClick={() => { navigateToProfile(targetUser.studentCode); closeChat(); }} style={{ cursor: 'pointer' }}>
           <div style={{ position: 'relative' }}>
-            <AvatarWithFrame 
-              src={targetUser.avatarUrl || `https://ui-avatars.com/api/?name=${targetUser.fullName}`}
-              frameClass={(targetUser as any).currentAvatarFrame}
-              size={36} 
-            />
-            <span className="fb-online-dot" />
+            <AvatarWithFrame src={targetUser.avatarUrl || `https://ui-avatars.com/api/?name=${targetUser.fullName}`} frameClass={(targetUser as any).currentAvatarFrame} size={36} />
+            
+            {/* 🟢 CHỈ HIỆN CHẤM XANH KHI ONLINE === TRUE */}
+            {presence?.online && <span className="fb-online-dot" />}
           </div>
           <div>
             <div className="fb-chat-name">
-                <ColoredName name={targetUser.fullName} colorClass={(targetUser as any).currentNameColor} />
-            </div>            
-            <div className="fb-chat-status">Đang hoạt động</div>
+              <ColoredName name={targetUser.fullName} colorClass={(targetUser as any).currentNameColor} />
+            </div>
+            
+            {/* 🟢 HIỂN THỊ DÒNG TRẠNG THÁI (Ví dụ: Hoạt động 5 phút trước) */}
+            <div className="fb-chat-status">
+              {presence ? formatLastSeen(presence.online, presence.lastSeen) : 'Đang tải...'}
+            </div>
           </div>
         </div>
 
@@ -192,78 +401,59 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* ===== BODY ===== */}
       <div className="fb-chat-body">
-        {messages.map((msg, index) => {
-          const isMe = msg.senderId === currentUser.id;
-          return (
-            <div key={index} className={`fb-message-row ${isMe ? 'fb-my-row' : 'fb-their-row'}`}>
-              <div className={`fb-message-bubble ${isMe ? 'fb-my-bubble' : 'fb-their-bubble'}`}>
-                
-                {/* 🔴 MỚI THÊM: GIAO DIỆN LỜI MỜI GAME 🔴 */}
-                {msg.messageType === 'GAME_INVITE' ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ fontWeight: 'bold' }}>🎮 Cùng chơi Tic Tac Toe!</div>
-                    {isMe ? (
-                      <span style={{ fontSize: '13px', fontStyle: 'italic', opacity: 0.9 }}>
-                        Đang chờ đối thủ...
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleAcceptInvite(msg.id)}
-                        style={{
-                          backgroundColor: '#31a24c',
-                          color: 'white',
-                          border: 'none',
-                          padding: '6px 16px',
-                          borderRadius: '6px',
-                          fontWeight: 'bold',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Vào chơi ngay
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  msg.content
-                )}
-                
-                <div className="fb-message-time">
-                  {msg.timestamp && new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {renderedMessages}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ===== FOOTER ===== */}
       <div className="fb-chat-footer">
-        <div 
-          className="fb-icon" 
-          onClick={sendGameInvite} 
-          title="Mời chơi Game"
-          style={{ width: '36px', height: '36px', fontSize: '20px' }}
-        >
-          🎮
-        </div>
-
+        <div className="fb-icon" onClick={sendGameInvite} title="Mời chơi Game" style={{ width: '36px', height: '36px', fontSize: '20px' }}>🎮</div>
+        
         <div className="fb-input-container">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+            onFocus={handleMarkAsRead}
             placeholder="Aa"
             className="fb-chat-input"
           />
         </div>
-
-        <div className={`fb-footer-icons-right ${stompClientRef.current?.connected ? '' : 'fb-send-disabled'}`} onClick={sendMessage}>
+        
+        <div className={`fb-footer-icons-right ${isConnected ? '' : 'fb-send-disabled'}`} onClick={sendMessage}>
           <i className="fb-send-btn">➤</i>
         </div>
       </div>
+
+      <Menu
+        anchorEl={anchorElMore}
+        open={Boolean(anchorElMore)}
+        onClose={() => setAnchorElMore(null)}
+        sx={{ zIndex: 3500 }}
+      >
+        <MenuItem onClick={() => handleRevoke('SELF')}>Thu hồi phía bạn</MenuItem>
+        {selectedMsgForMore?.senderId === currentUser.id && (
+          <MenuItem onClick={() => handleRevoke('EVERYONE')} sx={{ color: '#e53935' }}>Thu hồi với mọi người</MenuItem>
+        )}
+      </Menu>
+
+      <Popover
+        open={Boolean(anchorElReact)}
+        anchorEl={anchorElReact}
+        onClose={() => setAnchorElReact(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        transformOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ zIndex: 3500 }}
+      >
+        <div className="fb-reaction-bar-popup">
+          {Object.entries(REACTION_EMOJIS).map(([type, emoji]) => (
+            <span key={type} className="fb-reaction-emoji-btn" onClick={() => handleReact(type)}>
+              {emoji}
+            </span>
+          ))}
+        </div>
+      </Popover>
+
     </div>
   );
 };

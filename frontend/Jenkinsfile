@@ -37,7 +37,7 @@ pipeline {
                 // 🟢 ĐÃ FIX: Sử dụng credential dành riêng cho Frontend mà bạn vừa tạo
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-frontend-creds', // 👈 Thay đổi quan trọng nhất nằm ở đây!
+                    credentialsId: 'aws-frontend-creds', 
                     accessKeyVariable: 'AWS_ACCESS_KEY_ID',
                     secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
                 ]]) {

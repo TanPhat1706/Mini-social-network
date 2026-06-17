@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useChat } from '../../context/ChatContext';
 import './MessengerDropdown.css';
 import { getRecentConversations, markMessageAsRead } from '../../api/messageApi';
+import axiosClient from '../../api/axiosClient'; // 🟢 Import axiosClient để gọi API lấy bạn bè
+
 interface Conversation {
   partnerId: number;
   partnerName: string;
@@ -9,6 +11,13 @@ interface Conversation {
   lastMessage: string;
   timestamp: string;
   isRead: boolean;
+  isFriendOnly?: boolean; // 🟢 Cờ để phân biệt người này chỉ là bạn bè (chưa từng chat)
+}
+
+interface Friend {
+  id: number;
+  fullName: string;
+  avatarUrl: string;
 }
 
 interface Props {
@@ -18,16 +27,28 @@ interface Props {
 
 const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [friends, setFriends] = useState<Friend[]>([]); // 🟢 State lưu danh sách bạn bè
+  const [searchQuery, setSearchQuery] = useState(''); // 🟢 State lưu nội dung tìm kiếm
+
   const { openChat } = useChat();
 
   useEffect(() => {
-    // Gọi API lấy danh sách
+    // Gọi API lấy danh sách nhắn tin gần đây
     fetchConversations();
+    // 🟢 Gọi ngầm API lấy danh sách bạn bè để phục vụ tìm kiếm
+    fetchFriends();
   }, []);
 
   const fetchConversations = () => {
-    getRecentConversations() // Sử dụng hàm từ messageApi
+    getRecentConversations()
       .then(res => setConversations(res.data))
+      .catch(console.error);
+  };
+
+  const fetchFriends = () => {
+    // Dựa theo API Docs: GET /api/auth/friends/list
+    axiosClient.get('/friends/list')
+      .then(res => setFriends(res.data))
       .catch(console.error);
   };
 
@@ -40,18 +61,17 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
       studentCode: '', className: '', email: '', bio: '', role: '', active: true, createdAt: '', lastLogin: ''
     });
 
-    // 2. Cập nhật giao diện NGAY LẬP TỨC (Optimistic UI) - Giống Facebook
-    if (!conv.isRead) {
+    // 2. Cập nhật giao diện NGAY LẬP TỨC (Optimistic UI)
+    if (!conv.isRead && !conv.isFriendOnly) {
        const updatedList = conversations.map(c => 
           c.partnerId === conv.partnerId ? { ...c, isRead: true } : c
        );
        setConversations(updatedList);
-
        onMessageRead();
        
        // 3. Gọi API cập nhật ngầm bên dưới
        try {
-        await markMessageAsRead(conv.partnerId); // Sử dụng hàm từ messageApi (Đã được mã hóa an toàn)
+        await markMessageAsRead(conv.partnerId); 
       } catch (e) { console.error(e); }
     }
 
@@ -60,6 +80,7 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
   };
 
   const formatTimeFB = (isoString: string) => {
+    if (!isoString) return '';
     const date = new Date(isoString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -74,6 +95,37 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
     return `${Math.floor(diffDays / 7)} tuần`;
   };
 
+  // 🟢 LOGIC TÌM KIẾM THEO THỜI GIAN THỰC (0ms delay)
+  const displayList = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    
+    // Nếu không gõ tìm kiếm, chỉ hiển thị danh sách đã chat
+    if (!query) return conversations;
+
+    // 1. Lọc những người đã nhắn tin có tên khớp từ khóa
+    const matchedConversations = conversations.filter(c => 
+      c.partnerName.toLowerCase().includes(query)
+    );
+
+    // 2. Lọc những bạn bè có tên khớp từ khóa (Loại bỏ những ai đã có mặt ở mảng matchedConversations)
+    const existingIds = new Set(matchedConversations.map(c => c.partnerId));
+    
+    const matchedFriends: Conversation[] = friends
+      .filter(f => f.fullName.toLowerCase().includes(query) && !existingIds.has(f.id))
+      .map(f => ({
+        partnerId: f.id,
+        partnerName: f.fullName,
+        partnerAvatar: f.avatarUrl,
+        lastMessage: 'Bạn bè trên Mini Social', // Hiển thị nội dung ảo thay cho tin nhắn cuối
+        timestamp: '',
+        isRead: true,
+        isFriendOnly: true // Đánh dấu đây chỉ là kết quả tìm kiếm bạn bè
+      }));
+
+    // Gộp chung kết quả: Đã chat lên trước, Bạn bè (chưa chat) xếp sau
+    return [...matchedConversations, ...matchedFriends];
+  }, [searchQuery, conversations, friends]);
+
   return (
     <div className="messenger-dropdown" onClick={(e) => e.stopPropagation()}>
       <div className="msg-dd-header">
@@ -86,20 +138,27 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
       </div>
 
       <div className="msg-dd-search">
-         <input className="msg-search-input" placeholder="Tìm kiếm trên Messenger" />
+         <input 
+            className="msg-search-input" 
+            placeholder="Tìm kiếm trên Messenger" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)} // 🟢 Bind giá trị vào ô input
+         />
       </div>
 
-      <div className="msg-dd-tabs">
-         <div className="msg-pill active">Tất cả</div>
-         <div className="msg-pill inactive">Chưa đọc</div>
-      </div>
+      {/* 🟢 Nếu đang gõ tìm kiếm thì ẩn 2 cái nút Tabs đi cho giống Messenger */}
+      {!searchQuery && (
+        <div className="msg-dd-tabs">
+           <div className="msg-pill active">Tất cả</div>
+           <div className="msg-pill inactive">Chưa đọc</div>
+        </div>
+      )}
 
       <div className="msg-dd-list">
-        {conversations.length > 0 ? (
-          conversations.map(c => (
+        {displayList.length > 0 ? (
+          displayList.map(c => (
             <div 
               key={c.partnerId} 
-              // Logic class: Chỉ thêm 'unread' nếu isRead === false
               className={`msg-item ${!c.isRead ? 'unread' : ''}`}
               onClick={() => handleItemClick(c)}
             >
@@ -110,24 +169,24 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
                <div className="msg-item-info">
                   <div className="msg-item-name">{c.partnerName}</div>
                   <div className="msg-item-preview">
-                     {/* Logic hiển thị nội dung: Nếu mình gửi thì hiện "Bạn: " */}
                      <span>{c.lastMessage}</span>
-                     <span style={{margin: '0 4px'}}>·</span>
-                     <span>{formatTimeFB(c.timestamp)}</span>
+                     {!c.isFriendOnly && c.timestamp && (
+                        <>
+                          <span style={{margin: '0 4px'}}>·</span>
+                          <span>{formatTimeFB(c.timestamp)}</span>
+                        </>
+                     )}
                   </div>
                </div>
 
-               {/* Chấm xanh chỉ hiện khi chưa đọc */}
                {!c.isRead && <div className="msg-item-dot"></div>}
             </div>
           ))
         ) : (
-          <div style={{padding: '20px', textAlign: 'center', color: '#888'}}>Không có đoạn chat nào.</div>
+          <div style={{padding: '20px', textAlign: 'center', color: '#888'}}>
+             {searchQuery ? 'Không tìm thấy kết quả nào.' : 'Không có đoạn chat nào.'}
+          </div>
         )}
-      </div>
-      
-      <div className="msg-dd-footer">
-         Xem tất cả trong Messenger
       </div>
     </div>
   );
