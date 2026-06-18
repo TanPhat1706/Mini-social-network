@@ -10,4 +10,13 @@ export default defineConfig({
       },
     }),
   ],
+
+  define: {
+    global: 'window',
+  },
+
+  server: {
+    // Cho phép mở dev server qua ngrok (Host header ≠ localhost)
+    allowedHosts: true,
+  },
 })

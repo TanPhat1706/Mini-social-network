@@ -1,0 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* --- 1. BIẾN MÀU ĐỒNG BỘ (Giống hệt login.css) --- */
+:root {
+  --primary-color: #4F46E5;   
+  --secondary-color: #7C3AED; 
+  --text-main: #1F2937;       
+  --text-sub: #6B7280;        
+  --bg-input: #F9FAFB;        
+  --border-input: #E5E7EB;    
+  --white: #ffffff;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- 2. LAYOUT --- */
+.auth-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  /* Đảo chiều Gradient nhẹ để tạo cảm giác khác biệt một chút nhưng vẫn cùng tông */
+  background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%); 
+  background-size: 200% 200%;
+  animation: gradientBG 15s ease infinite;
+}
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* --- 3. CARD --- */
+.auth-card {
+  background: var(--white);
+  width: 100%;
+  max-width: 550px; /* ⭐️ Rộng hơn Login */
+  padding: 48px 40px;
+  border-radius: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  text-align: center;
+  animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+
+.auth-subtitle {
+  color: var(--text-sub);
+  margin-bottom: 32px;
+  font-size: 14px;
+}
+
+/* --- 4. FORM --- */
+.form-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.form-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border-input);
+  background-color: var(--bg-input);
+  border-radius: 12px;
+  font-size: 15px;
+  color: var(--text-main);
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.form-input::placeholder {
+  color: #9CA3AF;
+}
+
+.form-input:focus {
+  background-color: var(--white);
+  border-color: var(--secondary-color); /* Register dùng màu secondary cho focus */
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+}
+
+/* --- 5. BUTTON --- */
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  margin-top: 10px;
+  background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+  color: var(--white);
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.2);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background: #9CA3AF;
+}
+
+/* --- 6. FOOTER --- */
+.auth-footer {
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+.auth-link {
+  color: var(--secondary-color);
+  font-weight: 600;
+  text-decoration: none;
+  margin-left: 4px;
+  transition: color 0.2s;
+}
+
+.auth-link:hover {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 30px 20px;
+  }
+}

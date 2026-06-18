@@ -1,0 +1,497 @@
+:root {
+  --messenger-blue: #0084ff;
+  --messenger-bg: #ffffff;
+  --messenger-grey: #f0f2f5;
+  --messenger-text: #050505;
+  --messenger-sub: #65676b;
+  --shadow-chat: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+/* ================= CONTAINER ================= */
+.fb-chat-container {
+  position: fixed;
+  bottom: 0;
+  right: 80px;
+  width: 340px;
+  height: 460px;
+  background: var(--messenger-bg);
+  border-radius: 10px 10px 0 0;
+  box-shadow: var(--shadow-chat);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 2000;
+}
+
+/* ================= HEADER ================= */
+.fb-chat-header {
+  height: 56px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+.fb-chat-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fb-chat-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  position: relative;
+}
+
+.fb-online-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 9px;
+  height: 9px;
+  background: #31a24c;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+.fb-chat-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.fb-chat-status {
+  font-size: 12px;
+  color: var(--messenger-sub);
+}
+
+.fb-chat-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.fb-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--messenger-blue);
+}
+
+.fb-icon:hover {
+  background: var(--messenger-grey);
+}
+
+/* ================= BODY ================= */
+.fb-chat-body {
+  flex: 1;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.fb-chat-body::-webkit-scrollbar {
+  width: 6px;
+}
+.fb-chat-body::-webkit-scrollbar-thumb {
+  background: #bcc0c4;
+  border-radius: 10px;
+}
+
+/* ================= MESSAGE ================= */
+.fb-message-row {
+  display: flex;
+}
+
+.fb-my-row {
+  justify-content: flex-end;
+}
+
+.fb-their-row {
+  justify-content: flex-start;
+}
+
+.fb-message-bubble {
+  max-width: 70%;
+  padding: 8px 12px;
+  font-size: 15px;
+  line-height: 1.4;
+  border-radius: 18px;
+  position: relative;
+  animation: fadeInUp 0.15s ease-out;
+}
+
+.fb-my-bubble {
+  background: var(--messenger-blue);
+  color: white;
+  border-bottom-right-radius: 6px;
+}
+
+.fb-their-bubble {
+  background: var(--messenger-grey);
+  color: var(--messenger-text);
+  border-bottom-left-radius: 6px;
+}
+
+/* ================= WRAPPER & TƯƠNG TÁC TIN NHẮN ================= */
+.fb-message-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Khoảng cách giữa bong bóng và bộ nút tương tác */
+  max-width: 100%;
+}
+
+/* Tin của mình: Đảo ngược flex -> Bong bóng ép sát Phải, Nút tương tác qua Trái */
+.my-wrapper {
+  flex-direction: row-reverse; 
+}
+
+/* Tin của họ: Flex bình thường -> Bong bóng ép sát Trái, Nút tương tác qua Phải */
+.their-wrapper {
+  flex-direction: row; 
+}
+
+/* ================= TƯƠNG TÁC TIN NHẮN ================= */
+.fb-message-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0; 
+  visibility: hidden; 
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  color: var(--messenger-sub);
+}
+
+.actions-me {
+  flex-direction: row-reverse;
+}
+.actions-their {
+  flex-direction: row;
+}
+
+.fb-message-wrapper:hover .fb-message-actions {
+  opacity: 1;
+  visibility: visible;
+}
+
+.action-icon {
+  padding: 4px; 
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.action-icon:hover {
+  background-color: var(--messenger-grey);
+  color: var(--messenger-text);
+  transform: scale(1.1);
+}
+
+/* Style cho nút Game */
+.fb-game-btn {
+  background-color: #31a24c;
+  color: white;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.fb-game-btn:hover { background-color: #2b8f43; }
+
+/* ================= FOOTER ================= */
+.fb-chat-footer {
+  height: 56px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid rgba(0,0,0,0.08);
+}
+
+.fb-input-container {
+  flex: 1;
+  background: var(--messenger-grey);
+  border-radius: 20px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+}
+
+.fb-chat-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+}
+
+.fb-footer-icons-right {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.fb-send-btn {
+  font-size: 22px;
+  color: var(--messenger-blue);
+}
+
+.fb-send-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ================= MINIMIZED ================= */
+.chat-bubble-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+
+.chat-bubble-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.chat-bubble-close {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 20px;
+  height: 20px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+}
+
+/* ================= ANIMATION ================= */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ================= REACTION & REVOKE ================= */
+
+/* Container bọc riêng Bubble để định vị Reaction Badge */
+.fb-message-bubble-container {
+  position: relative;
+  display: inline-block;
+  max-width: 70%;
+  transition: margin-bottom 0.2s ease; /* 🟢 Hiệu ứng đẩy xuống mượt mà */
+}
+
+/* 🟢 Khi có cảm xúc, tự động cộng thêm margin để tạo khoảng không gian cho Badge */
+.fb-message-bubble-container.has-reaction {
+  margin-bottom: 14px; 
+}
+
+/* Đè lại max-width của bubble bên trong vì container đã gánh max-width rồi */
+.fb-message-bubble-container .fb-message-bubble {
+  max-width: 100%; 
+}
+
+/* Style cho tin nhắn đã thu hồi (Rỗng, viền xám) */
+.fb-revoked-bubble {
+  background-color: transparent !important;
+  color: var(--messenger-sub) !important;
+  border: 1px solid #ced0d4;
+}
+
+/* Thanh popover chứa các Emoji chọn cảm xúc */
+.fb-reaction-bar-popup {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #fff;
+  border-radius: 30px;
+}
+
+.fb-reaction-emoji-btn {
+  font-size: 24px;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.fb-reaction-emoji-btn:hover {
+  transform: scale(1.3) translateY(-4px);
+}
+
+/* Huy hiệu (Badge) hiển thị reaction đang có trên tin nhắn */
+.fb-reaction-badge {
+  position: absolute;
+  bottom: -16px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: white;
+  padding: 2px 6px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  z-index: 10;
+  border: 1px solid #fff;
+}
+
+.badge-me {
+  left: -8px; /* Nếu là tin mình gửi, badge nằm bên góc trái */
+}
+
+.badge-their {
+  right: -8px; /* Nếu là họ gửi, badge nằm góc phải */
+}
+
+.fb-reaction-icon-small {
+  font-size: 13px;
+}
+
+.fb-reaction-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--messenger-sub);
+  margin-left: 2px;
+}
+
+/* =========================================
+   DARK MODE OVERRIDES CHO CHATBOX
+   ========================================= */
+   .fb-chat-container.fb-dark-mode {
+    background-color: #242526;
+    border: 1px solid #3E4042;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  }
+  
+  /* Header & Footer */
+  .fb-chat-container.fb-dark-mode .fb-chat-header,
+  .fb-chat-container.fb-dark-mode .fb-chat-footer {
+    border-color: #3E4042;
+  }
+  
+  /* Text Colors */
+  .fb-chat-container.fb-dark-mode .fb-chat-name {
+    color: #E4E6EB;
+  }
+  .fb-chat-container.fb-dark-mode .fb-chat-status {
+    color: #B0B3B8;
+  }
+  
+  /* Icons & Actions */
+  .fb-chat-container.fb-dark-mode .fb-icon,
+  .fb-chat-container.fb-dark-mode .action-icon {
+    color: #B0B3B8;
+  }
+  .fb-chat-container.fb-dark-mode .fb-icon:hover {
+    background-color: #3A3B3C;
+  }
+  
+/* =========================================
+   Chat Input (SỬA LỖI VỆT TRẮNG)
+   ========================================= */
+/* 1. Tô màu tối cho thằng cha bọc ngoài */
+.fb-chat-container.fb-dark-mode .fb-input-container {
+  background-color: #3A3B3C;
+}
+
+/* 2. Ép thằng con (ô nhập chữ) thành trong suốt để ăn theo màu thằng cha */
+.fb-chat-container.fb-dark-mode .fb-chat-input {
+  background-color: transparent; 
+  color: #E4E6EB;
+}
+
+/* Đề phòng khi focus (bấm vào gõ) trình duyệt tự động nhồi nền trắng vào */
+.fb-chat-container.fb-dark-mode .fb-chat-input:focus {
+  background-color: transparent;
+  outline: none;
+}
+
+.fb-chat-container.fb-dark-mode .fb-chat-input::placeholder {
+  color: #B0B3B8;
+}
+  
+  /* Tin nhắn của ĐỐI PHƯƠNG (Their Bubble) */
+  .fb-chat-container.fb-dark-mode .fb-their-bubble {
+    background-color: #3E4042;
+    color: #E4E6EB;
+  }
+  
+  /* Màu nền badge thả cảm xúc */
+  .fb-chat-container.fb-dark-mode .fb-reaction-badge {
+    background-color: #242526;
+    border-color: #242526;
+    color: #E4E6EB;
+  }
+  /* =========================================
+   HIỆU ỨNG "ĐANG GÕ PHÍM..." (TYPING INDICATOR)
+   ========================================= */
+.fb-typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 16px;
+  background-color: #E4E6EB;
+  border-radius: 18px;
+  width: fit-content;
+  margin-left: 8px; /* Cách cái Avatar một chút */
+}
+
+/* Áp dụng Dark Mode cho khung Typing */
+.fb-chat-container.fb-dark-mode .fb-typing-indicator {
+  background-color: #3E4042;
+}
+
+.fb-typing-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #65676B; /* 🟢 Tăng độ đậm để tương phản tốt hơn */
+  border-radius: 50%;
+  animation: typing-bounce 1.4s infinite ease-in-out both;
+}
+
+.fb-chat-container.fb-dark-mode .fb-typing-dot {
+  background-color: #B0B3B8; /* 🟢 Màu sáng cho Dark Mode */
+}
+
+/* Độ trễ khác nhau để tạo hiệu ứng sóng (Wave) */
+.fb-typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.fb-typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.6; }
+  40% { transform: scale(1); opacity: 1; }
+}
+/* =========================================
+   HIỆU ỨNG "ĐÃ XEM" (READ RECEIPTS)
+   ========================================= */
+   .fb-read-receipt {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 2px;
+    margin-bottom: 4px;
+    padding-right: 12px; /* Canh lề cho thẳng với bong bóng chat */
+    animation: popIn 0.3s ease-out forwards;
+  }
+  
+  @keyframes popIn {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }

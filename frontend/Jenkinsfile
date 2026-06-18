@@ -1,0 +1,64 @@
+pipeline {
+    agent any
+
+    // 🟢 Kích hoạt luồng tự động nhận sự kiện từ GitHub Webhook
+    triggers {
+        githubPush()
+    }
+
+    environment {
+        // Đã cập nhật chính xác theo Output CloudFormation của bạn
+        AWS_REGION         = "us-east-1" 
+        S3_BUCKET_NAME     = "minisocial-frontend-254201323904-us-east-1" 
+        CLOUDFRONT_DIST_ID = "EWX6GZ5SX7LMZ" 
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install & Build Frontend') {
+            steps {
+                dir('frontend') {
+                    echo "Cài đặt thư viện npm..."
+                    bat 'npm ci' // Bắt buộc dùng bat trên Windows
+                    
+                    echo "Build React App ra thư mục dist/..."
+                    bat 'npm run build'
+                }
+            }
+        }
+
+        stage('Deploy to S3 & Invalidate Cache') {
+            steps {
+                // 🟢 ĐÃ FIX: Sử dụng credential dành riêng cho Frontend mà bạn vừa tạo
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-frontend-creds', 
+                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                ]]) {
+                    dir('frontend') {
+                        echo "Đồng bộ file tĩnh lên AWS S3 (Xóa file cũ không còn tồn tại)..."
+                        bat "aws s3 sync dist/ s3://%S3_BUCKET_NAME% --delete --region %AWS_REGION%"
+                        
+                        echo "Xóa bộ nhớ đệm (Cache) trên CloudFront để người dùng thấy giao diện mới ngay lập tức..."
+                        bat "aws cloudfront create-invalidation --distribution-id %CLOUDFRONT_DIST_ID% --paths \"/*\" --region %AWS_REGION%"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "🎉 XUẤT SẮC! Giao diện mới đã được lên sóng tự động tại https://d1u4n9cczkts22.cloudfront.net với độ trễ cache = 0!"
+        }
+        failure {
+            echo "❌ ÁI CHÀ! Có lỗi xảy ra ở luồng Frontend. Hãy xem log nhé."
+        }
+    }
+}
