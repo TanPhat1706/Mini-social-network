@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
 import { 
   IconButton, Badge, Menu, MenuItem, 
-  Typography, Box, Divider, Button, CircularProgress 
+  Typography, Box, Divider, Button, CircularProgress, Tooltip
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
+import ReplyIcon from '@mui/icons-material/Reply';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import ShareIcon from '@mui/icons-material/Share';
 import { useNavigate } from 'react-router-dom';
 import { useWebSocket } from '../../context/useWebSocket';
 import axiosClient from '../../api/axiosClient';
@@ -26,6 +31,25 @@ export default function NotificationBell() {
   
   const navigate = useNavigate();
   const open = Boolean(anchorEl);
+
+  // --- HELPER: Trả về icon + màu theo loại thông báo ---
+  const getNotifMeta = (type: string): { icon: React.ReactNode; color: string; label: string } => {
+    switch (type) {
+      case 'REPLY_COMMENT':
+        return { icon: <ReplyIcon sx={{ fontSize: 11 }} />, color: '#8b5cf6', label: 'Phản hồi bình luận' };
+      case 'COMMENT_POST':
+        return { icon: <ChatBubbleIcon sx={{ fontSize: 11 }} />, color: '#3b82f6', label: 'Bình luận bài viết' };
+      case 'LIKE_POST':
+        return { icon: <FavoriteIcon sx={{ fontSize: 11 }} />, color: '#ef4444', label: 'Thích bài viết' };
+      case 'FRIEND_REQUEST':
+      case 'ACCEPT_FRIEND':
+        return { icon: <PersonAddIcon sx={{ fontSize: 11 }} />, color: '#22c55e', label: type === 'ACCEPT_FRIEND' ? 'Chấp nhận kết bạn' : 'Lời mời kết bạn' };
+      case 'SHARE_POST':
+        return { icon: <ShareIcon sx={{ fontSize: 11 }} />, color: '#f59e0b', label: 'Chia sẻ bài viết' };
+      default:
+        return { icon: <NotificationsIcon sx={{ fontSize: 11 }} />, color: '#6b7280', label: 'Thông báo' };
+    }
+  };
 
   // --- 1. XỬ LÝ KHI MỞ MENU THÔNG BÁO ---
   const handleClick = async (event: React.MouseEvent<HTMLElement>) => {
@@ -173,14 +197,31 @@ export default function NotificationBell() {
                         }} 
                     >
                     
-                    {/* 🔴 AVATAR THÔNG BÁO CÓ VIỀN */}
-                    <Box sx={{ flexShrink: 0 }}>
+                    {/* 🔴 AVATAR THÔNG BÁO CÓ VIỀN + ICON LOẠI */}
+                    <Box sx={{ flexShrink: 0, position: 'relative' }}>
                         <AvatarWithFrame 
                             src={notif.senderAvatar} 
                             name={notif.senderName} 
-                            frameClass={notif.senderAvatarFrame} // Dữ liệu từ Socket Backend
+                            frameClass={notif.senderAvatarFrame}
                             size={48} 
                         />
+                        {/* Badge icon nhỏ ở góc dưới phải của avatar */}
+                        <Tooltip title={getNotifMeta(notif.type).label} arrow>
+                            <Box sx={{
+                                position: 'absolute',
+                                bottom: -2, right: -2,
+                                width: 20, height: 20,
+                                bgcolor: getNotifMeta(notif.type).color,
+                                borderRadius: '50%',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                border: '2px solid',
+                                borderColor: 'background.paper',
+                                color: '#fff',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+                            }}>
+                                {getNotifMeta(notif.type).icon}
+                            </Box>
+                        </Tooltip>
                     </Box>
                     
                     <Box sx={{ flex: 1 }}>

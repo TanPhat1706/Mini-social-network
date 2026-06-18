@@ -29,11 +29,14 @@ import EditPost from './EditPost';
 import PostMediaGrid from './PostMediaGrid';
 import CommentSection from '../comment/CommentSection';
 
-// 🔴 IMPORT MA THUẬT GIAO DIỆN (Lưu ý sửa đường dẫn cho khớp thư mục của bạn)
+// 🔴 IMPORT MA THUẬT GIAO DIỆN
 import AvatarWithFrame from '../AvatarWithFrame';
 import ColoredName from '../ColoredName';
 import ReactionListDialog from './ReactionListDialog';
 import ReactionTooltip from './ReactionTooltip';
+
+// 🟢 IMPORT CONTEXT ĐỂ LẤY THÔNG TIN USER ĐANG ĐĂNG NHẬP
+import { useAuth } from '../../context/AuthContext';
 
 // --- Types ---
 export interface PostMedia {
@@ -176,6 +179,9 @@ const SharedPostContent = ({ originalPost }: { originalPost: PostData }) => {
 
 // ⭐️ MAIN COMPONENT: CARD POST CHÍNH
 export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCardProps) {
+
+  // 🟢 Lấy thông tin user đăng nhập từ Context
+  const { user } = useAuth();
 
   const [post, setPost] = useState<PostData>(initialPost);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -698,9 +704,10 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
         <Collapse in={showComments} timeout="auto" unmountOnExit>
           <Divider />
           <Box sx={{ p: 2 }}>
+            {/* 🟢 ĐÃ SỬA: Đổi currentUserAvatar thành currentUser và truyền user từ context */}
             <CommentSection
               postId={post.id}
-              currentUserAvatar="https://via.placeholder.com/150"
+              currentUser={user || undefined}
             />
           </Box>
         </Collapse>

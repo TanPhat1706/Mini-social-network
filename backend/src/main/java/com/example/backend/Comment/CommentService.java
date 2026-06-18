@@ -71,11 +71,31 @@ public class CommentService {
         postRepository.incrementCommentCount(post.getId());
         vptlService.trackSocialActivity(currentUser.getId(), "COMMENT");
 
-        // 🟢 TRUYỀN CỜ ẨN DANH VÀO EVENT (Nhớ cập nhật constructor của
-        // NotificationEvent)
-        evenPublisher.publishEvent(new NotificationEvent(
-                currentUser, post.getAuthor(), NotificationType.COMMENT_POST, post.getId(), "COMMENT",
-                "đã bình luận của bạn", isAnon));
+        // 🆕 PHÂN BIỆT LUỒNG: Reply vs Comment gốc (Phương án B - tránh thông báo kép)
+        if (parentComment != null) {
+            // Đây là một REPLY → gửi thông báo REPLY_COMMENT đến chủ bình luận cha
+            User parentAuthor = parentComment.getAuthor();
+            if (!parentAuthor.getId().equals(currentUser.getId())) {
+                evenPublisher.publishEvent(new NotificationEvent(
+                        currentUser, parentAuthor, NotificationType.REPLY_COMMENT, post.getId(), "COMMENT",
+                        "đã phản hồi bình luận của bạn", isAnon));
+            }
+            // Chỉ gửi thêm COMMENT_POST đến chủ bài viết nếu chủ bài viết
+            // không phải là chủ bình luận cha (tránh gửi 2 thông báo cho cùng 1 người)
+            if (!post.getAuthor().getId().equals(parentAuthor.getId())
+                    && !post.getAuthor().getId().equals(currentUser.getId())) {
+                evenPublisher.publishEvent(new NotificationEvent(
+                        currentUser, post.getAuthor(), NotificationType.COMMENT_POST, post.getId(), "COMMENT",
+                        "đã bình luận về bài viết của bạn", isAnon));
+            }
+        } else {
+            // Đây là COMMENT GỐC → giữ nguyên hành vi cũ: gửi COMMENT_POST đến chủ bài viết
+            if (!post.getAuthor().getId().equals(currentUser.getId())) {
+                evenPublisher.publishEvent(new NotificationEvent(
+                        currentUser, post.getAuthor(), NotificationType.COMMENT_POST, post.getId(), "COMMENT",
+                        "đã bình luận về bài viết của bạn", isAnon));
+            }
+        }
 
         return mapToResponse(savedComment, false);
     }

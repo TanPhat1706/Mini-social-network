@@ -87,6 +87,7 @@ public class NotificationService {
 
             switch (event.getType()) {
                 case COMMENT_POST:
+                case REPLY_COMMENT:
                     String snippet = event.getMessage().length() > 50
                             ? event.getMessage().substring(0, 50) + "..."
                             : event.getMessage();
@@ -146,6 +147,8 @@ public class NotificationService {
                 return "đã bày tỏ cảm xúc về bài viết của bạn.";
             case COMMENT_POST:
                 return "đã bình luận về bài viết của bạn.";
+            case REPLY_COMMENT:
+                return "đã phản hồi bình luận của bạn.";
             case SHARE_POST:
                 return "đã chia sẻ bài viết của bạn.";
             case FRIEND_REQUEST:
@@ -162,6 +165,8 @@ public class NotificationService {
             case LIKE_POST:
                 return "/posts/" + n.getEntityId();
             case COMMENT_POST:
+                return "/posts/" + n.getEntityId();
+            case REPLY_COMMENT:
                 return "/posts/" + n.getEntityId();
             case FRIEND_REQUEST:
                 return "/users/" + n.getSender().getId();

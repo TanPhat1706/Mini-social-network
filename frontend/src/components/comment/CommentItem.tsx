@@ -18,8 +18,18 @@ interface CommentItemProps {
 export default function CommentItem({ comment: initialComment, onReply }: CommentItemProps) {
     const [comment, setComment] = useState(initialComment);
     const [showReplies, setShowReplies] = useState(false);
-    const [replies, setReplies] = useState<CommentData[]>([]);
+    const [replies, setReplies] = useState<CommentData[]>(initialComment.replies || []);
     const [loadingReplies, setLoadingReplies] = useState(false);
+
+    // Sync khi replies được push từ parent (optimistic update sau khi reply thành công)
+    React.useEffect(() => {
+        if (initialComment.replies && initialComment.replies.length > replies.length) {
+            setReplies(initialComment.replies);
+            setShowReplies(true); // Tự động mở danh sách replies để user thấy reply vừa gửi
+        }
+        // Đồng bộ replyCount
+        setComment(prev => ({ ...prev, replyCount: initialComment.replyCount }));
+    }, [initialComment.replies, initialComment.replyCount]);
 
     const handleLike = async () => {
         const previousState = { ...comment };
@@ -42,7 +52,12 @@ export default function CommentItem({ comment: initialComment, onReply }: Commen
             setLoadingReplies(true);
             try {
                 const res = await api.get(`/api/comments/${comment.id}/replies?page=0&size=10`);
-                setReplies(res.data.content);
+                // Merge: giữ replies đã có từ optimistic update, bổ sung từ API
+                setReplies(prev => {
+                    const existingIds = new Set(prev.map(r => r.id));
+                    const newFromApi = res.data.content.filter((r: CommentData) => !existingIds.has(r.id));
+                    return [...prev, ...newFromApi];
+                });
             } catch (error) {
                 console.error("Lỗi load replies", error);
             } finally {
