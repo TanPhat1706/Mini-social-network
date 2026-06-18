@@ -137,7 +137,7 @@ public class NotificationService {
     private String buildMessageContent(Notification n) {
         switch (n.getType()) {
             case LIKE_POST:
-                return "đã thích bài viết của bạn.";
+                return "đã bày tỏ cảm xúc về bài viết của bạn.";
             case COMMENT_POST:
                 return "đã bình luận về bài viết của bạn.";
             case SHARE_POST:

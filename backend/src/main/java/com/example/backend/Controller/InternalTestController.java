@@ -42,7 +42,7 @@ public class InternalTestController {
             post.setContent("Test Load Bài viết rác số " + i);
             // 🛡️ QUAN TRỌNG: Đặt PRIVATE để ẩn khỏi Feed của người dùng thật
             post.setVisibility(Visibility.PRIVATE); 
-            post.setLikeCount(0L);
+            post.setReactionCounts(null);
             post.setCommentCount(0L);
             post.setShareCount(0L);
             batch.add(post);

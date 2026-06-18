@@ -1,6 +1,7 @@
 package com.example.backend.Post;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -19,14 +20,18 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.scheduling.annotation.Scheduled; // 👈 Import Scheduled
-import org.springframework.dao.DataIntegrityViolationException; // 👈 Import bắt lỗi
+// import org.springframework.dao.DataIntegrityViolationException; // 👈 Import bắt lỗi
 
 import com.example.backend.Enum.MediaType;
 import com.example.backend.Enum.NotificationType;
+import com.example.backend.Enum.ReactionType;
 import com.example.backend.Enum.Visibility;
 import com.example.backend.Event.NotificationEvent;
 import com.example.backend.PostMedia.MediaResponse;
 import com.example.backend.PostMedia.PostMedia;
+import com.example.backend.PostReaction.PostReaction;
+import com.example.backend.PostReaction.PostReactionRepository;
+import com.example.backend.PostReaction.ReactionUserResponse;
 import com.example.backend.Storage.FileStorageService;
 import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
@@ -40,13 +45,13 @@ import lombok.RequiredArgsConstructor;
 public class PostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
-    private final PostLikeRepository postLikeRepository;
+    private final PostReactionRepository postReactionRepository;
     private final ApplicationEventPublisher evenPublisher;
     private final FileStorageService fileStorageService;
     private final VptlService vptlService;
 
     // ⭐️ BỘ ĐỆM RAM: Lưu trữ số lượt Like thay đổi (+1 hoặc -1) của từng bài viết
-    private final ConcurrentHashMap<Long, Integer> likeCountBuffer = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Integer> reactionBuffer = new ConcurrentHashMap<>();
     // 🛡️ KHIÊN CHỐNG SPAM: Lưu trạng thái xem User này có đang thao tác Like trên
     // Post này không
     private final ConcurrentHashMap<String, Boolean> actionLock = new ConcurrentHashMap<>();
@@ -177,8 +182,8 @@ public class PostService {
                 fileStorageService.deleteFile(media.getMediaUrl());
             }
         }
-        
-        postLikeRepository.deleteAllByPostId(postId);
+
+        postReactionRepository.deleteAllByPostId(postId);
         postRepository.unlinkSharedPosts(postId);
         postRepository.delete(post);
     }
@@ -202,93 +207,124 @@ public class PostService {
     }
 
     @Transactional
-    public void toggleLike(Long postId) {
+    public void reactToPost(Long postId, ReactionType requestedReaction) {
         User currentUser = getCurrentUser();
         Long userId = Long.valueOf(currentUser.getId());
-        
-        // 1. Tạo chìa khóa duy nhất cho hành động này: "PostID_UserID" (VD: "10074_1")
+
         String lockKey = postId + "_" + userId;
 
-        // 2. Kiểm tra khóa chống Spam (Debounce)
-        // Nếu putIfAbsent trả về giá trị (khác null), nghĩa là khóa đã tồn tại 
-        // -> User này đang có 1 luồng request Like khác chạy chưa xong.
         if (actionLock.putIfAbsent(lockKey, true) != null) {
             System.out.println("🛡️ Đã chặn Auto-Clicker từ user: " + currentUser.getStudentCode());
-            return; // Thoát ngay lập tức. API vẫn trả về HTTP 200 OK mượt mà nhưng không làm gì DB.
+            return;
         }
 
         try {
-            // 3. Logic xử lý Like/Unlike bình thường (Chỉ 1 request duy nhất lọt vào đây)
-            Optional<PostLike> existingLike = postLikeRepository.findByPostIdAndUserId(postId, userId);
+            Post post = postRepository.findById(postId)
+                    .orElseThrow(() -> new RuntimeException("Bài viết không tồn tại!"));
 
-            if (existingLike.isPresent()) {
-                // UNLIKE: Xóa khỏi bảng post_likes
-                postLikeRepository.delete(existingLike.get());
+            Optional<PostReaction> existingReactionOpt = postReactionRepository.findByPostIdAndUserId(postId, userId);
 
-                // Gom vào đệm RAM thay vì trừ thẳng Database
-                likeCountBuffer.merge(postId, -1, Integer::sum);
+            if (existingReactionOpt.isPresent()) {
+                PostReaction existingReaction = existingReactionOpt.get();
+                ReactionType currentReaction = existingReaction.getReactionType();
 
+                if (currentReaction == requestedReaction) {
+                    postReactionRepository.delete(existingReaction);
+                    updateBuffer(postId, currentReaction, -1);;
+                } else {
+                    existingReaction.setReactionType(requestedReaction);
+                    postReactionRepository.save(existingReaction);
+                    updateBuffer(postId, currentReaction, -1);
+                    updateBuffer(postId, requestedReaction, 1);
+                    evenPublisher.publishEvent(new NotificationEvent(
+                            currentUser, post.getAuthor(), NotificationType.LIKE_POST, postId, "POST",
+                            "đã thay đổi cảm xúc về bài viết của bạn",
+                            false));
+                }
             } else {
-                // LIKE
-                Post post = postRepository.findById(postId)
-                        .orElseThrow(() -> new RuntimeException("Bài viết không tồn tại!"));
-                User author = post.getAuthor();
-
-                PostLike newLike = PostLike.builder()
+                PostReaction newReaction = PostReaction.builder()
                         .post(post)
                         .user(currentUser)
+                        .reactionType(requestedReaction)
                         .build();
 
-                // Lưu bình thường (không cần saveAndFlush hay try-catch DB nữa vì khóa đã chặn request trùng)
-                postLikeRepository.save(newLike); 
+                postReactionRepository.save(newReaction);
+                updateBuffer(postId, requestedReaction, 1);
 
-                // Gom vào đệm RAM thay vì cộng thẳng Database
-                likeCountBuffer.merge(postId, 1, Integer::sum);
-
-                vptlService.trackSocialActivity(currentUser.getId(), "LIKE");
+                vptlService.trackSocialActivity(currentUser.getId(), "REACTION_" + requestedReaction.name());
                 evenPublisher.publishEvent(new NotificationEvent(
-                        currentUser, author, NotificationType.LIKE_POST, postId, "POST", "đã thích bài viết của bạn",
+                        currentUser, post.getAuthor(), NotificationType.LIKE_POST, postId, "POST",
+                        "đã bày tỏ cảm xúc về bài viết của bạn",
                         false));
             }
         } finally {
-            // 4. LUÔN LUÔN mở khóa ở block finally
-            // Đảm bảo dù logic bên trong có lỗi (VD: không tìm thấy post), khóa vẫn được gỡ
-            // để user có thể click Like lại ở lần sau.
             actionLock.remove(lockKey);
         }
     }
-    
+
+    public Page<ReactionUserResponse> getReactionsByPostId(Long postId, ReactionType reactionType, int page, int size) {
+        if (postId == null) {
+            throw new IllegalArgumentException("postId is required");
+        }
+
+        if (!postRepository.existsById(postId)) {
+            throw new RuntimeException("Post not found");
+        }
+
+        Pageable pageable = PageRequest.of(page, size);
+        return postReactionRepository.findUsersReationByPostId(postId, reactionType, pageable);
+    }
+
+    private void updateBuffer(Long postId, ReactionType type, int delta) {
+        String bufferKey = postId + "_" + type.name();
+        reactionBuffer.merge(bufferKey, delta, Integer::sum);
+    }
+
     // ⭐️ BACKGROUND JOB: Cứ mỗi 5 giây, lấy dữ liệu từ RAM đổ một lần xuống DB
     @Scheduled(fixedDelay = 3000)
     @Transactional
     public void syncLikesToDatabase() {
-        if (likeCountBuffer.isEmpty()) {
+        if (reactionBuffer.isEmpty()) {
             return; // Không có ai like thì ngủ tiếp
         }
 
         // Tạo một bản sao (snapshot) của đệm hiện tại và xóa đệm cũ để đón lượt like
         // mới
-        ConcurrentHashMap<Long, Integer> snapshot = new ConcurrentHashMap<>(likeCountBuffer);
-        likeCountBuffer.clear();
+        ConcurrentHashMap<String, Integer> snapshot = new ConcurrentHashMap<>(reactionBuffer);
+        reactionBuffer.clear();
 
-        for (Map.Entry<Long, Integer> entry : snapshot.entrySet()) {
-            Long postId = entry.getKey();
+        for (Map.Entry<String, Integer> entry : snapshot.entrySet()) {
+            String[] parts = entry.getKey().split("_");
+            Long postId = Long.parseLong(parts[0]);
+            String reactionType = parts[1];
             Integer delta = entry.getValue();
 
-            // Chỉ gọi UPDATE DB nếu tổng lượt thay đổi khác 0 (VD: Like xong lại Unlike
-            // ngay thì delta = 0)
             if (delta != 0) {
-                // Tùy theo logic của bạn, thay vì gọi hàm repo, ta có thể dùng custom query
-                // (nếu bạn đã định nghĩa)
-                // Hoặc update thủ công:
-                postRepository.findById(postId).ifPresent(post -> {
-                    long newCount = post.getLikeCount() + delta;
-                    post.setLikeCount(newCount < 0 ? 0 : newCount);
-                    postRepository.save(post);
-                });
+                updatePostReactionCountDB(postId, reactionType, delta);
             }
         }
         System.out.println("🔄 [Eventual Consistency] Đã đồng bộ " + snapshot.size() + " bài viết xuống DB.");
+    }
+
+    private void updatePostReactionCountDB(Long postId, String reactionType, Integer delta) {
+        postRepository.findById(postId).ifPresent(post -> {
+            Map<String, Integer> counts = post.getReactionCounts();
+            if (counts == null) {
+                counts = new HashMap<>();
+            }
+
+            int currentCount = counts.getOrDefault(reactionType, 0);
+            int newCount = Math.max(0, currentCount + delta);
+
+            if (newCount == 0) {
+                counts.remove(reactionType);
+            } else {
+                counts.put(reactionType, newCount);
+            }
+
+            post.setReactionCounts(counts);
+            postRepository.save(post);
+        });
     }
 
     @Transactional
@@ -419,10 +455,10 @@ public class PostService {
                 .updatedAt(post.getUpdatedAt())
                 .author(authorDto)
                 .media(mediaDtos)
-                .likeCount(post.getLikeCount())
+                .reactionCounts(post.getReactionCounts() != null ? post.getReactionCounts() : new HashMap<>())
                 .commentCount(post.getCommentCount())
                 .shareCount(post.getShareCount())
-                .isLikedByCurrentUser(false)
+                .currentUserReaction(getCurrentUserReaction(post.getId()))
                 .isSelfPost(isSelfPost)
                 .originalPost(originalPostResponse)
                 .build();
@@ -454,13 +490,22 @@ public class PostService {
                 .updatedAt(post.getUpdatedAt())
                 .author(authorDto)
                 .media(mediaDtos)
-                .likeCount(post.getLikeCount())
+                .reactionCounts(post.getReactionCounts() != null ? post.getReactionCounts() : new HashMap<>())
                 .commentCount(post.getCommentCount())
                 .shareCount(post.getShareCount())
-                .isLikedByCurrentUser(false)
+                .currentUserReaction(getCurrentUserReaction(post.getId()))
                 .isSelfPost(isSelfPost)
                 .originalPost(null)
                 .build();
+    }
+
+    public String getCurrentUserReaction(Long postId) {
+        User currentUser = getCurrentUser();
+        Long userId = Long.valueOf(currentUser.getId());
+
+        return postReactionRepository.findByPostIdAndUserId(postId, userId)
+                .map(postReaction -> postReaction.getReactionType().name())
+                .orElse(null);
     }
 
     private MediaType detectMediaType(MultipartFile file) {

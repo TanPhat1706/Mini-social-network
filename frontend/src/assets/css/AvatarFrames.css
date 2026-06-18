@@ -7,6 +7,8 @@
     justify-content: center;
     align-items: center;
     border-radius: 50%;
+    overflow: visible !important;
+    box-sizing: content-box;
 }
 
 .avatar-image {
@@ -14,6 +16,30 @@
     object-fit: cover;
     z-index: 2; /* Đảm bảo ảnh luôn nổi lên trên cái nền của viền */
     background-color: #fff;
+    display: block;
+    box-sizing: border-box;
+}
+
+.hoverable-avatar {
+    cursor: pointer;
+}
+
+.css-frame-golden-glow::after,
+.css-frame-magma-fire::after,
+.css-frame-cosmic-galaxy::after {
+    z-index: 0;
+}
+
+.hoverable-avatar {
+    transition: transform 180ms ease, filter 180ms ease;
+}
+
+.hoverable-avatar:hover {
+    transform: scale(1.06);
+}
+
+.hoverable-avatar:hover .avatar-image {
+    filter: brightness(1.05);
 }
 
 /* =========================================

@@ -128,18 +128,25 @@ public class SecurityConfig {
                                 "/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/api/game/**")
+                                "/api/game/**",
+                                "/error")
                         .permitAll()
 
                         .requestMatchers("/api/games/score").authenticated()
 
+                        // Only users with ROLE_ADMIN may create shop items
+                        .requestMatchers(HttpMethod.POST, "/api/shop/items").hasRole("ADMIN")
+
+                        // Other shop endpoints require authentication (users can view/buy/equip)
                         .requestMatchers("/api/shop/**").authenticated()
+
+                        // Only users with ROLE_ADMIN may access admin endpoints
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         .anyRequest().authenticated())
 
                 // ✅ Stateless JWT
-                .sessionManagement(sess ->
-                        sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authenticationProvider(daoAuthenticationProvider())
 

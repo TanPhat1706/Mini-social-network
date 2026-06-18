@@ -19,6 +19,8 @@ export interface UserSummary {
     fullName: string;
     avatarUrl: string;
     studentCode: string;
+    currentAvatarFrame?: string | null;
+    currentNameColor?: string | null;
 }
 
 export interface UpdateProfileData {

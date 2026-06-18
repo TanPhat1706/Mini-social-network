@@ -6,14 +6,18 @@ interface AvatarProps {
     src?: string | null;
     name?: string | null;
     frameClass?: string | null;
-    size?: number; 
+    size?: number;
+    className?: string;
+    onClick?: (e: React.MouseEvent) => void;
 }
 
 const AvatarWithFrame: React.FC<AvatarProps> = ({ 
     src, 
     name: _name,
     frameClass, 
-    size = 50 
+    size = 50,
+    className,
+    onClick
 }) => {
     const API_BASE = getApiBaseUrl();
     const DEFAULT_AVATAR_IMAGE =
@@ -27,10 +31,15 @@ const AvatarWithFrame: React.FC<AvatarProps> = ({
         return `${API_BASE}/${normalizedSrc}`;
     };
 
+    const hasHoleFrame = ['css-frame-golden-glow', 'css-frame-magma-fire', 'css-frame-cosmic-galaxy'].includes(frameClass || '');
+    const shouldShowPointer = Boolean(onClick) || className?.includes('hoverable-avatar');
+
     return (
         <div 
-            className="avatar-wrapper" 
-            style={{ width: size, height: size }}
+            className={`avatar-wrapper${className ? ` ${className}` : ''}`} 
+            style={{ width: size, height: size, cursor: shouldShowPointer ? 'pointer' : 'default', overflow: 'visible' }}
+            onClick={onClick}
+            role={onClick ? 'button' : undefined}
         >
             {frameClass && (
                 <div className={frameClass}></div>
@@ -43,7 +52,7 @@ const AvatarWithFrame: React.FC<AvatarProps> = ({
                 style={{ 
                     width: '100%', 
                     height: '100%',
-                    padding: frameClass === 'css-frame-golden-glow' ? '4px' : '0px'
+                    padding: hasHoleFrame ? '4px' : '0px'
                 }}
                 onError={(e) => {
                     e.currentTarget.src = DEFAULT_AVATAR_IMAGE;

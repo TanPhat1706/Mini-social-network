@@ -12,6 +12,7 @@ import type { User } from '../types';
 import PostCard from '../components/post/CardPost';
 import type { PostData } from '../components/post/CardPost';
 import AvatarWithFrame from '../components/AvatarWithFrame';
+import { useProfileNavigation } from '../hooks/useProfileNavigation';
 import ColoredName from '../components/ColoredName';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import ProfileIntro from '../components/profile/ProfileIntro';
@@ -56,6 +57,8 @@ const ProfilePage: React.FC = () => {
   const [isBlocked, setIsBlocked] = useState(false);
 
   const profileCode = studentCode || currentUser?.studentCode;
+
+  const navigateToProfile = useProfileNavigation();
 
   // 1. FETCH PROFILE INFO
   useEffect(() => {
@@ -151,6 +154,7 @@ const ProfilePage: React.FC = () => {
       <ProfileHeader
         profileUser={profileUser}
         isSelfProfile={Boolean(profileUser.isSelfProfile)}
+        friendCount={friends.length}
         onUpdateProfile={handleUpdateProfile}
       />
 
@@ -184,9 +188,9 @@ const ProfilePage: React.FC = () => {
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
                 {friends.slice(0, 9).map(f => (
                   <Box key={f.id} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <AvatarWithFrame src={f.avatarUrl} name={f.fullName} frameClass={(f as any).currentAvatarFrame} size={80} />
+                    <AvatarWithFrame src={f.avatarUrl} name={f.fullName} frameClass={(f as any).currentAvatarFrame} size={80} onClick={(e) => { e.stopPropagation(); navigateToProfile(f.studentCode); }} />
                     <Typography variant="caption" sx={{ mt: 1, fontWeight: 'bold', textAlign: 'center', width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      <ColoredName name={f.fullName} colorClass={(f as any).currentNameColor} />
+                      <ColoredName name={f.fullName} colorClass={(f as any).currentNameColor} studentCode={f.studentCode} />
                     </Typography>
                   </Box>
                 ))}

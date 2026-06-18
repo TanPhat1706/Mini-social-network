@@ -11,6 +11,7 @@ import { getMessagesHistory } from '../../api/messageApi';
 
 // IMPORT COMPONENT AVATAR
 import AvatarWithFrame from '../AvatarWithFrame';
+import { useProfileNavigation } from '../../hooks/useProfileNavigation';
 import ColoredName from '../ColoredName';
 
 interface Message {
@@ -31,6 +32,7 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
   const { chatTarget, closeChat, isMinimized, setIsMinimized } = useChat();
   const targetUser = chatTarget;
   const navigate = useNavigate(); // MỚI THÊM
+  const navigateToProfile = useProfileNavigation();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -157,7 +159,8 @@ useEffect(() => {
         <AvatarWithFrame 
           src={targetUser.avatarUrl || `https://ui-avatars.com/api/?name=${targetUser.fullName}`}
           frameClass={(targetUser as any).currentAvatarFrame}
-          size={56} 
+          size={56}
+          onClick={(e) => { e.stopPropagation(); navigateToProfile(targetUser.studentCode); }}
         />
         <div className="chat-bubble-close" onClick={(e) => { e.stopPropagation(); closeChat(); }}>✖</div>
       </div>
@@ -175,12 +178,13 @@ useEffect(() => {
               src={targetUser.avatarUrl || `https://ui-avatars.com/api/?name=${targetUser.fullName}`}
               frameClass={(targetUser as any).currentAvatarFrame}
               size={36} 
+                onClick={(e) => { e.stopPropagation(); navigateToProfile(targetUser.studentCode); }}
             />
             <span className="fb-online-dot" />
           </div>
           <div>
             <div className="fb-chat-name">
-                <ColoredName name={targetUser.fullName} colorClass={(targetUser as any).currentNameColor} />
+              <ColoredName name={targetUser.fullName} colorClass={(targetUser as any).currentNameColor} studentCode={targetUser.studentCode} />
             </div>            
             <div className="fb-chat-status">Đang hoạt động</div>
           </div>

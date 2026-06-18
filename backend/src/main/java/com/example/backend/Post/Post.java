@@ -2,6 +2,8 @@ package com.example.backend.Post;
 
 import java.util.*;
 import org.hibernate.annotations.*;
+import org.hibernate.type.SqlTypes;
+
 import com.example.backend.BaseEntity.BaseEntity;
 import com.example.backend.Comment.Comment;
 import com.example.backend.Enum.Visibility;
@@ -42,6 +44,8 @@ public class Post extends BaseEntity {
     private Post originalPost;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
     private Visibility visibility = Visibility.PENDING;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -52,22 +56,24 @@ public class Post extends BaseEntity {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 20)
     @JsonIgnoreProperties("post")
+    @Builder.Default
     private List<PostMedia> media = new ArrayList<>();
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
+    @Builder.Default
     private List<Comment> comments = new ArrayList<>();
 
-    @Column(nullable = false)
-    private Long likeCount = 0L;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Builder.Default
+    private Map<String, Integer> reactionCounts = new HashMap<>();
 
     @Column(nullable = false)
+    @Builder.Default
     private Long commentCount = 0L;
 
     @Column(nullable = false)
+    @Builder.Default
     private Long shareCount = 0L;
-
-    public Long getId() {
-        return this.id;
-    }
 }

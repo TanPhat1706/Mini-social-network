@@ -2,7 +2,6 @@ package com.example.backend.Post;
 
 import java.util.List;
 import java.util.Optional;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -27,21 +26,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
        // =========================
        // TÌM TẤT CẢ KÈM THEO MEDIA VÀ TÁC GIẢ (CÓ PHÂN TRANG)
        // =========================
-
-       // 🟢 Cập nhật findAllWithAuthorAndMedia
-       // Bỏ "media" khỏi EntityGraph để tránh in-memory pagination
        @EntityGraph(attributePaths = { "author" })
        @Query(value = "SELECT p FROM Post p", countQuery = "SELECT COUNT(p) FROM Post p")
        Page<Post> findAllWithAuthorAndMedia(Pageable pageable);
 
-       // 🟢 Cập nhật findByAuthorId
-       // Bỏ LEFT JOIN FETCH và ORDER BY. Việc Sort sẽ do Pageable tự động gắn vào.
        @EntityGraph(attributePaths = { "author" })
        @Query(value = "SELECT p FROM Post p WHERE p.author.id = :authorId", countQuery = "SELECT COUNT(p) FROM Post p WHERE p.author.id = :authorId")
        Page<Post> findByAuthorId(@Param("authorId") Integer authorId, Pageable pageable);
 
-       // 🟢 Cập nhật findByAuthorStudentCode
-       // Tương tự, bỏ FETCH và ORDER BY đi.
        @EntityGraph(attributePaths = { "author" })
        @Query(value = "SELECT p FROM Post p WHERE p.author.studentCode = :studentCode", countQuery = "SELECT COUNT(p) FROM Post p WHERE p.author.studentCode = :studentCode")
        Page<Post> findByAuthorStudentCode(@Param("studentCode") String studentCode, Pageable pageable);
@@ -66,15 +58,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
        long countPosts();
 
        // =========================
-       // LIKE / COMMENT UPDATE
+       // UPDATE (COMMENT / SHARE / UNLINK)
        // =========================
-       @Modifying
-       @Query("UPDATE Post p SET p.likeCount = p.likeCount + 1 WHERE p.id = :postId")
-       void incrementLikeCount(@Param("postId") Long postId);
 
-       @Modifying
-       @Query("UPDATE Post p SET p.likeCount = p.likeCount - 1 WHERE p.id = :postId AND p.likeCount > 0")
-       void decrementLikeCount(@Param("postId") Long postId);
+       // ⭐️ Đã xóa các hàm thao tác Like, mọi thứ đã được quản lý tập trung ở
+       // PostService -> syncReactionsToDatabase()
 
        @Modifying
        @Query("UPDATE Post p SET p.commentCount = p.commentCount + 1 WHERE p.id = :postId")

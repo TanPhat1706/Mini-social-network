@@ -106,7 +106,7 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
     return (
         <Box sx={{ mt: 2 }}>
             {/* DANH SÁCH COMMENT */}
-            <Box sx={{ maxHeight: '400px', overflowY: 'auto', mb: 2 }}>
+            <Box sx={{ maxHeight: '400px', overflowY: 'auto', mb: 2, p: 1 }}>
                 {loading && page === 0 ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center' }}><CircularProgress size={24} /></Box>
                 ) : (

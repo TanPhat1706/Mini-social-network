@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { Box, Avatar, Typography, IconButton, Link, Button, Collapse } from '@mui/material';
-import ThumbUpIcon from '@mui/icons-material/ThumbUp'; 
-import ThumbUpOutlinedIcon from '@mui/icons-material/ThumbUpOutlined'; 
+import AvatarWithFrame from '../AvatarWithFrame';
+import { useProfileNavigation } from '../../hooks/useProfileNavigation';
+import ColoredName from '../ColoredName';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import ThumbUpOutlinedIcon from '@mui/icons-material/ThumbUpOutlined';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import api from '../../api/api';
-import type { CommentData } from '../../types/types'; 
+import type { CommentData } from '../../types/types';
 
 interface CommentItemProps {
     comment: CommentData;
-    onReply: (authorName: string, parentId: number) => void; 
+    onReply: (authorName: string, parentId: number) => void;
 }
 
 export default function CommentItem({ comment: initialComment, onReply }: CommentItemProps) {
@@ -30,7 +33,7 @@ export default function CommentItem({ comment: initialComment, onReply }: Commen
         try {
             await api.post(`/api/comments/${comment.id}/like`);
         } catch (error) {
-            setComment(previousState); 
+            setComment(previousState);
         }
     };
 
@@ -49,23 +52,36 @@ export default function CommentItem({ comment: initialComment, onReply }: Commen
         setShowReplies(!showReplies);
     };
 
+    const navigateToProfile = useProfileNavigation();
+
     return (
         <Box sx={{ display: 'flex', mb: 2 }}>
-            <Avatar src={comment.author.avatarUrl} sx={{ width: 32, height: 32, mr: 1 }} />
-            
+            <Box sx={{ mr: 1, ml: '8px', mt: '8px' }}>
+                <AvatarWithFrame
+                    src={comment.author.avatarUrl}
+                    frameClass={(comment.author as any).currentAvatarFrame}
+                    size={32}
+                    onClick={(e) => { e.stopPropagation(); navigateToProfile(comment.author.studentCode); }}
+                />
+            </Box>
             <Box sx={{ flexGrow: 1 }}>
                 {/* BUBBLE COMMENT */}
-                <Box sx={{ 
+                <Box sx={{
                     /* 🟢 ĐÃ SỬA: Đổi màu nền bong bóng thành background.default */
-                    bgcolor: 'background.default', 
-                    borderRadius: '18px', 
-                    p: 1.5, 
+                    bgcolor: 'background.default',
+                    borderRadius: '18px',
+                    p: 1.5,
                     display: 'inline-block',
-                    maxWidth: '100%' 
+                    maxWidth: '100%'
                 }}>
                     {/* 🟢 ĐÃ SỬA: Ép màu chữ thành text.primary */}
                     <Typography variant="body2" fontWeight="bold" component="span" color="text.primary">
-                        {comment.author.fullName}
+                        {/* Make author name clickable to their profile */}
+                        {/* comment.author has type UserSummary with studentCode available */}
+                        <span style={{ display: 'inline-block' }}>
+                            {/* eslint-disable-next-line react/jsx-no-bind */}
+                            <ColoredName name={comment.author.fullName} colorClass={(comment.author as any).currentNameColor} studentCode={comment.author.studentCode} />
+                        </span>
                     </Typography>
                     <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: 'text.primary' }}>
                         {comment.content}
@@ -74,16 +90,16 @@ export default function CommentItem({ comment: initialComment, onReply }: Commen
 
                 {/* ACTION BUTTONS (Like, Reply, Time) */}
                 <Box sx={{ display: 'flex', alignItems: 'center', ml: 1.5, mt: 0.5, gap: 2 }}>
-                    <Typography 
-                        variant="caption" 
+                    <Typography
+                        variant="caption"
                         sx={{ cursor: 'pointer', fontWeight: comment.likedByCurrentUser ? 'bold' : 'normal', color: comment.likedByCurrentUser ? 'primary.main' : 'text.secondary' }}
                         onClick={handleLike}
                     >
                         Thích
                     </Typography>
-                    
-                    <Typography 
-                        variant="caption" 
+
+                    <Typography
+                        variant="caption"
                         sx={{ cursor: 'pointer', color: 'text.secondary' }}
                         onClick={() => onReply(comment.author.fullName, comment.id)}
                     >
@@ -93,13 +109,13 @@ export default function CommentItem({ comment: initialComment, onReply }: Commen
                     <Typography variant="caption" color="text.secondary">
                         {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true, locale: vi })}
                     </Typography>
-                    
+
                     {/* Số lượng like nhỏ */}
                     {comment.likeCount > 0 && (
                         /* 🟢 ĐÃ SỬA: Đổi màu nền nhỏ thành background.paper để hòa nhập với card */
                         <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: 'background.paper', borderRadius: 10, px: 0.5, boxShadow: 1 }}>
-                             <ThumbUpIcon sx={{ width: 12, height: 12, color: 'primary.main' }} />
-                             <Typography variant="caption" sx={{ ml: 0.5, color: 'text.primary' }}>{comment.likeCount}</Typography>
+                            <ThumbUpIcon sx={{ width: 12, height: 12, color: 'primary.main' }} />
+                            <Typography variant="caption" sx={{ ml: 0.5, color: 'text.primary' }}>{comment.likeCount}</Typography>
                         </Box>
                     )}
                 </Box>
@@ -107,8 +123,8 @@ export default function CommentItem({ comment: initialComment, onReply }: Commen
                 {/* XEM CÁC CÂU TRẢ LỜI */}
                 {comment.replyCount > 0 && (
                     <Box sx={{ mt: 1, ml: 1 }}>
-                        <Typography 
-                            variant="caption" 
+                        <Typography
+                            variant="caption"
                             color="text.secondary"
                             sx={{ fontWeight: 'bold', cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
                             onClick={handleLoadReplies}

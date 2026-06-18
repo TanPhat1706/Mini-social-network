@@ -4,7 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -17,7 +17,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import com.example.backend.User.User;
+
+import com.example.backend.Enum.ReactionType;
+import com.example.backend.PostReaction.ReactionUserResponse;
 import lombok.RequiredArgsConstructor;
 import jakarta.validation.Valid;
 
@@ -31,8 +33,7 @@ public class PostController {
     @GetMapping("/my-posts")
     public ResponseEntity<Page<PostResponse>> getMyPosts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
+            @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(postService.getPostsByAuthor(page, size));
     }
 
@@ -50,7 +51,7 @@ public class PostController {
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponse> updatePost(
-            @PathVariable Long id, 
+            @PathVariable Long id,
             @ModelAttribute @Valid PostRequest request) {
         System.out.println("Updating post with ID: " + id);
         return ResponseEntity.ok(postService.updatePost(id, request));
@@ -62,28 +63,36 @@ public class PostController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{postId}/like")
-    public ResponseEntity<?> toggleLike(@PathVariable Long postId, @AuthenticationPrincipal User user) {
-        postService.toggleLike(postId);
-        return ResponseEntity.ok("Thành công");
+    @PostMapping("/{postId}/react")
+    public ResponseEntity<?> reactToPost(@PathVariable Long postId, @RequestBody ReactRequest request) {
+        postService.reactToPost(postId, request.getReactionType());
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{postId}/share")
     public ResponseEntity<PostResponse> sharePost(
-            @PathVariable Long postId, 
-            @RequestBody PostRequest request
-    ) {
+            @PathVariable Long postId,
+            @RequestBody PostRequest request) {
         return ResponseEntity.ok(postService.sharePost(postId, request));
     }
 
     @GetMapping("/{postId}")
-    public ResponseEntity<PostResponse> getPostById(@PathVariable Long postId) {
+    public ResponseEntity<PostResponse> getPostById(@PathVariable @NonNull Long postId) {
         // Logic lấy bài viết theo ID
         // Nhớ check quyền xem (Visibility) nếu cần
         Post post = postRepository.findById(postId)
-            .orElseThrow(() -> new RuntimeException("Bài viết không tồn tại"));
-            
+                .orElseThrow(() -> new RuntimeException("Bài viết không tồn tại"));
+
         // Map sang DTO response y hệt như list
         return ResponseEntity.ok(postService.mapToPostResponse(post));
+    }
+
+    @GetMapping("/{postId}/reactions")
+    public ResponseEntity<Page<ReactionUserResponse>> getReactionsByPostId(
+            @PathVariable Long postId,
+            @RequestParam(required = false) ReactionType type,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(postService.getReactionsByPostId(postId, type, page, size));
     }
 }

@@ -1,8 +1,8 @@
 package com.example.backend.Post;
 
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,18 +10,21 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.backend.Enum.ReactionType;
+import com.example.backend.PostReaction.PostReactionRepository;
+
 @Service
 public class FeedService {
     private final PostRepository postRepository;
-    private final PostLikeRepository postLikeRepository;
+    private final PostReactionRepository postReactionRepository;
     private final PostService postService;
 
     @Autowired
     public FeedService(PostRepository postRepository, 
-                       PostLikeRepository postLikeRepository, 
+                       PostReactionRepository postReactionRepository, 
                        PostService postService) {
         this.postRepository = postRepository;
-        this.postLikeRepository = postLikeRepository;
+        this.postReactionRepository = postReactionRepository;
         this.postService = postService;
     }
 
@@ -55,18 +58,22 @@ public class FeedService {
             postRepository.findByIdInWithMedia(originalPostIds);  
         }
         
-        // 2. Lấy danh sách ID các bài viết user hiện tại đã like bằng 1 câu query
-        Set<Long> likedPostIds = Collections.emptySet();
+        // 2. Lấy map cảm xúc của User hiện tại bằng Batch Query
+        Map<Long, String> userReactionsMap = new HashMap<>();
         if (!postIds.isEmpty() && currentUserId != null) {
-            likedPostIds = postLikeRepository.findPostIdsLikedByUser((long) currentUserId, postIds);
+            List<Object[]> reactions = postReactionRepository.findReactionsByUserAndPosts((long) currentUserId, postIds);
+            
+            for (Object[] row : reactions) {
+                Long postId = (Long) row[0];
+                ReactionType reactionType = (ReactionType) row[1];
+                userReactionsMap.put(postId, reactionType.name());
+            }
         }
-
-        final Set<Long> finalLikedPostIds = likedPostIds;
         
         // 3. Map dữ liệu sang PostResponse (Đã sửa lỗi cú pháp ở đây)
         List<PostResponse> responseList = posts.stream().map(post -> {
             PostResponse response = postService.mapToPostResponse(post);            
-            response.setLikedByCurrentUser(finalLikedPostIds.contains(post.getId()));            
+            response.setCurrentUserReaction(userReactionsMap.get(post.getId()));
             return response;
         }).collect(Collectors.toList());
 

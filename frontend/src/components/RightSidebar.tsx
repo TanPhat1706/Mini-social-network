@@ -5,6 +5,7 @@ import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import type { User } from '../../types';
 
 import AvatarWithFrame from './AvatarWithFrame';
+import { useProfileNavigation } from '../hooks/useProfileNavigation';
 import ColoredName from './ColoredName'; 
 
 interface RightSidebarProps {
@@ -13,6 +14,7 @@ interface RightSidebarProps {
 }
 
 export default function RightSidebar({ friends, onFriendClick }: RightSidebarProps) {
+  const navigateToProfile = useProfileNavigation();
   return (
     <Box sx={{ position: 'sticky', top: '76px', height: 'calc(100vh - 76px)', overflowY: 'auto' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 1, mb: 1, color: 'text.secondary' }}>
@@ -38,6 +40,7 @@ export default function RightSidebar({ friends, onFriendClick }: RightSidebarPro
                     src={friend.avatarUrl || `https://ui-avatars.com/api/?name=${friend.fullName}`}
                     frameClass={(friend as any).currentAvatarFrame}
                     size={36}
+                    onClick={(e) => { e.stopPropagation(); navigateToProfile(friend.studentCode); }}
                   />
                   {/* 🟢 ĐÃ SỬA: Viền chấm online đổi theo màu nền của web */}
                   <Box sx={{

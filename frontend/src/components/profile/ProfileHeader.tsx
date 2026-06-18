@@ -41,10 +41,11 @@ const getImageUrl = (url: string | undefined) => {
 interface ProfileHeaderProps {
   profileUser: User | null;
   isSelfProfile: boolean;
+  friendCount?: number;
   onUpdateProfile: (user: User) => void;
 }
 
-export default function ProfileHeader({ profileUser, isSelfProfile, onUpdateProfile }: ProfileHeaderProps) {
+export default function ProfileHeader({ profileUser, isSelfProfile, friendCount = 0, onUpdateProfile }: ProfileHeaderProps) {
   const { user: currentUser } = useAuth();
   const { openChat } = useChat();
   const [avatarMenuAnchor, setAvatarMenuAnchor] = useState<null | HTMLElement>(null);
@@ -140,7 +141,7 @@ export default function ProfileHeader({ profileUser, isSelfProfile, onUpdateProf
 
             <Box sx={{ mt: 2, ml: { md: 3 }, textAlign: { xs: 'center', md: 'left' }, flex: 1, pb: 2 }}>
               <Typography variant="h3" fontWeight="bold"><ColoredName name={profileUser.fullName} colorClass={(profileUser as any).currentNameColor} /></Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5, fontWeight: 500 }}>0 người bạn</Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5, fontWeight: 500 }}>{friendCount} người bạn</Typography>
             </Box>
 
             {/* BUTTONS */}
