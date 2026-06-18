@@ -8,6 +8,11 @@ import { styled } from '@mui/material/styles';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useColorMode } from '../../styles/theme';
 
+// 🟢 IMPORT BỔ SUNG CHO WEBSOCKET REAL-TIME TRONG HEADER
+import SockJS from 'sockjs-client';
+import { Client } from '@stomp/stompjs';
+import { getApiBaseUrl } from '../../config/apiBase';
+
 // Import Icons
 import SecurityIcon from '@mui/icons-material/Security';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
@@ -25,15 +30,13 @@ import NotificationBell from '../notification/NotificationBell';
 import type { User } from '../../types';
 import axiosClient from '../../api/axiosClient';
 import MessengerDropdown from '../messenger/MessengerDropdown';
-import { useWebSocket } from '../../context/useWebSocket';
 import FriendButton from '../friend/FriendButton';
 import ChangePasswordModal from '../auth/ChangePasswordModal';
-
-// 🔴 IMPORT COMPONENT AVATAR MA THUẬT
+import { useProfileNavigation } from '../../utils/useProfileNavigation';
 import AvatarWithFrame from '../AvatarWithFrame';
 import ColoredName from '../ColoredName';
 
-// --- STYLED COMPONENTS (FACEBOOK STYLE) ---
+// --- STYLED COMPONENTS ---
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
   borderRadius: '20px',
@@ -72,12 +75,15 @@ const SearchDropdown = styled(Paper)(({ theme }) => ({
   right: 0,
   marginTop: '8px',
   maxHeight: '450px',
-  overflowY: 'auto',
   zIndex: 1300,
   boxShadow: '0 12px 28px 0 rgba(0, 0, 0, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.1)',
   borderRadius: '8px',
   width: '360px',
   [theme.breakpoints.down('sm')]: { width: '100%' },
+  overflowY: 'auto',
+  '&::-webkit-scrollbar': { display: 'none', width: '0px' },
+  scrollbarWidth: 'none',
+  msOverflowStyle: 'none',
 }));
 
 const NavIconButton = styled(IconButton)<{ active?: boolean }>(({ theme, active }) => ({
@@ -102,7 +108,8 @@ export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toggleColorMode, mode } = useColorMode();
-
+  const navigateToProfile = useProfileNavigation();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -113,17 +120,14 @@ export default function Header() {
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const msgRef = useRef<HTMLDivElement>(null);
   const notiRef = useRef<HTMLDivElement>(null);
-  const { notifications } = useWebSocket();
   const [liveUser, setLiveUser] = useState<User | null>(null);
 
-  // 🟢 HỢP NHẤT STATE CHO SETTINGS MENU & ĐỔI MẬT KHẨU
   const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
   const [openChangePassword, setOpenChangePassword] = useState(false);
   const openSettings = Boolean(settingsAnchorEl);
 
   useEffect(() => {
     const trimmedQuery = searchQuery.trim();
-
     if (!trimmedQuery) {
       setSearchResults([]);
       setShowSearchDropdown(false);
@@ -135,76 +139,105 @@ export default function Header() {
       setIsSearching(true);
       setShowSearchDropdown(true);
       try {
-        const res = await axiosClient.get('/search', {
-          params: { name: trimmedQuery },
-        });
+        const res = await axiosClient.get('/search', { params: { name: trimmedQuery } });
         const data = res.data;
-        const normalizedResults =
-          data?.content ||
-          data?.data ||
-          (Array.isArray(data) ? data : []);
-
-        if (!ignore) {
-          setSearchResults(normalizedResults);
-        }
+        const normalizedResults = data?.content || data?.data || (Array.isArray(data) ? data : []);
+        if (!ignore) setSearchResults(normalizedResults);
       } catch (err) {
-        console.error("Lỗi tìm kiếm:", err);
-        if (!ignore) {
-          setSearchResults([]);
-        }
+        if (!ignore) setSearchResults([]);
       } finally {
-        if (!ignore) {
-          setIsSearching(false);
-        }
+        if (!ignore) setIsSearching(false);
       }
     }, 500);
 
-    return () => {
-      ignore = true;
-      clearTimeout(delayDebounce);
-      setIsSearching(false);
-    };
+    return () => { ignore = true; clearTimeout(delayDebounce); setIsSearching(false); };
   }, [searchQuery]);
 
   const fetchUnreadMessageCount = async () => {
     try {
       const res = await axiosClient.get('/messages/recent');
       const data = res.data;
-      const convs =
-        data?.content ||
-        data?.data ||
-        data?.conversations ||
-        (Array.isArray(data) ? data : []);
-
-      const count = Array.isArray(convs)
-        ? convs.filter(c => c.isRead === false).length
-        : 0;
-
+      const convs = data?.content || data?.data || data?.conversations || (Array.isArray(data) ? data : []);
+      const count = Array.isArray(convs) ? convs.filter(c => c.isRead === false).length : 0;
       setUnreadMessageCount(count);
     } catch (err) {
       console.error("Lỗi lấy tin nhắn:", err);
     }
   };
 
+  // ==========================================
+  // KHỞI TẠO DỮ LIỆU BAN ĐẦU
+  // ==========================================
   useEffect(() => {
     if (isAuthenticated) {
       fetchUnreadMessageCount();
-      axiosClient.get('/profile')
-        .then(res => setLiveUser(res.data))
-        .catch(console.error);
-      const interval = setInterval(fetchUnreadMessageCount, 5000);
-      return () => clearInterval(interval);
+      axiosClient.get('/profile').then(res => setLiveUser(res.data)).catch(console.error);
     }
   }, [isAuthenticated]);
 
+// =========================================================================
+  // 🟢 RADAR BẮT SÓNG TIN NHẮN ĐẾN (GIẢI QUYẾT LỖI 10 NĂM MỚI NHẢY SỐ)
+  // =========================================================================
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!isAuthenticated || !user?.id || !token) return;
+
+    // Tự tạo một kết nối WebSocket siêu cấp độc lập cho Header
+    const socket = new SockJS(`${getApiBaseUrl()}/ws`);
+    const headerStompClient = new Client({
+      webSocketFactory: () => socket,
+      connectHeaders: { Authorization: `Bearer ${token}` },
+      debug: () => {}, // Tắt debug để Console đỡ rác
+      onConnect: () => {
+        
+        // ================== ĐOẠN CẦN THAY THẾ ==================
+        // Hứng đường ống tin nhắn tới
+        headerStompClient.subscribe('/user/queue/messages', (payload) => {
+          try {
+            // "Bóc" gói tin ra xem bên trong
+            const incomingMsg = JSON.parse(payload.body);
+
+            // 🟢 LỌC LỖI: Chỉ cập nhật chuông nếu người gửi KHÁC với chính mình
+            if (incomingMsg.senderId !== user.id) {
+              console.log(">>> [Header Radar] Người khác vừa nhắn tin! Cập nhật Badge ngay...");
+              fetchUnreadMessageCount();
+            }
+          } catch (error) {
+            console.error("Lỗi parse tin nhắn trong Header:", error);
+          }
+        });
+        // =======================================================
+        
+      }
+    });
+
+    headerStompClient.activate();
+
+    return () => {
+      headerStompClient.deactivate();
+    };
+  }, [isAuthenticated, user?.id]);
+
+  // =========================================================================
+  // 🟢 HỨNG TÍN HIỆU ĐÃ ĐỌC TỪ CHATBOX PHÁT RA (TRỪ SỐ)
+  // =========================================================================
+  useEffect(() => {
+    const handleSyncBadge = () => {
+      // ChatBox báo "Đã đọc", ta tự động trừ số đếm xuống cho nhanh
+      setUnreadMessageCount(prev => Math.max(0, prev - 1));
+      
+      // Chờ DB ổn định rồi kéo API lại cho chắc chắn đúng số lượng
+      setTimeout(fetchUnreadMessageCount, 1000);
+    };
+
+    window.addEventListener('syncUnreadBadge', handleSyncBadge);
+    return () => window.removeEventListener('syncUnreadBadge', handleSyncBadge);
+  }, []);
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (msgRef.current && !msgRef.current.contains(event.target as Node)) {
-        setShowMsgDropdown(false);
-      }
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowSearchDropdown(false);
-      }
+      if (msgRef.current && !msgRef.current.contains(event.target as Node)) setShowMsgDropdown(false);
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) setShowSearchDropdown(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -212,15 +245,9 @@ export default function Header() {
 
   const handleMessageRead = () => { setUnreadMessageCount(prev => Math.max(0, prev - 1)); };
 
-  // 🟢 HỢP NHẤT HÀM XỬ LÝ MENU SETTINGS
-  const handleSettingsClick = (event: React.MouseEvent<HTMLElement>) => {
-    setSettingsAnchorEl(event.currentTarget);
-  };
-
-  const handleSettingsClose = () => {
-    setSettingsAnchorEl(null);
-  };
-
+  const handleSettingsClick = (event: React.MouseEvent<HTMLElement>) => setSettingsAnchorEl(event.currentTarget);
+  const handleSettingsClose = () => setSettingsAnchorEl(null);
+  
   const handleOpenChangePassword = () => {
     handleSettingsClose();
     setOpenChangePassword(true);
@@ -231,19 +258,12 @@ export default function Header() {
     logout();
     navigate('/login');
   };
-  // 🟢 HÀM XỬ LÝ KHI CLICK VÀO HOME HOẶC LOGO
+
   const handleHomeClick = () => {
     if (location.pathname === '/') {
-      // 1. Nếu ĐÃ Ở TRANG CHỦ -> Cuộn mượt lên trên cùng
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
-
-      // 2. Bắn một sự kiện cục bộ để báo cho Feed component biết cần lấy lại dữ liệu mới
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       window.dispatchEvent(new CustomEvent('refreshFeed'));
     } else {
-      // Nếu ĐANG Ở TRANG KHÁC -> Điều hướng về trang chủ
       navigate('/');
     }
   };
@@ -252,12 +272,10 @@ export default function Header() {
     <AppBar position="sticky" sx={{ backgroundColor: '#FFFFFF', color: '#050505', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 1100 }}>
       <Toolbar sx={{ justifyContent: 'space-between', minHeight: '56px !important' }}>
 
-        {/* --- VÙNG TRÁI: LOGO & SEARCH --- */}
         <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, position: 'relative' }} ref={searchRef}>
           <Box onClick={handleHomeClick} sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', mr: 1 }}>
             <img src="/logo.png" alt="Logo" style={{ height: '40px', width: '40px' }} />
           </Box>
-
           <Search>
             <SearchIconWrapper><SearchIcon /></SearchIconWrapper>
             <StyledInputBase
@@ -266,7 +284,6 @@ export default function Header() {
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => searchQuery && setShowSearchDropdown(true)}
             />
-
             {showSearchDropdown && (
               <SearchDropdown>
                 <Box sx={{ p: 1.5, borderBottom: '1px solid #ddd' }}>
@@ -286,7 +303,7 @@ export default function Header() {
                       >
                         <Box
                           sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer', flex: 1, minWidth: 0 }}
-                          onClick={() => { navigate(`/profile/${result.studentCode}`); setShowSearchDropdown(false); }}
+                          onClick={() => { navigateToProfile(result.studentCode); setShowSearchDropdown(false); }}
                         >
                           <AvatarWithFrame
                             src={result.avatarUrl}
@@ -306,10 +323,7 @@ export default function Header() {
 
                         <Box sx={{ width: '115px', flexShrink: 0 }}>
                           {user && result.id !== user.id && (
-                            <FriendButton
-                              targetUserId={result.id}
-                              currentUserId={user.id}
-                            />
+                            <FriendButton targetUserId={result.id} currentUserId={user.id} />
                           )}
                         </Box>
                       </ListItem>
@@ -325,14 +339,12 @@ export default function Header() {
           </Search>
         </Box>
 
-        {/* --- VÙNG GIỮA: NAV ICONS --- */}
         <Box sx={{ display: { xs: 'none', md: 'flex' }, flex: 1, justifyContent: 'center', height: '56px' }}>
           <NavIconButton active={location.pathname === '/'} onClick={handleHomeClick}>
             <HomeIcon fontSize="large" />
           </NavIconButton>
         </Box>
 
-        {/* --- VÙNG PHẢI: ACTIONS --- */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'flex-end' }}>
           {isAuthenticated ? (
             <>
@@ -344,7 +356,6 @@ export default function Header() {
                 </Tooltip>
               )}
 
-              {/* Messenger */}
               <Box sx={{ position: 'relative' }} ref={msgRef}>
                 <Tooltip title="Tin nhắn">
                   <ActionIconButton onClick={() => setShowMsgDropdown(!showMsgDropdown)}>
@@ -353,28 +364,21 @@ export default function Header() {
                     </Badge>
                   </ActionIconButton>
                 </Tooltip>
-
                 {showMsgDropdown && (
-                  <MessengerDropdown
-                    onClose={() => setShowMsgDropdown(false)}
-                    onMessageRead={handleMessageRead}
-                  />
+                  <MessengerDropdown onClose={() => setShowMsgDropdown(false)} onMessageRead={handleMessageRead} />
                 )}
               </Box>
 
-              {/* Notification */}
               <Box ref={notiRef}>
                 <NotificationBell />
               </Box>
 
               <Tooltip title="Cài đặt">
                 <ActionIconButton
-                  data-testid="header-settings-button"
                   onClick={handleSettingsClick}
                   aria-controls={openSettings ? 'settings-menu' : undefined}
                   aria-haspopup="true"
                   aria-expanded={openSettings ? 'true' : undefined}
-                  aria-label="Cài đặt"
                 >
                   <SettingsIcon />
                 </ActionIconButton>
@@ -382,49 +386,27 @@ export default function Header() {
 
               <Tooltip title={liveUser?.fullName || user?.fullName || 'Tài khoản'}>
                 <Box
-                  onClick={() => navigate('/profile')}
+                  onClick={() => navigateToProfile()}
                   sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    cursor: 'pointer',
-                    ml: 1,
-                    p: '4px 8px',
-                    borderRadius: '20px',
-                    '&:hover': { bgcolor: '#F2F2F2' }
+                    display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer',
+                    ml: 1, p: '4px 8px', borderRadius: '20px', '&:hover': { bgcolor: '#F2F2F2' }
                   }}
                 >
                   <AvatarWithFrame
                     src={liveUser?.avatarUrl || user?.avatarUrl}
                     name={liveUser?.fullName || user?.fullName}
-                    frameClass={
-                      (liveUser as any)?.currentAvatarFrame ||
-                      (user as any)?.currentAvatarFrame
-                    }
+                    frameClass={(liveUser as any)?.currentAvatarFrame || (user as any)?.currentAvatarFrame}
                     size={28}
                   />
-
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontWeight: 600,
-                      display: { xs: 'none', lg: 'block' }
-                    }}
-                  >
+                  <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', lg: 'block' } }}>
                     <ColoredName
-                      name={(liveUser?.fullName || user?.fullName || '')
-                        .split(' ')
-                        .pop() || ''}
-                      colorClass={
-                        (liveUser as any)?.currentNameColor ||
-                        (user as any)?.currentNameColor
-                      }
+                      name={(liveUser?.fullName || user?.fullName || '').split(' ').pop() || ''}
+                      colorClass={(liveUser as any)?.currentNameColor || (user as any)?.currentNameColor}
                     />
                   </Typography>
                 </Box>
               </Tooltip>
 
-              {/* 🟢 SETTINGS MENU (Đã được hợp nhất gọn gàng) */}
               <Menu
                 id="settings-menu"
                 anchorEl={settingsAnchorEl}
@@ -433,59 +415,35 @@ export default function Header() {
                 PaperProps={{
                   elevation: 0,
                   sx: {
-                    overflow: 'visible',
-                    filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.15))',
-                    mt: 1.5,
-                    width: 280,
-                    borderRadius: 2,
+                    overflow: 'visible', filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.15))',
+                    mt: 1.5, width: 280, borderRadius: 2,
                   },
                 }}
                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
               >
                 <MenuItem onClick={() => { navigate('/settings/security'); handleSettingsClose(); }}>
-                  <ListItemIcon>
-                    <SecurityIcon fontSize="small" />
-                  </ListItemIcon>
+                  <ListItemIcon><SecurityIcon fontSize="small" /></ListItemIcon>
                   Lịch sử đăng nhập
                 </MenuItem>
-
-                {/* Tích hợp Đổi mật khẩu vào chung Menu */}
                 <MenuItem onClick={handleOpenChangePassword}>
-                  <ListItemIcon>
-                    <LockResetIcon fontSize="small" />
-                  </ListItemIcon>
+                  <ListItemIcon><LockResetIcon fontSize="small" /></ListItemIcon>
                   Đổi mật khẩu
                 </MenuItem>
-
                 <MenuItem onClick={() => { toggleColorMode(); handleSettingsClose(); }}>
                   <ListItemIcon><DarkModeIcon fontSize="small" /></ListItemIcon>
                   {mode === 'light' ? 'Giao diện tối' : 'Giao diện sáng'}
                 </MenuItem>
-
                 <Divider />
-
-                <MenuItem
-                  data-testid="header-logout"
-                  onClick={handleLogout}
-                  sx={{ color: 'error.main' }}
-                >
-                  <ListItemIcon>
-                    <LogoutIcon fontSize="small" color="error" />
-                  </ListItemIcon>
+                <MenuItem data-testid="header-logout" onClick={handleLogout} sx={{ color: 'error.main' }}>
+                  <ListItemIcon><LogoutIcon fontSize="small" color="error" /></ListItemIcon>
                   Đăng xuất
                 </MenuItem>
               </Menu>
-
-              {/* Modal đổi mật khẩu */}
               {openChangePassword && <ChangePasswordModal onClose={() => setOpenChangePassword(false)} />}
             </>
           ) : (
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => navigate('/login')}
-            >
+            <Button variant="contained" color="primary" onClick={() => navigate('/login')}>
               Đăng nhập
             </Button>
           )}

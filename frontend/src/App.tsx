@@ -1,6 +1,7 @@
 import { Box } from '@mui/material';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import type { JSX } from 'react';
+import type { User } from './types';
 
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
@@ -16,6 +17,7 @@ import ResetPassword from './pages/auth/ResetPassword';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import { PostManager } from './pages/admin/PostManager';
 import { UserManager } from './pages/admin/UserManager';
+import { BlacklistManager } from './pages/admin/BlacklistManager';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WebSocketProvider } from './context/WebSocketContext';
@@ -32,13 +34,13 @@ import GameList from './pages/GameList';
 import ChatBox from './components/chat/ChatBox';
 
 /* ================= 💬 GLOBAL CHAT WRAPPER 💬 ================= */
-// Tạo một wrapper nhỏ để gọi useAuth một cách an toàn vì nó sẽ nằm TRONG AuthProvider
 const GlobalChatWrapper = () => {
   const { isAuthenticated, user } = useAuth();
 
   if (!isAuthenticated || !user || user.role === 'ADMIN') return null;
 
-  return <ChatBox currentUser={user} />;
+  // 🟢 FIX: Ép kiểu (cast) user thành User để giải quyết xung đột TypeScript
+  return <ChatBox currentUser={user as unknown as User} />;
 };
 
 /* ================= 🛡️ HỆ THỐNG LÍNH CANH ROUTE 🛡️ ================= */
@@ -142,6 +144,7 @@ function App() {
                   <Route path="dashboard" element={<AdminDashboard />} />
                   <Route path="posts" element={<PostManager />} />
                   <Route path="users" element={<UserManager />} />
+                  <Route path="blacklists" element={<BlacklistManager/>}/>
                   <Route path="*" element={<Navigate to="dashboard" replace />} />
                 </Route>
 

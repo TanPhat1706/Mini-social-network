@@ -194,3 +194,60 @@
   margin-left: 10px;
   flex-shrink: 0;
 }
+/* =========================================
+   DARK MODE OVERRIDES CHO MESSENGER DROPDOWN
+   ========================================= */
+   .messenger-dropdown.msg-dark-mode {
+    background: #242526;
+    border-color: #3E4042;
+    box-shadow: 0 12px 28px 0 rgba(0, 0, 0, 0.5), 0 2px 4px 0 rgba(0, 0, 0, 0.3);
+  }
+  
+  .messenger-dropdown.msg-dark-mode .msg-dd-title {
+    color: #E4E6EB;
+  }
+  
+  .messenger-dropdown.msg-dark-mode .msg-dd-icon {
+    color: #B0B3B8;
+  }
+  .messenger-dropdown.msg-dark-mode .msg-dd-icon:hover {
+    background-color: #3A3B3C;
+  }
+  
+  .messenger-dropdown.msg-dark-mode .msg-search-input {
+    background-color: #3A3B3C;
+    color: #E4E6EB;
+  }
+  .messenger-dropdown.msg-dark-mode .msg-search-input::placeholder {
+    color: #B0B3B8;
+  }
+  
+  /* Tabs */
+  .messenger-dropdown.msg-dark-mode .msg-pill.active {
+    background-color: rgba(45, 136, 255, 0.2); /* Xanh nhạt cho dark mode */
+    color: #2D88FF;
+  }
+  .messenger-dropdown.msg-dark-mode .msg-pill.inactive {
+    color: #B0B3B8;
+  }
+  .messenger-dropdown.msg-dark-mode .msg-pill.inactive:hover {
+    background-color: #3A3B3C;
+  }
+  
+  /* Items */
+  .messenger-dropdown.msg-dark-mode .msg-item:hover {
+    background-color: #3A3B3C;
+  }
+  .messenger-dropdown.msg-dark-mode .msg-item-name {
+    color: #E4E6EB;
+  }
+  .messenger-dropdown.msg-dark-mode .msg-item-preview {
+    color: #B0B3B8;
+  }
+  
+  /* Item chưa đọc */
+  .messenger-dropdown.msg-dark-mode .msg-item.unread .msg-item-name,
+  .messenger-dropdown.msg-dark-mode .msg-item.unread .msg-item-preview,
+  .messenger-dropdown.msg-dark-mode .msg-item.unread .msg-item-preview span {
+    color: #E4E6EB; 
+  }

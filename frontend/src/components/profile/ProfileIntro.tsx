@@ -39,7 +39,7 @@ export default function ProfileIntro({ user, isSelfProfile, onEditClick }: Props
         <Typography variant="body2">Tham gia vào {user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' }) : '...'}</Typography>
       </Box>
       
-      {isSelfProfile && (
+      {/* {isSelfProfile && (
         <Button 
           fullWidth variant="contained" 
           onClick={onEditClick}
@@ -47,7 +47,7 @@ export default function ProfileIntro({ user, isSelfProfile, onEditClick }: Props
         >
           Chỉnh sửa chi tiết
         </Button>
-      )}
+      )} */}
     </Paper>
   );
 }

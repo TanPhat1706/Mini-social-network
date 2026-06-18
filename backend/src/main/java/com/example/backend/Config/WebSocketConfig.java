@@ -18,6 +18,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import com.example.backend.User.JwtUtil;
 import lombok.RequiredArgsConstructor;
 
@@ -81,7 +82,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/topic", "/queue"); 
+        // Tạo một máy đếm nhịp tim
+        ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+        taskScheduler.initialize();
+
+        config.enableSimpleBroker("/topic", "/queue")
+              .setTaskScheduler(taskScheduler) // Gắn máy đếm nhịp tim vào
+              .setHeartbeatValue(new long[]{10000, 10000}); // Cứ 10 giây Server và Client "nháy" nhau 1 lần
+
         config.setApplicationDestinationPrefixes("/app"); 
         config.setUserDestinationPrefix("/user");
     }

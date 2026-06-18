@@ -8,6 +8,11 @@ import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import com.example.backend.VPTLpoint.VptlService;
 import com.example.backend.Storage.FileStorageService;
+import com.example.backend.Moderation.AutoModerationService;
+import com.example.backend.Enum.ReactionType;
+import com.example.backend.PostReaction.PostReaction;
+import com.example.backend.PostReaction.PostReactionRepository;
+import com.example.backend.PostReaction.ReactionUserResponse;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +40,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -53,13 +60,17 @@ class PostServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private PostLikeRepository postLikeRepository;
+    private PostReactionRepository postReactionRepository;
 
     @Mock
     private ApplicationEventPublisher evenPublisher;
 
     @Mock
     private VptlService vptlService;
+
+    // 🟢 THÊM MOCK CHO BOT KIỂM DUYỆT
+    @Mock
+    private AutoModerationService autoModerationService;
 
     @InjectMocks
     private PostService postService;
@@ -77,6 +88,9 @@ class PostServiceTest {
         mockSecurityContext("SV001");
 
         lenient().when(userRepository.findByStudentCode("SV001")).thenReturn(Optional.of(currentUser));
+        
+        // 🟢 GIẢ LẬP MẶC ĐỊNH: Các bài test thông thường coi như không có từ cấm
+        lenient().when(autoModerationService.containsBadWord(anyString())).thenReturn(false);
     }
 
     @AfterEach
@@ -115,21 +129,42 @@ class PostServiceTest {
         verify(postRepository, never()).save(any());
     }
 
+    // 🟢 ĐÃ CẬP NHẬT: Test Bot phát hiện nội dung độc hại
     @Test
-    @DisplayName("Tạo bài viết với Visibility = PUBLIC -> Ép thành PENDING và không cộng điểm")
-    void createPost_whenVisibilityPublic_shouldForcePending_andNotTrackPublicActivity() {
+    @DisplayName("Tạo bài viết CHỨA TỪ CẤM -> Bot ép về PENDING chờ duyệt")
+    void createPost_whenToxicContent_shouldForcePending() {
         PostRequest req = new PostRequest();
-        req.setContent(" hello ");
+        req.setContent("Đây là một từ bị cấm");
         req.setVisibility(Visibility.PUBLIC);
 
+        // Giả lập bot phát hiện từ cấm
+        when(autoModerationService.containsBadWord(anyString())).thenReturn(true);
         when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
 
         PostResponse res = postService.createPost(req);
 
         assertNotNull(res);
-        assertEquals("hello", res.getContent());
-        assertEquals(Visibility.PENDING, res.getVisibility());
+        assertEquals(Visibility.PENDING, res.getVisibility(), "Bài viết phải bị giam ở chế độ PENDING");
         verify(vptlService, never()).trackSocialActivity(anyInt(), anyString());
+    }
+
+    // 🟢 ĐÃ CẬP NHẬT: Test Bot cho qua nội dung sạch
+    @Test
+    @DisplayName("Tạo bài viết NỘI DUNG SẠCH -> Bot cho qua PUBLIC và cộng điểm")
+    void createPost_whenCleanContent_shouldApproveToPublic() {
+        PostRequest req = new PostRequest();
+        req.setContent("Bài viết trong sáng");
+        req.setVisibility(Visibility.PUBLIC);
+
+        // Giả lập bot KHÔNG phát hiện từ cấm
+        when(autoModerationService.containsBadWord(anyString())).thenReturn(false);
+        when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PostResponse res = postService.createPost(req);
+
+        assertNotNull(res);
+        assertEquals(Visibility.PUBLIC, res.getVisibility(), "Bài viết được tự động lên sóng PUBLIC");
+        verify(vptlService).trackSocialActivity(currentUser.getId(), "POST");
     }
 
     @Test
@@ -230,44 +265,44 @@ class PostServiceTest {
         assertEquals("Bạn không có quyền chỉnh sửa bài viết này!", ex.getMessage());
     }
 
+    // 🟢 ĐÃ CẬP NHẬT: Test sửa bài lòi ra từ cấm
     @Test
-    @DisplayName("Sửa bài thành PUBLIC thì ép về PENDING")
-    void updatePost_whenVisibilityPublic_shouldForcePending() {
+    @DisplayName("Sửa bài viết lòi ra TỪ CẤM -> Bot ép về PENDING")
+    void updatePost_whenToxicContent_shouldForcePending() {
         Post post = Post.builder().id(10L).author(currentUser).media(new ArrayList<>()).build();
-        post.setVisibility(Visibility.PRIVATE);
+        post.setVisibility(Visibility.PUBLIC);
 
         when(postRepository.findById(10L)).thenReturn(Optional.of(post));
+        when(autoModerationService.containsBadWord(anyString())).thenReturn(true);
         when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(fileStorageService.storeFile(any(MultipartFile.class), eq("posts"))).thenReturn("https://s3/url");
 
         PostRequest req = new PostRequest();
-        req.setContent("new");
+        req.setContent("Đã sửa thêm từ cấm vào đây");
         req.setVisibility(Visibility.PUBLIC);
-        req.setMediaFiles(List.of(new MockMultipartFile("file", "x".getBytes())));
 
         PostResponse res = postService.updatePost(10L, req);
 
-        assertEquals(Visibility.PENDING, res.getVisibility());
-        assertEquals(1, post.getMedia().size());
+        assertEquals(Visibility.PENDING, res.getVisibility(), "Bài viết bị phát hiện từ cấm phải về PENDING");
     }
 
+    // 🟢 ĐÃ CẬP NHẬT: Test sửa bài an toàn
     @Test
-    @DisplayName("Sửa bài với Visibility = PRIVATE và không có media (nhánh Else)")
-    void updatePost_whenVisibilityPrivate_andNoMedia_shouldUpdateNormally() {
+    @DisplayName("Sửa bài viết nội dung SẠCH -> Lưu đúng trạng thái mong muốn")
+    void updatePost_whenCleanContent_shouldUpdateNormally() {
         Post post = Post.builder().id(10L).author(currentUser).media(new ArrayList<>()).build();
-        post.setVisibility(Visibility.PUBLIC); // Đang public
+        post.setVisibility(Visibility.PUBLIC);
 
         when(postRepository.findById(10L)).thenReturn(Optional.of(post));
         when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
 
         PostRequest req = new PostRequest();
-        req.setContent("Updated content");
-        req.setVisibility(Visibility.PRIVATE); // Chuyển về Private
-        req.setMediaFiles(null); // Không có media
+        req.setContent("Nội dung sạch sẽ");
+        req.setVisibility(Visibility.CLASS); 
+        req.setMediaFiles(null); 
 
         PostResponse res = postService.updatePost(10L, req);
 
-        assertEquals(Visibility.PRIVATE, res.getVisibility());
+        assertEquals(Visibility.CLASS, res.getVisibility(), "Phải về đúng trạng thái CLASS do nội dung sạch");
         assertTrue(post.getMedia().isEmpty());
     }
 
@@ -310,8 +345,8 @@ class PostServiceTest {
         verify(postRepository).delete(post);
     }
 
-    // ==========================================
-    // 3. NHÓM TEST TƯƠNG TÁC (LIKE, SHARE, APPROVE)
+// ==========================================
+    // 3. NHÓM TEST TƯƠNG TÁC (REACTIONS, SHARE, APPROVE)
     // ==========================================
 
     @Test
@@ -346,75 +381,106 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("Lỗi Toggle Like khi Post không tồn tại")
-    void toggleLike_whenPostNotFound_shouldThrow() {
-        when(postLikeRepository.findByPostIdAndUserId(999L, 1L)).thenReturn(Optional.empty());
+    @DisplayName("Lỗi React khi Post không tồn tại")
+    void reactToPost_whenPostNotFound_shouldThrow() {
         when(postRepository.findById(999L)).thenReturn(Optional.empty());
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.toggleLike(999L));
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.reactToPost(999L, ReactionType.LIKE));
         assertEquals("Bài viết không tồn tại!", ex.getMessage());
     }
 
-    // 🐛 ĐÃ FIX: Test Unlike (Chỉ xóa record, không kiểm tra gọi DB Update)
     @Test
-    @DisplayName("Khi đã Like rồi -> Bấm lần nữa là Unlike, cập nhật ngầm định vào đệm RAM")
-    void toggleLike_whenAlreadyLiked_shouldDeleteLike_andUpdateBuffer() {
-        PostLike like = PostLike.builder().id(1L).build();
-        when(postLikeRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.of(like));
-
-        postService.toggleLike(10L);
-
-        verify(postLikeRepository).delete(like);
+    @DisplayName("Khi thả lại cảm xúc cũ -> Xóa cảm xúc (Unlike), cập nhật ngầm định vào đệm RAM")
+    void reactToPost_whenSameReaction_shouldDelete_andUpdateBuffer() {
+        Post post = Post.builder().id(10L).build();
+        PostReaction reaction = PostReaction.builder().id(1L).reactionType(ReactionType.LIKE).build();
         
-        // Đoạn này quan trọng: Kiểm tra để chắc chắn rằng decrementLikeCount ĐÃ BỊ XÓA BỎ
-        // Vì hệ thống giờ đây sử dụng RAM thay vì update DB ngay lập tức
-        verify(postRepository, never()).save(any(Post.class)); 
+        when(postRepository.findById(10L)).thenReturn(Optional.of(post));
+        when(postReactionRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.of(reaction));
+
+        postService.reactToPost(10L, ReactionType.LIKE);
+
+        verify(postReactionRepository).delete(reaction);
+        verify(postRepository, never()).save(any(Post.class));
     }
 
-    // 🐛 ĐÃ FIX: Test Like (Lưu record, thông báo, nhưng không kiểm tra gọi DB Update)
     @Test
-    @DisplayName("Khi chưa Like -> Lưu Like, thông báo và cộng điểm, cập nhật ngầm định vào đệm RAM")
-    void toggleLike_whenNotLiked_shouldSaveLike_updateBuffer_track_andPublishNotification() {
-        when(postLikeRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.empty());
-        User author = new User();
-        author.setId(2);
+    @DisplayName("Khi đổi cảm xúc (VD: LIKE -> LOVE) -> Cập nhật DB, thông báo và lưu RAM đệm")
+    void reactToPost_whenChangeReaction_shouldUpdate_andNotify() {
+        User author = new User(); author.setId(2);
         Post post = Post.builder().id(10L).author(author).build();
+        PostReaction existingReaction = PostReaction.builder().id(1L).reactionType(ReactionType.LIKE).build();
 
         when(postRepository.findById(10L)).thenReturn(Optional.of(post));
+        when(postReactionRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.of(existingReaction));
 
-        postService.toggleLike(10L);
+        postService.reactToPost(10L, ReactionType.LOVE);
 
-        verify(postLikeRepository).save(any(PostLike.class));
-        
-        // Kiểm tra để chắc chắn rằng incrementLikeCount ĐÃ BỊ XÓA BỎ
-        verify(postRepository, never()).save(post); 
-        
-        verify(vptlService).trackSocialActivity(1, "LIKE");
+        assertEquals(ReactionType.LOVE, existingReaction.getReactionType(), "Cảm xúc phải được đổi thành LOVE");
+        verify(postReactionRepository).save(existingReaction);
         verify(evenPublisher).publishEvent(any(NotificationEvent.class));
     }
 
-    // ⭐️ TEST BACKGROUND JOB (EVENTUAL CONSISTENCY)
     @Test
-    @DisplayName("Background Job sẽ lấy dữ liệu từ RAM đệm và lưu vào Database")
-    void syncLikesToDatabase_shouldUpdateDB() {
-        // 1. Dựng bối cảnh: 1 bài post có 5 Like trong Database
-        when(postLikeRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.empty());
-        User author = new User();
-        author.setId(2);
-        Post post = Post.builder().id(10L).author(author).likeCount(5L).build();
+    @DisplayName("Khi chưa có cảm xúc -> Tạo mới, cộng điểm VPTL, thông báo và lưu đệm RAM")
+    void reactToPost_whenNewReaction_shouldSave_track_andPublishNotification() {
+        User author = new User(); author.setId(2);
+        Post post = Post.builder().id(10L).author(author).build();
+
         when(postRepository.findById(10L)).thenReturn(Optional.of(post));
+        when(postReactionRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.empty());
 
-        // 2. Kích hoạt Like -> Đưa vào RAM (+1 lượt)
-        postService.toggleLike(10L);
+        postService.reactToPost(10L, ReactionType.HAHA);
 
-        // 3. Giả lập Cron Job tự động chạy
+        verify(postReactionRepository).save(any(PostReaction.class));
+        verify(vptlService).trackSocialActivity(1, "REACTION_HAHA");
+        verify(evenPublisher).publishEvent(any(NotificationEvent.class));
+    }
+
+    @Test
+    @DisplayName("Background Job sẽ lấy dữ liệu từ RAM đệm và lưu vào Database (reactionCounts)")
+    void syncLikesToDatabase_shouldUpdateDB() {
+        User author = new User(); author.setId(2);
+        Post post = Post.builder().id(10L).author(author).build();
+        Map<String, Integer> initialCounts = new HashMap<>();
+        initialCounts.put("LIKE", 5); // Bài viết đang có 5 LIKE
+        post.setReactionCounts(initialCounts);
+
+        when(postRepository.findById(10L)).thenReturn(Optional.of(post));
+        when(postReactionRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.empty());
+
+        // Thực hiện tương tác để ghi vào ConcurrentHashMap (RAM)
+        postService.reactToPost(10L, ReactionType.LIKE);
+        
+        // Gọi hàm đồng bộ Job
         postService.syncLikesToDatabase();
 
-        // 4. Kiểm chứng: Lúc này Job bắt đầu gọi Update DB. 
-        // Phải chắc chắn rằng bài Post được cập nhật với số lượt Like = 6
         ArgumentCaptor<Post> postCaptor = ArgumentCaptor.forClass(Post.class);
         verify(postRepository).save(postCaptor.capture());
-        assertEquals(6L, postCaptor.getValue().getLikeCount());
+        
+        // Tổng LIKE = 5 (cũ) + 1 (mới trong RAM) = 6
+        assertEquals(6, postCaptor.getValue().getReactionCounts().get("LIKE"));
+    }
+
+    @Test
+    void getReactionsByPostId_whenInvalid_shouldThrow() {
+        assertThrows(IllegalArgumentException.class, () -> postService.getReactionsByPostId(null, ReactionType.LIKE, 0, 10));
+        
+        when(postRepository.existsById(999L)).thenReturn(false);
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> postService.getReactionsByPostId(999L, ReactionType.LIKE, 0, 10));
+        assertEquals("Post not found", ex.getMessage());
+    }
+
+    @Test
+    void getReactionsByPostId_shouldReturnPagedUsers() {
+        when(postRepository.existsById(10L)).thenReturn(true);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<ReactionUserResponse> mockPage = new PageImpl<>(List.of());
+        when(postReactionRepository.findUsersReationByPostId(10L, ReactionType.LIKE, pageable)).thenReturn(mockPage);
+
+        Page<ReactionUserResponse> result = postService.getReactionsByPostId(10L, ReactionType.LIKE, 0, 10);
+        assertNotNull(result);
+        verify(postReactionRepository).findUsersReationByPostId(10L, ReactionType.LIKE, pageable);
     }
 
     @Test
@@ -476,7 +542,6 @@ class PostServiceTest {
         assertNotNull(res);
         assertEquals(11L, rootPost.getShareCount());
     }
-
     // ==========================================
     // 4. NHÓM TEST TRUY VẤN (GET)
     // ==========================================
@@ -540,7 +605,6 @@ class PostServiceTest {
         author2.setStudentCode("SV002");
         Post post = Post.builder().id(1L).author(author2).media(new ArrayList<>()).build();
 
-        // Khi không đăng nhập, isSelfPost = false -> gọi findPublicByAuthorStudentCode
         when(postRepository.findPublicByAuthorStudentCode(eq("SV002"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(post)));
 
@@ -629,7 +693,7 @@ class PostServiceTest {
         Post originalPost = Post.builder()
                 .id(5L)
                 .author(originalAuthor)
-                .media(List.of(media)) // Cung cấp media để phủ sóng nhánh lambda .map(m -> MediaResponse...)
+                .media(List.of(media)) 
                 .build();
 
         Post sharePost = Post.builder()
@@ -655,7 +719,7 @@ class PostServiceTest {
                 .author(currentUser)
                 .media(new ArrayList<>())
                 .build();
-        post.setOriginalPost(post); // Tự share chính mình (Lỗi dữ liệu)
+        post.setOriginalPost(post); 
 
         PostResponse res = postService.mapToPostResponse(post);
 

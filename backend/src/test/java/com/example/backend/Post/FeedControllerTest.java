@@ -59,11 +59,10 @@ class FeedControllerTest extends BaseControllerTest {
                 .id(500L)
                 .content("Hôm nay trời đẹp, đi code thôi sếp ơi!")
                 .author(authorResponse)
+                // 🟢 FIXED: Thay vì setLikedByCurrentUser(true), ta dùng currentUserReaction
+                .currentUserReaction("LIKE") 
                 .build();
-
-        mockPostResponse.setLikedByCurrentUser(true);
     }
-
     // ==========================================
     // 1. TEST LẤY BẢNG TIN THÀNH CÔNG (GET /api/feed)
     // ==========================================

@@ -18,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.test.context.support.WithMockUser;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -46,11 +47,11 @@ class UserSocialControllerTest extends BaseControllerTest {
 
     @BeforeEach
     void setUp() {
-        // 1. Dữ liệu giả cho Bài viết (Post)
+        // 1. Dữ liệu giả cho Bài viết (Post) - Đã sửa likeCount thành reactionCounts
         PostResponse mockPost = PostResponse.builder()
                 .id(100L)
                 .content("Hôm nay code Spring Boot vui quá!")
-                .likeCount(50L)
+                .reactionCounts(Map.of("LIKE", 50)) // 🟢 FIXED: Thay likeCount bằng reactionCounts
                 .build();
         mockPostPage = new PageImpl<>(List.of(mockPost));
 
@@ -80,10 +81,11 @@ class UserSocialControllerTest extends BaseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(100))
                 .andExpect(jsonPath("$.content[0].content").value("Hôm nay code Spring Boot vui quá!"))
-                .andExpect(jsonPath("$.content[0].likeCount").value(50))
+                // 🟢 FIXED: Update đường dẫn JSON Path để check reactionCounts thay vì likeCount
+                .andExpect(jsonPath("$.content[0].reactionCounts.LIKE").value(50)) 
                 .andExpect(jsonPath("$.totalElements").value(1));
     }
-
+    
     @Test
     @WithMockUser
     @DisplayName("Trả về HTTP 500 khi lấy bài viết của sinh viên không tồn tại")

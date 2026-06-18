@@ -1,26 +1,37 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/api';
 
-import {
-  Card,
-  CardContent,
-  Typography,
-  Box,
-  CircularProgress,
-} from '@mui/material';
-
-import Grid from '@mui/material/Grid';
+import { Card, CardContent, Typography, Box, CircularProgress, Grid } from '@mui/material';
 
 import ArticleIcon from '@mui/icons-material/Article';
 import PeopleIcon from '@mui/icons-material/People';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
+import GppBadIcon from '@mui/icons-material/GppBad';
 
 /* ================= TYPES ================= */
 interface DashboardStats {
   totalPosts: number;
   activeUsers: number;
   pendingUsers: number;
+  totalBadWords: number;
 }
+
+/* 🟢 StatCard tách ra ngoài giúp Component cha render mượt hơn */
+const StatCard = ({ title, value, icon, color }: { title: string; value: number; icon: React.ReactNode; color: string; }) => (
+  <Card sx={{ height: '100%', borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+    <CardContent>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box>
+          <Typography variant="overline" color="text.secondary">{title}</Typography>
+          <Typography variant="h4" fontWeight="bold">{value}</Typography>
+        </Box>
+        <Box sx={{ p: 1.5, borderRadius: '50%', bgcolor: `${color}20`, color }}>
+          {icon}
+        </Box>
+      </Box>
+    </CardContent>
+  </Card>
+);
 
 /* ================= COMPONENT ================= */
 const AdminDashboard = () => {
@@ -28,6 +39,7 @@ const AdminDashboard = () => {
     totalPosts: 0,
     activeUsers: 0,
     pendingUsers: 0,
+    totalBadWords: 0,
   });
 
   const [loading, setLoading] = useState(true);
@@ -38,24 +50,17 @@ const AdminDashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      const [postRes, userRes] = await Promise.allSettled([
+      const [postRes, userRes, badWordsRes] = await Promise.allSettled([
         api.get<number>('/api/admin/posts-count'),
-        api.get<{ activeUsers: number; pendingUsers: number }>(
-          '/api/admin/users-stats'
-        ),
+        api.get<{ activeUsers: number; pendingUsers: number }>('/api/admin/users-stats'),
+        api.get<any[]>('/api/admin/moderation/blacklist'), 
       ]);
 
       setStats({
-        totalPosts:
-          postRes.status === 'fulfilled' ? postRes.value.data : 0,
-        activeUsers:
-          userRes.status === 'fulfilled'
-            ? userRes.value.data.activeUsers
-            : 0,
-        pendingUsers:
-          userRes.status === 'fulfilled'
-            ? userRes.value.data.pendingUsers
-            : 0,
+        totalPosts: postRes.status === 'fulfilled' ? postRes.value.data : 0,
+        activeUsers: userRes.status === 'fulfilled' ? userRes.value.data.activeUsers : 0,
+        pendingUsers: userRes.status === 'fulfilled' ? userRes.value.data.pendingUsers : 0,
+        totalBadWords: badWordsRes.status === 'fulfilled' ? badWordsRes.value.data.length : 0,
       });
     } catch (error) {
       console.error('Lỗi tải dashboard:', error);
@@ -72,84 +77,27 @@ const AdminDashboard = () => {
     );
   }
 
-  /* ================= STAT CARD ================= */
-  const StatCard = ({
-    title,
-    value,
-    icon,
-    color,
-  }: {
-    title: string;
-    value: number;
-    icon: React.ReactNode;
-    color: string;
-  }) => (
-    <Card sx={{ height: '100%' }}>
-      <CardContent>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <Box>
-            <Typography variant="overline" color="text.secondary">
-              {title}
-            </Typography>
-            <Typography variant="h4" fontWeight="bold">
-              {value}
-            </Typography>
-          </Box>
-
-          <Box
-            sx={{
-              p: 1.5,
-              borderRadius: '50%',
-              bgcolor: `${color}20`,
-              color,
-            }}
-          >
-            {icon}
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-
   /* ================= RENDER ================= */
   return (
     <Box>
-      <Typography variant="h4" sx={{ mb: 4, fontWeight: 'bold' }}>
-        Tổng quan hệ thống
-      </Typography>
+      <Typography variant="h4" sx={{ mb: 4, fontWeight: 'bold' }}>Tổng quan hệ thống</Typography>
 
       <Grid container spacing={3}>
-        <Grid item xs={12} sm={6} md={4}>
-          <StatCard
-            title="TỔNG BÀI VIẾT"
-            value={stats.totalPosts}
-            icon={<ArticleIcon fontSize="large" />}
-            color="#1976d2"
-          />
+        {/* 🟢 CÚ PHÁP CỦA MUI V6: Thay vì dùng 'item xs={12}', ta gom vào thuộc tính 'size' */}
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <StatCard title="TỔNG BÀI VIẾT" value={stats.totalPosts} icon={<ArticleIcon fontSize="large" />} color="#1976d2" />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={4}>
-          <StatCard
-            title="NGƯỜI DÙNG CHỜ DUYỆT"
-            value={stats.pendingUsers}
-            icon={<PeopleIcon fontSize="large" />}
-            color="#ed6c02"
-          />
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <StatCard title="NGƯỜI DÙNG CHỜ DUYỆT" value={stats.pendingUsers} icon={<PeopleIcon fontSize="large" />} color="#ed6c02" />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={4}>
-          <StatCard
-            title="NGƯỜI DÙNG HOẠT ĐỘNG"
-            value={stats.activeUsers}
-            icon={<VerifiedUserIcon fontSize="large" />}
-            color="#2e7d32"
-          />
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <StatCard title="NGƯỜI DÙNG HOẠT ĐỘNG" value={stats.activeUsers} icon={<VerifiedUserIcon fontSize="large" />} color="#2e7d32" />
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <StatCard title="TỪ KHÓA BỊ CẤM" value={stats.totalBadWords} icon={<GppBadIcon fontSize="large" />} color="#d32f2f" />
         </Grid>
       </Grid>
     </Box>

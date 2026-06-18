@@ -8,7 +8,8 @@ import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import api from '../../api/api';
 import { showError, showSuccess } from '../../utils/swal';
 import type { User } from '../../types';
-import AvatarWithFrame from '../AvatarWithFrame'; // Đường dẫn có thể cần chỉnh lại
+import AvatarWithFrame from '../AvatarWithFrame'; 
+import ImageCropperModal from './ImageCropperModal';
 
 interface Props {
   open: boolean;
@@ -24,7 +25,11 @@ export default function EditProfileDialog({ open, onClose, currentUser, onUpdate
   const [isLoading, setIsLoading] = useState(false);
   const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  
+
+  // 🟢 2. STATE CHO CROPPER
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const BIO_MAX_LENGTH = 160;
 
@@ -38,11 +43,25 @@ export default function EditProfileDialog({ open, onClose, currentUser, onUpdate
     }
   }, [currentUser, open]);
 
+  // 🟢 3. THAY ĐỔI HÀM HANDLE FILE
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setSelectedFile(file);
-    setPreviewAvatar(URL.createObjectURL(file));
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
+      setCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+    if (e.target) e.target.value = '';
+  };
+  
+  // 🟢 4. HÀM NHẬN FILE ĐÃ CẮT TỪ CROPPER
+  const handleCropComplete = (croppedFile: File) => {
+    setSelectedFile(croppedFile);
+    setPreviewAvatar(URL.createObjectURL(croppedFile)); // Hiển thị preview hình đã cắt
+    setCropModalOpen(false);
   };
 
   const handleUnequipFrame = async () => {
@@ -50,7 +69,7 @@ export default function EditProfileDialog({ open, onClose, currentUser, onUpdate
       const res = await api.put('/api/shop/items/unequip');
       showSuccess(res.data.message || "Đã tháo viền Avatar thành công!");
       if (currentUser) {
-          onUpdateSuccess({ ...currentUser, currentAvatarFrame: undefined } as any);
+        onUpdateSuccess({ ...currentUser, currentAvatarFrame: undefined } as any);
       }
     } catch (error) {
       showError("Không thể tháo viền lúc này.");
@@ -72,7 +91,7 @@ export default function EditProfileDialog({ open, onClose, currentUser, onUpdate
         headers: { 'Content-Type': undefined },
         timeout: 60000,
       });
-      
+
       onUpdateSuccess(res.data);
       showSuccess("Cập nhật thành công!");
       onClose();
@@ -89,53 +108,64 @@ export default function EditProfileDialog({ open, onClose, currentUser, onUpdate
   if (previewAvatar) avatarSrc = previewAvatar;
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h6" fontWeight="bold">Chỉnh sửa trang cá nhân</Typography>
-        <IconButton onClick={onClose}><CloseIcon /></IconButton>
-      </DialogTitle>
-      <Divider />
-      
-      <DialogContent sx={{ px: { xs: 2, md: 4 } }}>
-        {/* Avatar Section */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4, mt: 1 }}>
-          <Box sx={{ position: 'relative' }}>
-            <AvatarWithFrame src={avatarSrc} frameClass={(currentUser as any).currentAvatarFrame} size={120} />
-            <IconButton 
-              onClick={() => fileInputRef.current?.click()}
-              sx={{ position: 'absolute', bottom: 0, right: 0, bgcolor: 'background.paper', boxShadow: 2, '&:hover': { bgcolor: 'action.hover' } }}
-            >
-              <PhotoCameraIcon fontSize="small" />
-            </IconButton>
-            <input type="file" hidden accept="image/*" ref={fileInputRef} onChange={handleFileChange} />
+    <> {/* 🟢 ĐÃ THÊM THẺ MỞ NÀY VÀO ĐỂ FIX LỖI */}
+      <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" fontWeight="bold">Chỉnh sửa trang cá nhân</Typography>
+          <IconButton onClick={onClose}><CloseIcon /></IconButton>
+        </DialogTitle>
+        <Divider />
+
+        <DialogContent sx={{ px: { xs: 2, md: 4 } }}>
+          {/* Avatar Section */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4, mt: 1 }}>
+            <Box sx={{ position: 'relative' }}>
+              <AvatarWithFrame src={avatarSrc} frameClass={(currentUser as any).currentAvatarFrame} size={120} />
+              <IconButton
+                onClick={() => fileInputRef.current?.click()}
+                sx={{ position: 'absolute', bottom: 0, right: 0, bgcolor: 'background.paper', boxShadow: 2, '&:hover': { bgcolor: 'action.hover' } }}
+              >
+                <PhotoCameraIcon fontSize="small" />
+              </IconButton>
+              <input type="file" hidden accept="image/*" ref={fileInputRef} onChange={handleFileChange} />
+            </Box>
+
+            {(currentUser as any).currentAvatarFrame && (
+              <Button variant="outlined" color="error" size="small" sx={{ mt: 2, borderRadius: 5, textTransform: 'none' }} onClick={handleUnequipFrame}>
+                🚫 Tháo viền Avatar
+              </Button>
+            )}
           </Box>
-          
-          {(currentUser as any).currentAvatarFrame && (
-            <Button variant="outlined" color="error" size="small" sx={{ mt: 2, borderRadius: 5, textTransform: 'none' }} onClick={handleUnequipFrame}>
-              🚫 Tháo viền Avatar
-            </Button>
-          )}
-        </Box>
 
-        {/* Inputs */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <TextField label="Họ và tên" fullWidth value={fullName} onChange={(e) => setFullName(e.target.value)} />
-          <TextField label="Lớp / Khoa" fullWidth value={className} onChange={(e) => setClassName(e.target.value)} />
-          <TextField 
-            label="Tiểu sử" fullWidth multiline rows={3} 
-            value={bio} onChange={(e) => setBio(e.target.value)} 
-            helperText={`${bio.length}/${BIO_MAX_LENGTH}`}
-            FormHelperTextProps={{ sx: { textAlign: 'right', color: bio.length > BIO_MAX_LENGTH - 20 ? 'error.main' : 'text.secondary' } }}
-          />
-        </Box>
-      </DialogContent>
+          {/* Inputs */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField label="Họ và tên" fullWidth value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <TextField label="Lớp / Khoa" fullWidth value={className} onChange={(e) => setClassName(e.target.value)} />
+            <TextField
+              label="Tiểu sử" fullWidth multiline rows={3}
+              value={bio} onChange={(e) => setBio(e.target.value)}
+              helperText={`${bio.length}/${BIO_MAX_LENGTH}`}
+              FormHelperTextProps={{ sx: { textAlign: 'right', color: bio.length > BIO_MAX_LENGTH - 20 ? 'error.main' : 'text.secondary' } }}
+            />
+          </Box>
+        </DialogContent>
 
-      <DialogActions sx={{ p: 3, pt: 1 }}>
-        <Button onClick={onClose} color="inherit">Hủy</Button>
-        <Button variant="contained" onClick={handleSave} disabled={isLoading}>
-          {isLoading ? <CircularProgress size={24} color="inherit" /> : "Lưu thay đổi"}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={onClose} color="inherit">Hủy</Button>
+          <Button variant="contained" onClick={handleSave} disabled={isLoading}>
+            {isLoading ? <CircularProgress size={24} color="inherit" /> : "Lưu thay đổi"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 🟢 5. THÊM COMPONENT CROPPER */}
+      <ImageCropperModal
+        open={cropModalOpen}
+        imageSrc={cropImageSrc}
+        aspectRatio={1} // Trong màn Edit Profile chỉ cắt Avatar nên tỉ lệ luôn là 1
+        onClose={() => setCropModalOpen(false)}
+        onCropDone={handleCropComplete}
+      />
+    </>
   );
 }

@@ -5,9 +5,12 @@ import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import com.example.backend.User.UserResponse;
 import com.example.backend.Enum.Visibility;
+import com.example.backend.Enum.ReactionType;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -161,18 +164,21 @@ class PostControllerTest extends BaseControllerTest {
     }
 
     // ==========================================
-    // 6. TEST THẢ TIM (POST LIKE)
+    // 6. TEST THẢ CẢM XÚC (POST REACTION)
     // ==========================================
     @Test
     @WithMockUser(username = "1412")
-    void toggleLike_shouldReturnOk() throws Exception {
-        when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(currentUser));
+    void reactToPost_shouldReturnOk() throws Exception {
+        // Giả lập DTO ReactRequest được Client gửi lên dưới dạng JSON
+        String requestJson = "{\"reactionType\":\"LIKE\"}";
 
-        mockMvc.perform(post("/api/posts/100/like"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("Thành công"));
+        mockMvc.perform(post("/api/posts/100/react")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isOk());
 
-        verify(postService).toggleLike(100L);
+        // Verify rằng Controller đã gọi đúng hàm reactToPost của Service với tham số chuẩn xác
+        verify(postService).reactToPost(100L, ReactionType.LIKE);
     }
 
     // ==========================================

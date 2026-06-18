@@ -7,10 +7,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 
+import com.example.backend.Enum.ReactionType;
+import com.example.backend.PostReaction.PostReactionRepository;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -22,8 +24,9 @@ class FeedServiceTest {
     @Mock
     private PostRepository postRepository;
 
+    // 🟢 FIXED: Đổi mock từ PostLikeRepository sang PostReactionRepository
     @Mock
-    private PostLikeRepository postLikeRepository;
+    private PostReactionRepository postReactionRepository;
 
     @Mock
     private PostService postService;
@@ -49,31 +52,33 @@ class FeedServiceTest {
         assertFalse(result.isHasNext());
         assertNull(result.getNextCursor());
         
-        // Đảm bảo không gọi thừa các hàm query phụ
-        verify(postLikeRepository, never()).findPostIdsLikedByUser(anyLong(), anyList());
+        // 🟢 FIXED: Đảm bảo không gọi thừa các hàm query phụ của PostReactionRepository
+        verify(postReactionRepository, never()).findReactionsByUserAndPosts(anyLong(), anyList());
         verify(postRepository, never()).findByIdInWithMedia(anyList());
         verify(postService, never()).mapToPostResponse(any());
     }
 
     // ==========================================
-    // 2. KỊCH BẢN: CÓ BÀI VIẾT, CÓ LIKE VÀ CÓ PRE-WARM CACHE (ORIGINAL POST)
+    // 2. KỊCH BẢN: CÓ BÀI VIẾT, CÓ REACTION VÀ CÓ PRE-WARM CACHE (ORIGINAL POST)
     // ==========================================
     @Test
-    void getNewsFeed_shouldSetLiked_andHandlePreWarmCache() {
+    void getNewsFeed_shouldSetReaction_andHandlePreWarmCache() {
         // Chuẩn bị dữ liệu giả lập
         Post originalPost = Post.builder().id(99L).build(); // Bài gốc dùng để test Pre-warm cache
         Post p1 = Post.builder().id(10L).originalPost(originalPost).build(); 
         Post p2 = Post.builder().id(20L).build();
 
-        // 🟢 Bắt buộc dùng new ArrayList<>() để tránh lỗi UnsupportedOperationException khi Service gọi remove()
+        // Bắt buộc dùng new ArrayList<>() để tránh lỗi UnsupportedOperationException khi Service gọi remove()
         List<Post> mockPosts = new ArrayList<>(List.of(p1, p2));
         
         when(postRepository.findCursorBasedNewsFeed(eq(null), any(PageRequest.class)))
                 .thenReturn(mockPosts);
 
-        // Giả lập User ID 1 đã Like bài 20L
-        when(postLikeRepository.findPostIdsLikedByUser(1L, List.of(10L, 20L)))
-                .thenReturn(Set.of(20L));
+        // 🟢 FIXED: Giả lập User ID 1 đã thả LIKE bài 20L (trả về mảng Object[] theo thiết kế Query)
+        // 🟢 FIXED: Dùng Collections.singletonList để ép kiểu chính xác thành List<Object[]>
+        // Tránh lỗi suy luận kiểu varargs của List.of()
+        when(postReactionRepository.findReactionsByUserAndPosts(1L, List.of(10L, 20L)))
+                .thenReturn(Collections.singletonList(new Object[]{20L, ReactionType.LIKE}));
 
         // Giả lập PostService map sang Response
         PostResponse r1 = PostResponse.builder().id(10L).build();
@@ -86,8 +91,10 @@ class FeedServiceTest {
 
         // Kiểm chứng kết quả
         assertEquals(2, result.getContent().size());
-        assertFalse(result.getContent().get(0).isLikedByCurrentUser(), "Bài 10L chưa like");
-        assertTrue(result.getContent().get(1).isLikedByCurrentUser(), "Bài 20L đã like");
+        
+        // 🟢 FIXED: Kiểm chứng dựa trên currentUserReaction thay vì isLikedByCurrentUser
+        assertNull(result.getContent().get(0).getCurrentUserReaction(), "Bài 10L chưa thả cảm xúc");
+        assertEquals("LIKE", result.getContent().get(1).getCurrentUserReaction(), "Bài 20L đã thả LIKE");
         
         assertEquals(20L, result.getNextCursor(), "Con trỏ tiếp theo phải là ID bài cuối cùng");
         assertFalse(result.isHasNext(), "Chỉ có 2 bài, size = 10 -> Không còn bài tiếp theo");
@@ -110,9 +117,9 @@ class FeedServiceTest {
         when(postRepository.findCursorBasedNewsFeed(eq(50L), any(PageRequest.class)))
                 .thenReturn(new ArrayList<>(List.of(p1, p2, p3)));
 
-        // User chưa like bài nào
-        when(postLikeRepository.findPostIdsLikedByUser(eq(1L), anyList()))
-                .thenReturn(Collections.emptySet());
+        // 🟢 FIXED: User chưa thả cảm xúc bài nào (trả về List rỗng)
+        when(postReactionRepository.findReactionsByUserAndPosts(eq(1L), anyList()))
+                .thenReturn(Collections.emptyList());
 
         PostResponse r1 = PostResponse.builder().id(30L).build();
         PostResponse r2 = PostResponse.builder().id(20L).build();

@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap; // 👈 Import Thread-safe Map
+import java.util.concurrent.ConcurrentHashMap; 
 import java.util.Map;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -38,6 +38,9 @@ import com.example.backend.User.UserRepository;
 import com.example.backend.User.UserResponse;
 import com.example.backend.VPTLpoint.VptlService;
 
+// 🟢 IMPORT SERVICE BOT KIỂM DUYỆT CỦA CHÚNG TA (Hãy sửa lại package nếu bạn đặt tên khác nhé)
+import com.example.backend.Moderation.AutoModerationService;
+
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -49,11 +52,12 @@ public class PostService {
     private final ApplicationEventPublisher evenPublisher;
     private final FileStorageService fileStorageService;
     private final VptlService vptlService;
+    
+    // 🟢 TIÊM SERVICE BOT VÀO ĐÂY
+    private final AutoModerationService autoModerationService;
 
     // ⭐️ BỘ ĐỆM RAM: Lưu trữ số lượt Like thay đổi (+1 hoặc -1) của từng bài viết
     private final ConcurrentHashMap<String, Integer> reactionBuffer = new ConcurrentHashMap<>();
-    // 🛡️ KHIÊN CHỐNG SPAM: Lưu trạng thái xem User này có đang thao tác Like trên
-    // Post này không
     private final ConcurrentHashMap<String, Boolean> actionLock = new ConcurrentHashMap<>();
 
     private User getCurrentUser() {
@@ -79,17 +83,20 @@ public class PostService {
         post.setSharer(currentUser);
         post.setOriginalPost(null);
 
-        // ⭐️ CHIÊU 1: CẦM CHẾ THUẬT (Kiểm soát Visibility)
-        // Nếu user chọn PUBLIC -> Ép về PENDING để Admin duyệt.
-        // Nếu user chọn CLASS/PRIVATE -> Cho phép đăng ngay.
-        if (request.getVisibility() == Visibility.PUBLIC) {
+        // 🟢 CẬP NHẬT LUỒNG AUTO-MODERATION (DUYỆT TỰ ĐỘNG)
+        boolean isToxic = autoModerationService.containsBadWord(post.getContent());
+
+        if (isToxic) {
+            // Nếu phát hiện từ cấm -> Ép trạng thái thành PENDING để Admin xử lý tay
             post.setVisibility(Visibility.PENDING);
+            System.out.println(">>> 🤖 Bot phát hiện nội dung nhạy cảm! Đã chuyển bài viết thành PENDING.");
         } else {
+            // Nội dung sạch -> Cho phép đăng ngay theo đúng quyền user đã chọn
             post.setVisibility(request.getVisibility());
+            System.out.println(">>> 🤖 Nội dung an toàn! Tự động duyệt thành: " + request.getVisibility());
         }
 
         // Xử lý lưu media files nếu có
-
         if (request.getMediaFiles() != null && !request.getMediaFiles().isEmpty()) {
             List<PostMedia> mediaList = new ArrayList<>();
             for (MultipartFile file : request.getMediaFiles()) {
@@ -125,18 +132,21 @@ public class PostService {
         post.setContent(normalizeContent(request.getContent()));
 
         Visibility oldVisibility = post.getVisibility();
-        Visibility newVisibility = request.getVisibility();
+        Visibility requestedVisibility = request.getVisibility();
 
-        if (newVisibility != oldVisibility) {
-            if (newVisibility == Visibility.PUBLIC) {
-                post.setVisibility(Visibility.PENDING);
-            } else {
-                post.setVisibility(newVisibility);
-            }
+        // 🟢 CẬP NHẬT LUỒNG QUÉT LẠI NỘI DUNG SAU KHI EDIT
+        boolean isToxic = autoModerationService.containsBadWord(post.getContent());
 
-            if (newVisibility == Visibility.PRIVATE && oldVisibility == Visibility.PUBLIC) {
-                // Xu ly cac tinh huong khi tu PUBLIC -> PRIVATE (an cac like, comment, share)
-            }
+        if (isToxic) {
+            // Nếu edit xong lòi ra từ cấm -> Khóa luôn thành PENDING
+            post.setVisibility(Visibility.PENDING);
+        } else {
+            // Sạch sẽ -> Trở về trạng thái mong muốn
+            post.setVisibility(requestedVisibility);
+        }
+
+        if (post.getVisibility() == Visibility.PRIVATE && oldVisibility == Visibility.PUBLIC) {
+            // Xu ly cac tinh huong khi tu PUBLIC -> PRIVATE (an cac like, comment, share)
         }
 
         List<PostMedia> currentMediaList = post.getMedia();
@@ -210,7 +220,6 @@ public class PostService {
     public void reactToPost(Long postId, ReactionType requestedReaction) {
         User currentUser = getCurrentUser();
         Long userId = Long.valueOf(currentUser.getId());
-
         String lockKey = postId + "_" + userId;
 
         if (actionLock.putIfAbsent(lockKey, true) != null) {
@@ -380,18 +389,13 @@ public class PostService {
                     Sort.by("createdAt").descending());
         }
 
-        // Lấy mã sinh viên của người đang xem
         String currentViewer = getCurrentViewerStudentCode();
-
-        // 🐛 ĐÃ FIX: Xác định xem user có đang xem profile của chính mình hay không
         boolean isViewingOwnProfile = Objects.equals(currentViewer, studentCode);
 
         Page<Post> posts;
         if (isViewingOwnProfile) {
-            // Nếu xem nhà mình -> Lấy cả bài PRIVATE/PENDING
             posts = postRepository.findByAuthorStudentCode(studentCode, pageable);
         } else {
-            // Nếu xem nhà người khác -> Chỉ lấy bài PUBLIC
             posts = postRepository.findPublicByAuthorStudentCode(studentCode, pageable);
         }
 
@@ -406,8 +410,6 @@ public class PostService {
         String currentViewerStudentCode = getCurrentViewerStudentCode();
         boolean isSelfPost = false;
 
-        // 🐛 ĐÃ FIX: Chống NullPointerException bằng Objects.equals và check an toàn
-        // Author
         if (currentViewerStudentCode != null && post.getAuthor() != null) {
             isSelfPost = Objects.equals(currentViewerStudentCode, post.getAuthor().getStudentCode());
         }
@@ -425,9 +427,6 @@ public class PostService {
         authorDto.setCurrentAvatarFrame(author.getCurrentAvatarFrame());
         authorDto.setCurrentNameColor(author.getCurrentNameColor());
 
-        // List<PostMedia> mediaList = post.getMedia() == null ? new ArrayList<>() :
-        // post.getMedia();
-
         List<MediaResponse> mediaDtos = post.getMedia().stream()
                 .map(m -> MediaResponse.builder()
                         .id(m.getId())
@@ -442,7 +441,6 @@ public class PostService {
             if (post.getOriginalPost().getId().equals(post.getId())) {
                 originalPostResponse = null;
             } else {
-                // originalPostResponse = mapToPostResponse(post.getOriginalPost(), isSelfPost);
                 originalPostResponse = buildFlattenedPostResponse(post.getOriginalPost(), isSelfPost);
             }
         }
@@ -500,10 +498,15 @@ public class PostService {
     }
 
     public String getCurrentUserReaction(Long postId) {
-        User currentUser = getCurrentUser();
-        Long userId = Long.valueOf(currentUser.getId());
+        // Lấy studentCode một cách an toàn (trả về null nếu chưa đăng nhập)
+        String studentCode = getCurrentViewerStudentCode();
+        
+        if (studentCode == null || studentCode.equals("anonymousUser")) {
+            return null; // Guest thì chắc chắn chưa có reaction nào
+        }
 
-        return postReactionRepository.findByPostIdAndUserId(postId, userId)
+        return userRepository.findByStudentCode(studentCode)
+                .flatMap(user -> postReactionRepository.findByPostIdAndUserId(postId, Long.valueOf(user.getId())))
                 .map(postReaction -> postReaction.getReactionType().name())
                 .orElse(null);
     }
