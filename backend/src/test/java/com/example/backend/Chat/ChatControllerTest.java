@@ -62,6 +62,8 @@ class ChatControllerTest extends BaseControllerTest {
     private User currentUser;
     private User partnerUser;
     private ChatMessage mockMessage;
+    // 🟢 MỚI: Biến giả lập để trả về cho API Recent Messages
+    private ChatConversationDTO mockConversation; 
 
     @BeforeEach
     void setUp() {
@@ -82,8 +84,20 @@ class ChatControllerTest extends BaseControllerTest {
         mockMessage.setContent("Alo, dạo này em khỏe không?");
         mockMessage.setTimestamp(LocalDateTime.now());
         mockMessage.setRead(false);
-        // 🟢 FIX: Khởi tạo mảng reactions để tránh NullPointerException khi test
         mockMessage.setReactions(new ArrayList<>());
+
+        // 🟢 MỚI: Khởi tạo biến giả lập ChatConversationDTO (Có 9 tham số theo cấu trúc mới nhất)
+        mockConversation = new ChatConversationDTO(
+                2,
+                "GUEST001",
+                "Người Yêu Cũ",
+                "http://avatar.com/ex.jpg",
+                "Alo, dạo này em khỏe không?",
+                LocalDateTime.now(),
+                false,
+                "gold-frame",
+                "vip-color"
+        );
     }
 
     // ==========================================
@@ -97,7 +111,6 @@ class ChatControllerTest extends BaseControllerTest {
 
         chatController.processMessage(mockMessage);
 
-        // 🟢 FIX: Gỡ bỏ eq() theo lời khuyên của SonarLint
         verify(chatRoomService).getChatId(1, 2, true);
         verify(chatMessageRepository).save(mockMessage);
         assertFalse(mockMessage.isRead());
@@ -127,13 +140,16 @@ class ChatControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser(username = "1412")
     void getRecentConversations_shouldReturnInboxList() throws Exception {
-        partnerUser.setFullName("Nguoi Yeu Cu");
-        mockMessage.setContent("Alo, dao nay em khoe khong?");
+        // Cập nhật lại giả lập DTO cho khớp nội dung Test
+        mockConversation.setPartnerName("Nguoi Yeu Cu");
+        mockConversation.setLastMessage("Alo, dao nay em khoe khong?");
+        mockConversation.setRead(true);
 
         when(userRepository.findByEmail("1412")).thenReturn(Optional.empty());
         when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(currentUser));
         
-        when(chatMessageRepository.findRecentMessages(1)).thenReturn(List.of(mockMessage));
+        // 🟢 FIX: Truyền List.of(mockConversation) thay vì mockMessage
+        when(chatMessageRepository.findRecentMessages(1)).thenReturn(List.of(mockConversation));
         when(userRepository.findById(2)).thenReturn(Optional.of(partnerUser));
 
         mockMvc.perform(get("/api/auth/messages/recent")
@@ -165,7 +181,6 @@ class ChatControllerTest extends BaseControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
 
-        // 🟢 FIX: Gỡ bỏ eq()
         verify(chatMessageRepository).markMessagesAsRead(2, 1);
     }
 
@@ -211,7 +226,8 @@ class ChatControllerTest extends BaseControllerTest {
     @WithMockUser(username = "test@example.com")
     void getRecentConversations_whenUserFoundByEmail_shouldReturnList() throws Exception {
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(currentUser));
-        when(chatMessageRepository.findRecentMessages(1)).thenReturn(List.of(mockMessage));
+        // 🟢 FIX: Truyền List.of(mockConversation) thay vì mockMessage
+        when(chatMessageRepository.findRecentMessages(1)).thenReturn(List.of(mockConversation));
         when(userRepository.findById(2)).thenReturn(Optional.of(partnerUser));
 
         mockMvc.perform(get("/api/auth/messages/recent"))
@@ -232,7 +248,9 @@ class ChatControllerTest extends BaseControllerTest {
     @WithMockUser(username = "1412")
     void getRecentConversations_whenPartnerNotFound_shouldSkipPartner() throws Exception {
         when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(currentUser));
-        when(chatMessageRepository.findRecentMessages(1)).thenReturn(List.of(mockMessage));
+        // 🟢 FIX: Truyền List.of(mockConversation)
+        when(chatMessageRepository.findRecentMessages(1)).thenReturn(List.of(mockConversation));
+        // Cố tình cho user 2 (partner) bằng empty
         when(userRepository.findById(2)).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/api/auth/messages/recent"))
@@ -245,16 +263,12 @@ class ChatControllerTest extends BaseControllerTest {
     void getRecentConversations_testIsReadLogic() throws Exception {
         when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(currentUser));
 
-        ChatMessage msg1 = new ChatMessage();
-        msg1.setSenderId(2); msg1.setReceiverId(1); msg1.setRead(false);
+        // 🟢 Cập nhật danh sách Mock thành kiểu DTO
+        ChatConversationDTO conv1 = new ChatConversationDTO(2, "ST002", "User2", "", "Msg", LocalDateTime.now(), false, "", "");
+        ChatConversationDTO conv2 = new ChatConversationDTO(3, "ST003", "User3", "", "Msg", LocalDateTime.now(), true, "", "");
+        ChatConversationDTO conv3 = new ChatConversationDTO(4, "ST004", "User4", "", "Msg", LocalDateTime.now(), true, "", "");
 
-        ChatMessage msg2 = new ChatMessage();
-        msg2.setSenderId(3); msg2.setReceiverId(1); msg2.setRead(true);
-
-        ChatMessage msg3 = new ChatMessage();
-        msg3.setSenderId(1); msg3.setReceiverId(4); msg3.setRead(false);
-
-        when(chatMessageRepository.findRecentMessages(1)).thenReturn(List.of(msg1, msg2, msg3));
+        when(chatMessageRepository.findRecentMessages(1)).thenReturn(List.of(conv1, conv2, conv3));
         
         when(userRepository.findById(2)).thenReturn(Optional.of(buildUser(2, "User2")));
         when(userRepository.findById(3)).thenReturn(Optional.of(buildUser(3, "User3")));
@@ -283,12 +297,11 @@ class ChatControllerTest extends BaseControllerTest {
     void reactToMessage_shouldAddReactionAndBroadcast() {
         ReactionRequest request = new ReactionRequest();
         request.setMessageId(100L);
-        request.setUserId(1); // Người gửi tự thả tim tin nhắn của mình
+        request.setUserId(1); 
         request.setReactionType(ReactionType.LOVE);
 
         when(chatMessageRepository.findById(100L)).thenReturn(Optional.of(mockMessage));
         when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(i -> i.getArgument(0));
-        // 🟢 FIX: Đổi sender, receiver thành currentUser, partnerUser
         when(userRepository.findById(1)).thenReturn(Optional.of(currentUser));
         when(userRepository.findById(2)).thenReturn(Optional.of(partnerUser));
 
@@ -298,7 +311,6 @@ class ChatControllerTest extends BaseControllerTest {
         assertEquals(ReactionType.LOVE, mockMessage.getReactions().get(0).getReactionType());
         verify(chatMessageRepository, times(1)).save(mockMessage);
 
-        // 🟢 FIX: Gỡ bỏ eq()
         verify(messagingTemplate).convertAndSendToUser("GUEST001", "/queue/messages", mockMessage);
         verify(messagingTemplate).convertAndSendToUser("1412", "/queue/messages", mockMessage);
     }
@@ -334,7 +346,7 @@ class ChatControllerTest extends BaseControllerTest {
 
         RevokeRequest request = new RevokeRequest();
         request.setMessageId(100L);
-        request.setRequesterId(1); // Phải là người gửi (senderId = 1) mới được thu hồi 2 phía
+        request.setRequesterId(1);
         request.setRevokeType("EVERYONE");
 
         when(chatMessageRepository.findById(100L)).thenReturn(Optional.of(mockMessage));
@@ -354,18 +366,16 @@ class ChatControllerTest extends BaseControllerTest {
     void revokeMessage_everyone_shouldFailIfNotSender() {
         RevokeRequest request = new RevokeRequest();
         request.setMessageId(100L);
-        request.setRequesterId(2); // Người nhận (receiver) CỐ TÌNH gọi thu hồi 2 phía
+        request.setRequesterId(2); 
         request.setRevokeType("EVERYONE");
 
         when(chatMessageRepository.findById(100L)).thenReturn(Optional.of(mockMessage));
 
         chatController.revokeMessage(request);
 
-        // 1. Đảm bảo trạng thái tin nhắn không bị thay đổi
         assertFalse(mockMessage.getIsDeletedEveryone());
         assertNotEquals("Tin nhắn đã thu hồi", mockMessage.getContent());
 
-        // 2. 🟢 CHẮC CHẮN RẰNG: DB KHÔNG BỊ GỌI ĐỂ LƯU THỪA (Tối ưu performance)
         verify(chatMessageRepository, never()).save(any(ChatMessage.class));
         verify(messagingTemplate, never()).convertAndSendToUser(anyString(), anyString(), any(ChatMessage.class));
     }
@@ -374,7 +384,7 @@ class ChatControllerTest extends BaseControllerTest {
     void revokeMessage_self_shouldSetDeletedBySenderId() {
         RevokeRequest request = new RevokeRequest();
         request.setMessageId(100L);
-        request.setRequesterId(2); // Người nhận muốn xoá tin nhắn khỏi máy mình (thu hồi 1 phía)
+        request.setRequesterId(2); 
         request.setRevokeType("SELF");
 
         when(chatMessageRepository.findById(100L)).thenReturn(Optional.of(mockMessage));
@@ -385,7 +395,6 @@ class ChatControllerTest extends BaseControllerTest {
         chatController.revokeMessage(request);
 
         assertFalse(mockMessage.getIsDeletedEveryone());
-        // 🟢 FIX: So sánh chuẩn kiểu Integer để khớp với MockMessage.getDeletedBySenderId()
         assertEquals(Integer.valueOf(2), mockMessage.getDeletedBySenderId());
         verify(chatMessageRepository, times(1)).save(mockMessage);
     }

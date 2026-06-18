@@ -20,4 +20,7 @@ public class ChatConversationDTO {
     
     @JsonProperty("isRead")
     private boolean isRead;
+    // 🟢 THÊM 2 DÒNG NÀY ĐỂ MANG MÀU SẮC & KHUNG VIỀN LÊN FRONTEND
+    private String currentAvatarFrame;
+    private String currentNameColor;
 }

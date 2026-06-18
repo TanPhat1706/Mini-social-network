@@ -3,6 +3,8 @@ package com.example.backend.Chat;
 import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import com.example.backend.Enum.ReactionType;
+import com.example.backend.Event.ReadEvent;
+import com.example.backend.Event.TypingEvent;
 import com.example.backend.Enum.MessageType;
 
 import jakarta.transaction.Transactional;
@@ -77,7 +79,9 @@ public class ChatController {
                 chatMessageRepository.getHistoryWithRevokeFilter(senderId, receiverId, senderId));
     }
 
-    // --- SỬA API NÀY ĐỂ TRẢ VỀ TRẠNG THÁI isRead ---
+    // =========================================================================
+    // 🟢 ĐÃ TỐI ƯU: Đón nhận trực tiếp DTO từ Database (Sạch bóng lỗi di truyền)
+    // =========================================================================
     @GetMapping("/api/auth/messages/recent")
     public ResponseEntity<List<ChatConversationDTO>> getRecentConversations() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -92,36 +96,11 @@ public class ChatController {
             return ResponseEntity.notFound().build();
 
         Integer userId = currentUser.getId();
-        List<ChatMessage> allMessages = chatMessageRepository.findRecentMessages(userId);
 
-        Map<Integer, ChatMessage> latestMessagesMap = new LinkedHashMap<>();
-        for (ChatMessage msg : allMessages) {
-            Integer partnerId = msg.getSenderId().equals(userId) ? msg.getReceiverId() : msg.getSenderId();
-            latestMessagesMap.putIfAbsent(partnerId, msg);
-        }
+        // Vì ChatMessageRepository giờ đã tự nén dữ liệu và kết nối bảng dưới DB,
+        // Chúng ta chỉ cần gọi hàm và hứng thẳng danh sách kết quả, không cần lặp map thủ công nữa!
+        List<ChatConversationDTO> conversations = chatMessageRepository.findRecentMessages(userId);
 
-        List<ChatConversationDTO> conversations = new ArrayList<>();
-        for (Map.Entry<Integer, ChatMessage> entry : latestMessagesMap.entrySet()) {
-            Integer partnerId = entry.getKey();
-            ChatMessage msg = entry.getValue();
-            User partner = userRepository.findById(partnerId).orElse(null);
-
-            if (partner != null) {
-                boolean isRead = true;
-                if (msg.getSenderId().equals(partnerId) && !msg.isRead()) {
-                    isRead = false;
-                }
-
-                conversations.add(new ChatConversationDTO(
-                        partner.getId(),
-                        partner.getStudentCode(),
-                        partner.getFullName(),
-                        partner.getAvatarUrl(),
-                        msg.getContent(),
-                        msg.getTimestamp(),
-                        isRead));
-            }
-        }
         return ResponseEntity.ok(conversations);
     }
 
@@ -287,5 +266,35 @@ public class ChatController {
             case ANGRY -> "😡";
             case LIKE -> "👍";
         };
+    }
+    // Import UserRepository và SimpMessagingTemplate nếu chưa có
+    
+    @MessageMapping("/chat.typing")
+    public void handleTyping(TypingEvent event) {
+        // 1. Tìm User nhận để lấy studentCode (dùng làm địa chỉ gửi tới)
+        User receiver = userRepository.findById(event.getReceiverId())
+            .orElse(null);
+            
+        if (receiver != null && receiver.getStudentCode() != null) {
+            // 2. Chuyển tiếp tín hiệu thẳng sang Frontend của người nhận (Bỏ qua việc lưu Database)
+            messagingTemplate.convertAndSendToUser(
+                receiver.getStudentCode(),
+                "/queue/typing",
+                event
+            );
+        }
+    }
+    // 🟢 LUỒNG TRUNG CHUYỂN TÍN HIỆU "ĐÃ XEM"
+    @MessageMapping("/chat.read")
+    public void handleRead(ReadEvent event) {
+        User receiver = userRepository.findById(event.getReceiverId()).orElse(null);
+            
+        if (receiver != null && receiver.getStudentCode() != null) {
+            messagingTemplate.convertAndSendToUser(
+                receiver.getStudentCode(),
+                "/queue/read",
+                event
+            );
+        }
     }
 }

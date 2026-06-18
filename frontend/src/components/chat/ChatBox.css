@@ -371,3 +371,127 @@
   color: var(--messenger-sub);
   margin-left: 2px;
 }
+
+/* =========================================
+   DARK MODE OVERRIDES CHO CHATBOX
+   ========================================= */
+   .fb-chat-container.fb-dark-mode {
+    background-color: #242526;
+    border: 1px solid #3E4042;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  }
+  
+  /* Header & Footer */
+  .fb-chat-container.fb-dark-mode .fb-chat-header,
+  .fb-chat-container.fb-dark-mode .fb-chat-footer {
+    border-color: #3E4042;
+  }
+  
+  /* Text Colors */
+  .fb-chat-container.fb-dark-mode .fb-chat-name {
+    color: #E4E6EB;
+  }
+  .fb-chat-container.fb-dark-mode .fb-chat-status {
+    color: #B0B3B8;
+  }
+  
+  /* Icons & Actions */
+  .fb-chat-container.fb-dark-mode .fb-icon,
+  .fb-chat-container.fb-dark-mode .action-icon {
+    color: #B0B3B8;
+  }
+  .fb-chat-container.fb-dark-mode .fb-icon:hover {
+    background-color: #3A3B3C;
+  }
+  
+/* =========================================
+   Chat Input (SỬA LỖI VỆT TRẮNG)
+   ========================================= */
+/* 1. Tô màu tối cho thằng cha bọc ngoài */
+.fb-chat-container.fb-dark-mode .fb-input-container {
+  background-color: #3A3B3C;
+}
+
+/* 2. Ép thằng con (ô nhập chữ) thành trong suốt để ăn theo màu thằng cha */
+.fb-chat-container.fb-dark-mode .fb-chat-input {
+  background-color: transparent; 
+  color: #E4E6EB;
+}
+
+/* Đề phòng khi focus (bấm vào gõ) trình duyệt tự động nhồi nền trắng vào */
+.fb-chat-container.fb-dark-mode .fb-chat-input:focus {
+  background-color: transparent;
+  outline: none;
+}
+
+.fb-chat-container.fb-dark-mode .fb-chat-input::placeholder {
+  color: #B0B3B8;
+}
+  
+  /* Tin nhắn của ĐỐI PHƯƠNG (Their Bubble) */
+  .fb-chat-container.fb-dark-mode .fb-their-bubble {
+    background-color: #3E4042;
+    color: #E4E6EB;
+  }
+  
+  /* Màu nền badge thả cảm xúc */
+  .fb-chat-container.fb-dark-mode .fb-reaction-badge {
+    background-color: #242526;
+    border-color: #242526;
+    color: #E4E6EB;
+  }
+  /* =========================================
+   HIỆU ỨNG "ĐANG GÕ PHÍM..." (TYPING INDICATOR)
+   ========================================= */
+.fb-typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 16px;
+  background-color: #E4E6EB;
+  border-radius: 18px;
+  width: fit-content;
+  margin-left: 8px; /* Cách cái Avatar một chút */
+}
+
+/* Áp dụng Dark Mode cho khung Typing */
+.fb-chat-container.fb-dark-mode .fb-typing-indicator {
+  background-color: #3E4042;
+}
+
+.fb-typing-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #65676B; /* 🟢 Tăng độ đậm để tương phản tốt hơn */
+  border-radius: 50%;
+  animation: typing-bounce 1.4s infinite ease-in-out both;
+}
+
+.fb-chat-container.fb-dark-mode .fb-typing-dot {
+  background-color: #B0B3B8; /* 🟢 Màu sáng cho Dark Mode */
+}
+
+/* Độ trễ khác nhau để tạo hiệu ứng sóng (Wave) */
+.fb-typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.fb-typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.6; }
+  40% { transform: scale(1); opacity: 1; }
+}
+/* =========================================
+   HIỆU ỨNG "ĐÃ XEM" (READ RECEIPTS)
+   ========================================= */
+   .fb-read-receipt {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 2px;
+    margin-bottom: 4px;
+    padding-right: 12px; /* Canh lề cho thẳng với bong bóng chat */
+    animation: popIn 0.3s ease-out forwards;
+  }
+  
+  @keyframes popIn {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
