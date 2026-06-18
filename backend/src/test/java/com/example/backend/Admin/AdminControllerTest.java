@@ -7,6 +7,7 @@ import com.example.backend.Post.PostService;
 import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
@@ -23,7 +24,6 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.hamcrest.Matchers.containsString;
@@ -91,13 +91,23 @@ class AdminControllerTest extends BaseControllerTest {
 
         mockMvc.perform(post("/api/admin/approve-post/100"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Duyệt bài thành công!")); // Đảm bảo AdminController trả về đúng chuỗi này
+                .andExpect(content().string("Duyệt bài thành công!")); 
+    }
+
+    // 🟢 MỚI: TEST NHÁNH CATCH LỖI DUYỆT BÀI
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void approvePost_whenException_shouldReturn400() throws Exception {
+        doThrow(new RuntimeException("Bài viết không tồn tại")).when(postService).approvePost(999L);
+
+        mockMvc.perform(post("/api/admin/approve-post/999"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Lỗi: Bài viết không tồn tại"));
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
     void getAllPosts_shouldReturnPage() throws Exception {
-        // SỬA: Tạo Mock cho Pageable và bọc List thành PageImpl
         PostResponse pr = PostResponse.builder().id(100L).content("Test Admin").build();
         Page<PostResponse> postPage = new PageImpl<>(List.of(pr));
         
@@ -107,16 +117,23 @@ class AdminControllerTest extends BaseControllerTest {
                         .param("page", "0")
                         .param("size", "10"))
                 .andExpect(status().isOk())
-                // Lưu ý: Nếu AdminController trả về Page, cấu trúc JSON sẽ có content: [ {id: 100} ]
-                // Nếu Controller của bạn không map lại mà ném thẳng đối tượng Page ra ngoài:
                 .andExpect(jsonPath("$.content[0].id").value(100L));
-                // Nếu Controller tự trích xuất List ra thì dùng: jsonPath("$[0].id").value(100L)
+    }
+
+    // 🟢 MỚI: TEST NHÁNH CATCH LỖI LẤY DANH SÁCH BÀI VIẾT
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void getAllPosts_whenException_shouldReturn400() throws Exception {
+        when(postService.getAllPostsForAdmin(any(Pageable.class))).thenThrow(new RuntimeException("DB Connection Error"));
+
+        mockMvc.perform(get("/api/admin/posts"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Failed to retrieve posts: DB Connection Error"));
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
     void deletePost_shouldReturnSuccess() throws Exception {
-        // AdminController calls postService.deletePost() (void) then returns its own String
         doNothing().when(postService).deletePost(100L);
 
         mockMvc.perform(delete("/api/admin/delete-post/100")
@@ -127,6 +144,17 @@ class AdminControllerTest extends BaseControllerTest {
         verify(postService).deletePost(100L);
     }
 
+    // 🟢 MỚI: TEST NHÁNH CATCH LỖI XÓA BÀI VIẾT
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void deletePost_whenException_shouldReturn400() throws Exception {
+        doThrow(new RuntimeException("Không tìm thấy")).when(postService).deletePost(999L);
+
+        mockMvc.perform(delete("/api/admin/delete-post/999"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Lỗi xóa bài: Không tìm thấy"));
+    }
+
     @Test
     @WithMockUser(roles = "ADMIN")
     void countPosts_shouldReturnNumber() throws Exception {
@@ -135,6 +163,17 @@ class AdminControllerTest extends BaseControllerTest {
         mockMvc.perform(get("/api/admin/posts-count"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("50"));
+    }
+
+    // 🟢 MỚI: TEST NHÁNH CATCH LỖI ĐẾM BÀI VIẾT
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void countPosts_whenException_shouldReturn400() throws Exception {
+        when(postRepository.countPosts()).thenThrow(new RuntimeException("Lỗi máy chủ"));
+
+        mockMvc.perform(get("/api/admin/posts-count"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("0")); // Logic catch return 0L
     }
 
     // ==========================================
@@ -151,6 +190,17 @@ class AdminControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$[0].fullName").value("Lê Hồng Phát"));
     }
 
+    // 🟢 MỚI: TEST NHÁNH CATCH LỖI LẤY DANH SÁCH NGƯỜI DÙNG
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void getAllUsers_whenException_shouldReturn400() throws Exception {
+        when(userRepository.findByRoleIn(anyList())).thenThrow(new RuntimeException("DB Error"));
+
+        mockMvc.perform(get("/api/admin/users"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Lỗi tải danh sách người dùng: DB Error"));
+    }
+
     @Test
     @WithMockUser(roles = "ADMIN")
     void banUser_shouldReturnSuccess() throws Exception {
@@ -161,6 +211,18 @@ class AdminControllerTest extends BaseControllerTest {
                 .andExpect(content().string(containsString("Đã khóa tài khoản")));
         
         verify(userRepository).save(any(User.class));
+    }
+
+    // 🟢 MỚI: TEST NHÁNH LAMBDA KHÔNG TÌM THẤY USER KHI KHÓA TÀI KHOẢN
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("Ban User - Bắn lỗi 400 do không tìm thấy User")
+    void banUser_whenUserNotFound_shouldReturn400() throws Exception {
+        when(userRepository.findById(999)).thenReturn(Optional.empty()); // Kích hoạt orElseThrow
+
+        mockMvc.perform(post("/api/admin/ban-user/999"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Lỗi: Không tìm thấy người dùng!"));
     }
 
     @Test
@@ -174,5 +236,17 @@ class AdminControllerTest extends BaseControllerTest {
                 .andExpect(content().string(containsString("Đã duyệt/mở khóa")));
 
         verify(userRepository).save(any(User.class));
+    }
+
+    // 🟢 MỚI: TEST NHÁNH LAMBDA KHÔNG TÌM THẤY USER KHI DUYỆT TÀI KHOẢN
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("Approve User - Bắn lỗi 400 do không tìm thấy User")
+    void approveUser_whenUserNotFound_shouldReturn400() throws Exception {
+        when(userRepository.findById(999)).thenReturn(Optional.empty()); // Kích hoạt orElseThrow
+
+        mockMvc.perform(post("/api/admin/approve-user/999"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Lỗi: Không tìm thấy người dùng!"));
     }
 }

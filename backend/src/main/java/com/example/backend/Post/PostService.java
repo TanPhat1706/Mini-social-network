@@ -159,6 +159,7 @@ public class PostService {
         for (PostMedia media : mediaToRemove) {
             fileStorageService.deleteFile(media.getMediaUrl());
         }
+        currentMediaList.removeAll(mediaToRemove);
 
         if (request.getMediaFiles() != null && !request.getMediaFiles().isEmpty()) {
             for (MultipartFile file : request.getMediaFiles()) {

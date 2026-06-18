@@ -4,6 +4,7 @@ import com.example.backend.Integration.BaseControllerTest;
 import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
@@ -19,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -73,6 +75,7 @@ class NotificationControllerTest extends BaseControllerTest {
     // ==========================================
     @Test
     @WithMockUser(username = "1412")
+    @DisplayName("Lấy danh sách thông báo thành công -> Trả về mảng DTO")
     void getNotifications_shouldReturnListOfNotificationDTOs() throws Exception {
         // Giả lập lấy User từ Security Context
         when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(currentUser));
@@ -91,14 +94,49 @@ class NotificationControllerTest extends BaseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(100L))
                 .andExpect(jsonPath("$[0].message").value("đã thích bài viết của bạn."))
-                // 🟢 ĐÃ SỬA: Jackson thường đổi "isRead" thành "read" trong JSON
-                // Nếu sếp kiểm tra log thấy vẫn là isRead thì giữ nguyên, 
-                // nhưng 90% lỗi này là do nó đã bị đổi thành "read".
                 .andExpect(jsonPath("$[0].read").value(false)); 
 
         // Xác minh các tầng dưới đã được gọi đúng luồng logic
         verify(userRepository).findByStudentCode("1412");
         verify(notificationRepository).findByReceiverIdOrderByCreatedAtDesc(1L);
         verify(notificationService).mapToDTO(mockNotification);
+    }
+
+    // ==========================================
+    // 2. TEST ĐÁNH DẤU ĐÃ ĐỌC (PUT)
+    // ==========================================
+    @Test
+    @WithMockUser(username = "1412")
+    @DisplayName("Đánh dấu tất cả là đã đọc -> Gọi Service và trả về 200 OK")
+    void markAllAsRead_shouldCallServiceAndReturn200() throws Exception {
+        when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(currentUser));
+
+        mockMvc.perform(put("/api/notifications/read-all")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        verify(userRepository).findByStudentCode("1412");
+        verify(notificationService).markAllAsRead(1L);
+    }
+
+    // ==========================================
+    // 3. TEST NGOẠI LỆ KHI KHÔNG TÌM THẤY USER
+    // ==========================================
+    @Test
+    @WithMockUser(username = "ghost")
+    @DisplayName("Bắn lỗi RuntimeException khi token hợp lệ nhưng DB không có User")
+    void getCurrentUser_whenUserNotFound_shouldThrowException() throws Exception {
+        // Ép trả về Optional.empty() để chạy vào nhánh .orElseThrow()
+        when(userRepository.findByStudentCode("ghost")).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/notifications"))
+                // Kiểm tra xem Exception được bắn ra từ Controller có đúng class và message không
+                .andExpect(result -> org.junit.jupiter.api.Assertions
+                        .assertTrue(result.getResolvedException() instanceof RuntimeException))
+                .andExpect(result -> org.junit.jupiter.api.Assertions
+                        .assertEquals("Không tìm thấy người dùng (Token không hợp lệ?)", 
+                                result.getResolvedException().getMessage()));
+        
+        verify(userRepository).findByStudentCode("ghost");
     }
 }

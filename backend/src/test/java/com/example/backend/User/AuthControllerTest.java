@@ -617,4 +617,48 @@ class AuthControllerTest extends BaseControllerTest {
                                 .andExpect(status().isBadRequest())
                                 .andExpect(content().string("Lỗi: Không tìm thấy lịch sử"));
         }
+        // ==========================================
+        // 🟢 BỔ SUNG: TEST TÍNH NĂNG GỠ ẢNH BÌA (REMOVE COVER PHOTO)
+        // ==========================================
+
+        @Test
+        @WithMockUser(username = "1412")
+        @DisplayName("Remove Cover Photo - Thành công gỡ ảnh bìa và trả về UserResponse")
+        void removeCoverPhoto_whenSuccess_shouldSetCoverToNullAndReturn200() throws Exception {
+                // Đảm bảo user đang có ảnh bìa trước khi xóa
+                mockUser.setCoverPhotoUrl("https://s3.aws.com/cover.jpg");
+
+                when(userRepository.findByStudentCode("1412")).thenReturn(Optional.of(mockUser));
+
+                mockMvc.perform(delete("/api/auth/profile/cover")
+                                .contentType(MediaType.APPLICATION_JSON))
+                                .andExpect(status().isOk())
+                                // Kiểm tra coverPhotoUrl trong JSON trả về phải là null (empty)
+                                .andExpect(jsonPath("$.coverPhotoUrl").isEmpty())
+                                .andExpect(jsonPath("$.studentCode").value("1412"));
+
+                // Kiểm chứng UserRepository đã gọi hàm save để lưu thay đổi
+                verify(userRepository).save(mockUser);
+                // Kiểm chứng thực tế object đã bị set thành null
+                org.junit.jupiter.api.Assertions.assertNull(mockUser.getCoverPhotoUrl());
+        }
+
+        @Test
+        @WithMockUser(username = "ghost")
+        @DisplayName("Remove Cover Photo - Bắn lỗi RuntimeException khi không tìm thấy User")
+        void removeCoverPhoto_whenUserNotFound_shouldThrowException() throws Exception {
+                // 🟢 Ép Optional.empty() để kích hoạt nhánh lambda .orElseThrow()
+                when(userRepository.findByStudentCode("ghost")).thenReturn(Optional.empty());
+
+                mockMvc.perform(delete("/api/auth/profile/cover"))
+                                // Vì hàm không có try-catch nên Spring sẽ ném thẳng Exception ra ngoài
+                                .andExpect(result -> org.junit.jupiter.api.Assertions
+                                                .assertTrue(result.getResolvedException() instanceof RuntimeException))
+                                .andExpect(result -> org.junit.jupiter.api.Assertions.assertEquals(
+                                                "Không tìm thấy người dùng",
+                                                result.getResolvedException().getMessage()));
+
+                // Đảm bảo không có hành động save nào được thực thi
+                verify(userRepository, org.mockito.Mockito.never()).save(any(User.class));
+        }
 }
