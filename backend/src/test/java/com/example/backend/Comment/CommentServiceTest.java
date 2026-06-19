@@ -155,7 +155,14 @@ class CommentServiceTest {
         req.setParentCommentId(50L);
         req.setIsAnonymous(false); // Test nhánh false rõ ràng
 
-        Comment parent = Comment.builder().id(50L).build();
+        // 🟢 ĐÃ SỬA: Tạo tác giả giả lập cho bình luận cha để không bị NullPointerException
+        User parentAuthor = new User();
+        parentAuthor.setId(2); // Khác với currentUser.getId() = 1 để kích hoạt nhánh gửi thông báo
+
+        Comment parent = Comment.builder()
+                .id(50L)
+                .author(parentAuthor) // Bơm tác giả vào đây!
+                .build();
 
         when(postRepository.findById(10L)).thenReturn(Optional.of(mockPost));
         when(commentRepository.findById(50L)).thenReturn(Optional.of(parent));
@@ -171,6 +178,9 @@ class CommentServiceTest {
         assertEquals(50L, res.getParentId());
         verify(commentRepository).incrementReplyCount(50L); 
         verify(postRepository).incrementCommentCount(10L);
+        
+        // 🟢 BỔ SUNG: Kiểm chứng xem event thông báo REPLY_COMMENT có được bắn ra không
+        verify(eventPublisher, atLeastOnce()).publishEvent(any(NotificationEvent.class));
     }
 
     @Test
