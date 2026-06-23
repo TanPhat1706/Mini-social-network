@@ -56,7 +56,7 @@ public class Comment extends BaseEntity {
     @Column(columnDefinition = "NVARCHAR(MAX)", nullable = false)
     private String content;
 
-    @Column(nullable = false)
+    @Column(name = "reaction_count", nullable = false)
     private Long reactionCount = 0L;
 
     @Column(nullable = false)
