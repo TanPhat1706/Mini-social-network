@@ -17,18 +17,18 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     Page<Comment> findRepliesByParentId(@Param("parentId") Long parentId, Pageable pageable);
 
     @Modifying
-    @Query("UPDATE Comment c SET c.likeCount = c.likeCount + 1 WHERE c.id = :id")
-    void incrementLikeCount(Long id);
-
-    @Modifying
     @Query("UPDATE Comment c SET c.replyCount = c.replyCount + 1 WHERE c.id = :id")
     void incrementReplyCount(Long id);
 
     @Modifying
-    @Query("UPDATE Comment c SET c.likeCount = c.likeCount - 1 WHERE c.id = :id AND c.likeCount > 0")
-    void decrementLikeCount(Long id);
-
-    @Modifying
     @Query("UPDATE Comment c SET c.replyCount = c.replyCount - 1 WHERE c.id = :id AND c.replyCount > 0")
     void decrementReplyCount(Long id);
+
+    @Modifying
+    @Query("UPDATE Comment c SET c.reactionCount = c.reactionCount + 1 WHERE c.id = :id")
+    void incrementReactionCount(Long id);
+
+    @Modifying
+    @Query("UPDATE Comment c SET c.reactionCount = c.reactionCount - 1 WHERE c.id = :id AND c.reactionCount > 0")
+    void decrementReactionCount(Long id);
 }

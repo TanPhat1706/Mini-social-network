@@ -249,6 +249,7 @@ public class PostService {
                     evenPublisher.publishEvent(new NotificationEvent(
                             currentUser, post.getAuthor(), NotificationType.LIKE_POST, postId, "POST",
                             "đã thay đổi cảm xúc về bài viết của bạn",
+                            requestedReaction,
                             false));
                 }
             } else {
@@ -265,6 +266,7 @@ public class PostService {
                 evenPublisher.publishEvent(new NotificationEvent(
                         currentUser, post.getAuthor(), NotificationType.LIKE_POST, postId, "POST",
                         "đã bày tỏ cảm xúc về bài viết của bạn",
+                        requestedReaction,
                         false));
             }
         } finally {
@@ -366,6 +368,7 @@ public class PostService {
                 rootPost.getId(),
                 "POST",
                 "đã chia sẻ bài viết của bạn.",
+                null,
                 false));
         return mapToPostResponse(savedShare);
     }

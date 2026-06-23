@@ -9,6 +9,8 @@ import ReplyIcon from '@mui/icons-material/Reply';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ShareIcon from '@mui/icons-material/Share';
+import InsertEmoticonIcon from '@mui/icons-material/InsertEmoticon';
+import icons from 'react-reactions/src/helpers/icons';
 import { useNavigate } from 'react-router-dom';
 import { useWebSocket } from '../../context/useWebSocket';
 import axiosClient from '../../api/axiosClient';
@@ -48,6 +50,32 @@ export default function NotificationBell() {
         return { icon: <ShareIcon sx={{ fontSize: 11 }} />, color: '#f59e0b', label: 'Chia sẻ bài viết' };
       default:
         return { icon: <NotificationsIcon sx={{ fontSize: 11 }} />, color: '#6b7280', label: 'Thông báo' };
+    }
+  };
+
+  // --- HELPER: Trả về icon + màu theo kiểu reaction (comment/post reactions) ---
+  const getReactionMeta = (reaction: string): { icon: React.ReactNode; color: string; label: string; isImage?: boolean } => {
+    // Use react-reactions icons (data-URI images) for consistent reaction visuals
+    const key = (reaction || '').toLowerCase();
+    const img = icons.find('facebook', key);
+    const common = { color: 'primary.main', label: reaction };
+
+    switch (key) {
+      // badge is 20x20; make inner icon ~90% (18x18) and use white circular background
+      case 'like':
+        return { icon: <Box sx={{ width: '95%', height: '95%', backgroundImage: `url(${img})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />, color: '#ffffff', label: 'Thích', isImage: true };
+      case 'love':
+        return { icon: <Box sx={{ width: '95%', height: '95%', backgroundImage: `url(${img})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />, color: '#ffffff', label: 'Yêu thích', isImage: true };
+      case 'haha':
+        return { icon: <Box sx={{ width: '95%', height: '95', backgroundImage: `url(${img})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />, color: '#ffffff', label: 'Haha', isImage: true };
+      case 'wow':
+        return { icon: <Box sx={{ width: '95%', height: '95%', backgroundImage: `url(${img})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />, color: '#ffffff', label: 'Wow', isImage: true };
+      case 'sad':
+        return { icon: <Box sx={{ width: '95%', height: '95%', backgroundImage: `url(${img})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />, color: '#ffffff', label: 'Buồn', isImage: true };
+      case 'angry':
+        return { icon: <Box sx={{ width: '95%', height: '95%', backgroundImage: `url(${img})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />, color: '#ffffff', label: 'Giận', isImage: true };
+      default:
+        return { icon: <InsertEmoticonIcon sx={{ fontSize: 11 }} />, color: '#6b7280', label: 'Phản ứng' };
     }
   };
 
@@ -206,22 +234,33 @@ export default function NotificationBell() {
                             size={48} 
                         />
                         {/* Badge icon nhỏ ở góc dưới phải của avatar */}
-                        <Tooltip title={getNotifMeta(notif.type).label} arrow>
-                            <Box sx={{
-                                position: 'absolute',
-                                bottom: -2, right: -2,
-                                width: 20, height: 20,
-                                bgcolor: getNotifMeta(notif.type).color,
-                                borderRadius: '50%',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                border: '2px solid',
-                                borderColor: 'background.paper',
-                                color: '#fff',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
-                            }}>
-                                {getNotifMeta(notif.type).icon}
-                            </Box>
-                        </Tooltip>
+                        {(() => {
+                          const meta = notif.reactionType ? getReactionMeta(notif.reactionType) : getNotifMeta(notif.type);
+                          // Ensure icon renders white on top of colored background
+                          let iconElement = meta.icon;
+                          if (!meta.isImage && React.isValidElement(meta.icon)) {
+                            iconElement = React.cloneElement(meta.icon as React.ReactElement, { sx: { ...( (meta.icon as any).props?.sx || {} ), color: '#fff', fontSize: 11 } });
+                          }
+                          return (
+                            <Tooltip title={meta.label} arrow>
+                              <Box sx={{
+                                  position: 'absolute',
+                                  bottom: -2, right: -2,
+                                  width: 20, height: 20,
+                                  bgcolor: meta.color,
+                                  borderRadius: '50%',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  border: '2px solid',
+                                  borderColor: 'background.paper',
+                                  color: '#fff',
+                                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                                  zIndex: 3,
+                                }}>
+                                {iconElement}
+                              </Box>
+                            </Tooltip>
+                          );
+                        })()}
                     </Box>
                     
                     <Box sx={{ flex: 1 }}>

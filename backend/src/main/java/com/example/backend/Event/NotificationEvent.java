@@ -1,6 +1,7 @@
 package com.example.backend.Event;
 
 import com.example.backend.Enum.NotificationType;
+import com.example.backend.Enum.ReactionType;
 import com.example.backend.User.User;
 
 import lombok.AllArgsConstructor;
@@ -15,6 +16,7 @@ public class NotificationEvent {
     private Long entityId;
     private String entityType;
     private String message;
+    private ReactionType reactionType;
 
     private boolean isAnonymous; // 🟢 THÊM TRƯỜNG NÀY
 }

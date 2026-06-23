@@ -57,6 +57,7 @@ public class FriendshipService {
                     Long.valueOf(sender.getId()), // EntityID (Click vào sẽ dẫn tới trang cá nhân người gửi)
                     "USER", // EntityType
                     "đã gửi lại lời mời kết bạn.", // Message
+                    null,
                     false // isAnonymous
             ));
 
@@ -79,6 +80,7 @@ public class FriendshipService {
                 Long.valueOf(sender.getId()),
                 "USER",
                 "đã gửi lời mời kết bạn.",
+                null,
                 false));
 
         return "Đã gửi lời mời";
@@ -108,6 +110,7 @@ public class FriendshipService {
                 Long.valueOf(me.getId()),
                 "USER",
                 "đã chấp nhận lời mời kết bạn.",
+                null,
                 false));
 
         return "Đã trở thành bạn bè";

@@ -35,10 +35,11 @@ export interface CommentData {
     content: string;
     author: UserSummary;
     createdAt: string;
-    likeCount: number;
+    reactionCount: number;
+    reactionCounts?: Record<string, number>;
+    currentUserReaction?: string | null;
     replyCount: number;
     parentId: number | null;
-    likedByCurrentUser: boolean;
     // Dùng cho UI logic
     replies?: CommentData[]; 
 }

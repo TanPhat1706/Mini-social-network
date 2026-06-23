@@ -369,7 +369,7 @@ class CommentServiceTest {
 
     @Test
     void toggleLike_whenAlreadyLiked_shouldRemoveLike_andDecrement() {
-        CommentLike like = new CommentLike();
+        CommentReaction like = new CommentReaction();
         when(commentLikeRepository.findByCommentIdAndUserId(50L, 1L)).thenReturn(Optional.of(like));
 
         commentService.toggleLike(50L);
@@ -389,7 +389,7 @@ class CommentServiceTest {
 
         commentService.toggleLike(50L);
 
-        verify(commentLikeRepository).save(any(CommentLike.class));
+        verify(commentLikeRepository).save(any(CommentReaction.class));
         verify(commentRepository).incrementLikeCount(50L);
         verify(vptlService).trackSocialActivity(1, "LIKE");
     }

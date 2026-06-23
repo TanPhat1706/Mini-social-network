@@ -11,10 +11,14 @@ import './ChatBox.css';
 import { getMessagesHistory } from '../../api/messageApi';
 import { format, isToday, isYesterday, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { Tooltip, Menu, MenuItem, Popover } from '@mui/material';
+import { Tooltip, Menu, MenuItem, Popover, Box } from '@mui/material';
 import ReplyIcon from '@mui/icons-material/Reply';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import InsertEmoticonIcon from '@mui/icons-material/InsertEmoticon'; // 🔴 IMPORT ICON MẶT CƯỜI CHO Ô INPUT
+
+// 🔴 IMPORT THƯ VIỆN EMOJI PICKER
+import EmojiPicker, { Theme } from 'emoji-picker-react';
 
 import AvatarWithFrame from '../AvatarWithFrame';
 import ColoredName from '../ColoredName';
@@ -104,6 +108,9 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
   const [selectedMsgForMore, setSelectedMsgForMore] = useState<Message | null>(null);
   const [anchorElReact, setAnchorElReact] = useState<null | HTMLElement>(null);
   const [selectedMsgForReact, setSelectedMsgForReact] = useState<Message | null>(null);
+  
+  // 🔴 STATE CHO BẢNG CHỌN EMOJI
+  const [anchorElEmoji, setAnchorElEmoji] = useState<null | HTMLElement>(null);
 
   const stompClientRef = useRef<Client | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -147,7 +154,6 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
         }
       })
       .catch(console.error);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id, targetUser?.id]);
 
   useEffect(() => {
@@ -216,7 +222,6 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
     stompClientRef.current = client;
 
     return () => { client.deactivate(); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id, targetUser?.id, navigate, closeChat]);
 
   useEffect(() => {
@@ -270,6 +275,7 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
       })
     });
     setInput('');
+    setAnchorElEmoji(null); // Đóng bảng emoji nếu đang mở
 
     stompClientRef.current?.publish({
       destination: '/app/chat.typing',
@@ -329,7 +335,6 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
       const reactionTypes = Array.from(new Set(msg.reactions?.map(r => r.reactionType) || []));
       const reactionCount = msg.reactions?.length || 0;
 
-      // 🟢 ĐÃ SỬA CÚ PHÁP: Mở thẻ React.Fragment tại đây
       return (
         <React.Fragment key={index}>
           <div className={`fb-message-row ${isMe ? 'fb-my-row' : 'fb-their-row'}`}>
@@ -353,7 +358,6 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
               }}
             >
               <div className={`fb-message-wrapper ${isMe ? 'my-wrapper' : 'their-wrapper'}`}>
-                {/* 🟢 THÊM AVATAR CỦA ĐỐI PHƯƠNG NẰM CẠNH TIN NHẮN */}
               {!isMe && (
                 <div style={{ marginRight: '8px', alignSelf: 'flex-end' }}>
                   <AvatarWithFrame
@@ -384,7 +388,9 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
                   {!msg.isDeletedEveryone && reactionCount > 0 && (
                     <div className={`fb-reaction-badge ${isMe ? 'badge-me' : 'badge-their'}`}>
                       {reactionTypes.map((type, i) => (
-                        <span key={i} className="fb-reaction-icon-small">{REACTION_EMOJIS[type]}</span>
+                        <span key={i} className="fb-reaction-icon-small">
+                          {REACTION_EMOJIS[type]}
+                        </span>
                       ))}
                       {reactionCount > 1 && <span className="fb-reaction-count">{reactionCount}</span>}
                     </div>
@@ -416,7 +422,6 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
             </Tooltip>
           </div>
 
-          {/* 🟢 Render Mini Avatar an toàn nằm trong Fragment */}
           {isMe && index === lastReadMyMsgIndex && (
             <div className="fb-read-receipt">
               <AvatarWithFrame
@@ -428,7 +433,6 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
         </React.Fragment>
       );
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, currentUser.id, isDark]);
 
   if (!targetUser) return null;
@@ -486,6 +490,7 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* FOOTER: INPUT & EMOJI */}
       <div className="fb-chat-footer">
         <div className="fb-icon" onClick={sendGameInvite} title="Mời chơi Game" style={{ width: '36px', height: '36px', fontSize: '20px' }}>🎮</div>
 
@@ -498,6 +503,12 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
             placeholder="Aa"
             className="fb-chat-input"
           />
+          
+          {/* 🔴 NÚT GỌI BẢNG EMOJI */}
+          <InsertEmoticonIcon
+            sx={{ color: '#0084ff', cursor: 'pointer', mx: 0.5 }}
+            onClick={(e) => setAnchorElEmoji(e.currentTarget)}
+          />
         </div>
 
         <div className={`fb-footer-icons-right ${isConnected ? '' : 'fb-send-disabled'}`} onClick={sendMessage}>
@@ -505,19 +516,59 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
         </div>
       </div>
 
-      <Menu anchorEl={anchorElMore} open={Boolean(anchorElMore)} onClose={() => setAnchorElMore(null)} sx={{ zIndex: 3500 }}>
+      <Menu 
+        anchorEl={anchorElMore} 
+        open={Boolean(anchorElMore)} 
+        onClose={() => setAnchorElMore(null)} 
+        sx={{ zIndex: 3500 }}
+        disableScrollLock={true}
+      >
         <MenuItem onClick={() => handleRevoke('SELF')}>Thu hồi phía bạn</MenuItem>
         {selectedMsgForMore?.senderId === currentUser.id && (
           <MenuItem onClick={() => handleRevoke('EVERYONE')} sx={{ color: '#e53935' }}>Thu hồi với mọi người</MenuItem>
         )}
       </Menu>
 
-      <Popover anchorEl={anchorElReact} open={Boolean(anchorElReact)} onClose={() => setAnchorElReact(null)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }} transformOrigin={{ vertical: 'bottom', horizontal: 'center' }} sx={{ zIndex: 3500 }}>
+      <Popover 
+        anchorEl={anchorElReact} 
+        open={Boolean(anchorElReact)} 
+        onClose={() => setAnchorElReact(null)} 
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }} 
+        transformOrigin={{ vertical: 'bottom', horizontal: 'center' }} 
+        sx={{ zIndex: 3500 }}
+        disableScrollLock={true}
+      >
         <div className="fb-reaction-bar-popup">
           {Object.entries(REACTION_EMOJIS).map(([type, emoji]) => (
-            <span key={type} className="fb-reaction-emoji-btn" onClick={() => handleReact(type)}>{emoji}</span>
+            <span key={type} className="fb-reaction-emoji-btn" onClick={() => handleReact(type)}>
+              {emoji}
+            </span>
           ))}
         </div>
+      </Popover>
+
+      {/* 🔴 BẢNG CHỌN EMOJI (TRÁNH LỖI XÊ DỊCH BẰNG POPOVER) */}
+      <Popover
+        anchorEl={anchorElEmoji}
+        open={Boolean(anchorElEmoji)}
+        onClose={() => setAnchorElEmoji(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        sx={{ zIndex: 3500 }}
+        disableScrollLock={true}
+        PaperProps={{
+          sx: { borderRadius: '12px', mb: 1, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }
+        }}
+      >
+        <EmojiPicker
+          onEmojiClick={(emojiData) => {
+            setInput(prev => prev + emojiData.emoji);
+          }}
+          theme={isDark ? Theme.DARK : Theme.LIGHT} // Ăn theo màu Dark mode dự án
+          searchPlaceHolder="Tìm kiếm emoji..."
+          width={300}
+          height={350}
+        />
       </Popover>
     </div>
   );
