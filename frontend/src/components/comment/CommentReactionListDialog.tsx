@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, IconButton,
   Tabs, Tab, Box, Typography, List, ListItem,
@@ -9,8 +9,9 @@ import { Link as RouterLink } from 'react-router-dom';
 import api from '../../api/api';
 import AvatarWithFrame from '../AvatarWithFrame';
 import ColoredName from '../ColoredName';
-import type { ReactionType } from './CardPost';
 import icons from 'react-reactions/src/helpers/icons'; // 🔴 IMPORT BỘ ICON
+
+type ReactionType = 'LIKE' | 'LOVE' | 'HAHA' | 'WOW' | 'SAD' | 'ANGRY';
 
 // 🔴 CONFIG SỬ DỤNG ICON KEY
 const REACTION_CONFIG: Record<ReactionType, { iconKey: string }> = {
@@ -32,15 +33,21 @@ interface ReactionUser {
   reactionType: ReactionType;
 }
 
-interface ReactionListDialogProps {
+interface CommentReactionListDialogProps {
   open: boolean;
   onClose: () => void;
-  postId: number;
+  commentId: number;
   reactionCounts: Record<string, number>;
   totalReactions: number;
 }
 
-export default function ReactionListDialog({ open, onClose, postId, reactionCounts, totalReactions }: ReactionListDialogProps) {
+export default function CommentReactionListDialog({
+  open,
+  onClose,
+  commentId,
+  reactionCounts,
+  totalReactions,
+}: CommentReactionListDialogProps) {
   const [currentTab, setCurrentTab] = useState<string>('ALL');
   const [users, setUsers] = useState<ReactionUser[]>([]);
   const [page, setPage] = useState(0);
@@ -55,7 +62,7 @@ export default function ReactionListDialog({ open, onClose, postId, reactionCoun
       .map(([type, count]) => ({
         value: type,
         label: '',
-        count: count,
+        count,
         iconType: type as ReactionType
       }))
   ];
@@ -67,14 +74,12 @@ export default function ReactionListDialog({ open, onClose, postId, reactionCoun
       if (tab !== 'ALL') {
         params.type = tab;
       }
-
-      const response = await api.get(`/api/posts/${postId}/reactions`, { params });
+      const response = await api.get(`/api/comments/${commentId}/reactions`, { params });
       const newUsers = response.data.content;
-      
       setUsers(prev => pageNum === 0 ? newUsers : [...prev, ...newUsers]);
       setHasMore(!response.data.last);
     } catch (error) {
-      console.error("Lỗi khi tải danh sách tương tác:", error);
+      console.error('Lỗi khi tải danh sách tương tác comment:', error);
     } finally {
       setLoading(false);
     }
@@ -86,9 +91,9 @@ export default function ReactionListDialog({ open, onClose, postId, reactionCoun
       setUsers([]);
       fetchReactions(currentTab, 0);
     }
-  }, [open, currentTab, postId]);
+  }, [open, currentTab, commentId]);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
     setCurrentTab(newValue);
   };
 
@@ -103,17 +108,17 @@ export default function ReactionListDialog({ open, onClose, postId, reactionCoun
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs" scroll="paper">
       <DialogTitle sx={{ m: 0, p: 2, display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs 
-          value={currentTab} 
-          onChange={handleTabChange} 
-          variant="scrollable" 
+        <Tabs
+          value={currentTab}
+          onChange={handleTabChange}
+          variant="scrollable"
           scrollButtons="auto"
           sx={{ minHeight: 36, '& .MuiTab-root': { minHeight: 36, py: 0, px: 2, textTransform: 'none' } }}
         >
           {availableTabs.map((tab) => (
-            <Tab 
-              key={tab.value} 
-              value={tab.value} 
+            <Tab
+              key={tab.value}
+              value={tab.value}
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   {/* 🔴 TAB ICON */}
@@ -130,7 +135,7 @@ export default function ReactionListDialog({ open, onClose, postId, reactionCoun
                     {tab.label || tab.count}
                   </Typography>
                 </Box>
-              } 
+              }
             />
           ))}
         </Tabs>
@@ -138,13 +143,13 @@ export default function ReactionListDialog({ open, onClose, postId, reactionCoun
           <CloseIcon />
         </IconButton>
       </DialogTitle>
-      
+
       <DialogContent dividers sx={{ p: 0, minHeight: 300 }}>
         <List sx={{ pt: 0 }}>
           {users.map((user, index) => (
-            <ListItem 
-              key={`${user.userId}-${index}`} 
-              component={RouterLink} 
+            <ListItem
+              key={`${user.userId}-${index}`}
+              component={RouterLink}
               to={`/profile/${user.studentCode}`}
               sx={{ '&:hover': { bgcolor: 'action.hover' }, textDecoration: 'none', color: 'inherit' }}
             >
@@ -165,7 +170,8 @@ export default function ReactionListDialog({ open, onClose, postId, reactionCoun
                       zIndex: 2,
                     }} />
                   }
-                  sx={{ '& .MuiBadge-badge': { zIndex: 2 } }}>
+                  sx={{ '& .MuiBadge-badge': { zIndex: 2 } }}
+                >
                   <AvatarWithFrame src={user.avatarUrl} name={user.fullName} size={40} />
                 </Badge>
               </ListItemAvatar>
@@ -173,13 +179,13 @@ export default function ReactionListDialog({ open, onClose, postId, reactionCoun
             </ListItem>
           ))}
         </List>
-        
+
         {loading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
             <CircularProgress size={24} />
           </Box>
         )}
-        
+
         {!loading && hasMore && users.length > 0 && (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
             <Button variant="text" size="small" onClick={handleLoadMore}>

@@ -1,8 +1,12 @@
 package com.example.backend.Comment;
 
 import com.example.backend.BaseEntity.BaseEntity;
+import com.example.backend.Enum.ReactionType;
 import com.example.backend.User.User;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,16 +22,15 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(
-    name = "comment_likes",
-    uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"comment_id", "user_id"})
-    }
-)
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Table(name = "comment_reactions", uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "comment_id", "user_id" })
+})
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
-public class CommentLike extends BaseEntity {
+public class CommentReaction extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -39,4 +42,8 @@ public class CommentLike extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ReactionType reactionType;
 }

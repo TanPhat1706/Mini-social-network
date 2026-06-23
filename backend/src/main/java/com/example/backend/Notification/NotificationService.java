@@ -9,6 +9,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import com.example.backend.Event.NotificationEvent;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import com.example.backend.User.User;
@@ -85,6 +86,10 @@ public class NotificationService {
         try {
             Map<String, Object> metadata = new HashMap<>();
 
+            if (event.getReactionType() != null) {
+                metadata.put("reactionType", event.getReactionType().name());
+            }
+
             switch (event.getType()) {
                 case COMMENT_POST:
                 case REPLY_COMMENT:
@@ -125,6 +130,18 @@ public class NotificationService {
         String avatarFrame = isAnon ? null : sender.getCurrentAvatarFrame();
         String nameColor = isAnon ? null : sender.getCurrentNameColor();
 
+        String reactionType = null;
+        try {
+            if (notification.getMetadata() != null && !notification.getMetadata().isBlank()) {
+                JsonNode metadataNode = objectMapper.readTree(notification.getMetadata());
+                if (metadataNode.has("reactionType")) {
+                    reactionType = metadataNode.get("reactionType").asText(null);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Cannot parse notification.metadata for reactionType", e);
+        }
+
         return NotificationDTO.builder()
                 .id(notification.getId())
                 .senderId(senderId)
@@ -138,6 +155,7 @@ public class NotificationService {
                 .isRead(notification.getIsRead() != null ? notification.getIsRead() : false) // 🟢 Bảo vệ luôn isRead
                                                                                              // cho chắc chắn
                 .type(notification.getType())
+                .reactionType(reactionType)
                 .build();
     }
 
@@ -145,6 +163,8 @@ public class NotificationService {
         switch (n.getType()) {
             case LIKE_POST:
                 return "đã bày tỏ cảm xúc về bài viết của bạn.";
+            case LIKE_COMMENT:
+                return "đã bày tỏ cảm xúc về bình luận của bạn";
             case COMMENT_POST:
                 return "đã bình luận về bài viết của bạn.";
             case REPLY_COMMENT:
@@ -163,6 +183,8 @@ public class NotificationService {
     private String buildTargetUrl(Notification n) {
         switch (n.getType()) {
             case LIKE_POST:
+                return "/posts/" + n.getEntityId();
+            case LIKE_COMMENT:
                 return "/posts/" + n.getEntityId();
             case COMMENT_POST:
                 return "/posts/" + n.getEntityId();

@@ -1,6 +1,9 @@
 package com.example.backend.Comment;
 
 import java.time.LocalDateTime;
+import java.util.Map;
+
+import com.example.backend.Enum.ReactionType;
 import com.example.backend.User.UserResponse;
 import lombok.Builder;
 import lombok.Data;
@@ -12,8 +15,9 @@ public class CommentResponse {
     private String content;
     private UserResponse author;
     private LocalDateTime createdAt;
-    private Long likeCount;
+    private Long reactionCount;
+    private Map<String, Long> reactionCounts;
     private Long replyCount;
-    private boolean isLikedByCurrentUser;
+    private ReactionType currentUserReaction;
     private Long parentId;
 }

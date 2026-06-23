@@ -13,10 +13,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.backend.Enum.ReactionType;
+import com.example.backend.Post.ReactRequest;
+import com.example.backend.PostReaction.ReactionUserResponse;
 import com.example.backend.User.User;
-
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -27,9 +30,8 @@ public class CommentController {
     private final CommentService commentService;
 
     @PostMapping
-    public ResponseEntity<CommentResponse> createComment(@Valid @RequestBody CommentRequest request, 
-        @AuthenticationPrincipal User user
-    ) {
+    public ResponseEntity<CommentResponse> createComment(@Valid @RequestBody CommentRequest request,
+            @AuthenticationPrincipal User user) {
         CommentResponse response = commentService.createComment(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -67,9 +69,19 @@ public class CommentController {
         return ResponseEntity.ok(replies);
     }
 
-    @PostMapping("/{id}/like")
-    public ResponseEntity<Void> toggleLike(@PathVariable Long id, @AuthenticationPrincipal User user) {        
-        commentService.toggleLike(id);
+    @PostMapping("/{id}/react")
+    public ResponseEntity<?> reactToComment(@PathVariable Long id, @RequestBody ReactRequest request,
+            @AuthenticationPrincipal User user) {
+        commentService.reactToComment(id, request.getReactionType());
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{commentId}/reactions")
+    public ResponseEntity<Page<ReactionUserResponse>> getReactionsByCommentId(
+            @PathVariable Long commentId,
+            @RequestParam(required = false) ReactionType type,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(commentService.getReactionsByCommentId(commentId, type, page, size));
     }
 }

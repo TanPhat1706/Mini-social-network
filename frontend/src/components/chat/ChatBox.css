@@ -328,6 +328,7 @@
   border-radius: 30px;
 }
 
+/* 🟢 Đổi lại thành text emoji có font-size */
 .fb-reaction-emoji-btn {
   font-size: 24px;
   cursor: pointer;
@@ -336,6 +337,11 @@
 
 .fb-reaction-emoji-btn:hover {
   transform: scale(1.3) translateY(-4px);
+}
+
+/* 🟢 Đổi lại icon nhỏ dưới tin nhắn thành font-size */
+.fb-reaction-icon-small {
+  font-size: 13px;
 }
 
 /* Huy hiệu (Badge) hiển thị reaction đang có trên tin nhắn */

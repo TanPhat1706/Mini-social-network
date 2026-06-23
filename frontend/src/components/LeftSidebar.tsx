@@ -11,6 +11,8 @@ import {
 } from '@mui/icons-material';
 import type { User } from '../types/index';
 
+import { showDevelopmentAlert } from '../utils/swal';
+
 // 🔴 IMPORT MA THUẬT CSS VÀO ĐÂY
 import AvatarWithFrame from './AvatarWithFrame';
 import ColoredName from '../components/ColoredName'; // (Sửa đường dẫn cho đúng từng file)
@@ -20,10 +22,10 @@ interface LeftSidebarProps {
 }
 
 const menuItems = [
-  { text: 'Cửa hàng', icon: <StorefrontIcon sx={{ color: '#F5A623' }} />, path: '/shop' }, { text: 'Nhóm', icon: <GroupsIcon sx={{ color: '#2ABBA7' }} />, path: '/groups' },
-  { text: 'Kỷ niệm', icon: <HistoryIcon sx={{ color: '#1877F2' }} />, path: '/history' },
+  { text: 'Cửa hàng', icon: <StorefrontIcon sx={{ color: '#F5A623' }} />, path: '/shop' }, { text: 'Nhóm', icon: <GroupsIcon sx={{ color: '#2ABBA7' }} />, path: '/groups', isDevelopment: true },
+  { text: 'Kỷ niệm', icon: <HistoryIcon sx={{ color: '#1877F2' }} />, path: '/history', isDevelopment: true },
   { text: 'Mini game', icon: <GameIcon sx={{ color: '#F35E7A' }} />, path: '/games' },
-  { text: 'Đã lưu', icon: <BookmarkIcon sx={{ color: '#9360F7' }} />, path: '/saved' },
+  { text: 'Đã lưu', icon: <BookmarkIcon sx={{ color: '#9360F7' }} />, path: '/saved', isDevelopment: true },
 ];
 
 export default function LeftSidebar({ user }: LeftSidebarProps) {
@@ -61,8 +63,10 @@ export default function LeftSidebar({ user }: LeftSidebarProps) {
           return (
             <ListItemButton
               key={item.text}
-              component={RouterLink}
-              to={item.path}
+              {...(item.isDevelopment
+                ? { onClick: showDevelopmentAlert } // Nếu đang pt -> Mở popup
+                : { component: RouterLink, to: item.path } // Nếu đã xong -> Chuyển trang
+              )}
               selected={isActive}
               sx={{
                 borderRadius: 2,

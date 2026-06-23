@@ -10,6 +10,7 @@ import { differenceInMinutes, differenceInHours, differenceInDays } from 'date-f
 import { useColorMode } from '../../styles/theme';
 import AvatarWithFrame from '../AvatarWithFrame';
 import ColoredName from '../ColoredName';
+import { showDevelopmentAlert } from '../../utils/swal';
 
 interface Conversation {
   partnerId: number;
@@ -196,9 +197,9 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
       <div className="msg-dd-header">
         <div className="msg-dd-title">Đoạn chat</div>
         <div className="msg-dd-actions">
-           <div className="msg-dd-icon">•••</div>
-           <div className="msg-dd-icon">⤢</div>
-           <div className="msg-dd-icon">📝</div>
+           <div className="msg-dd-icon" onClick={showDevelopmentAlert}>•••</div>
+           <div className="msg-dd-icon" onClick={showDevelopmentAlert}>⤢</div>
+           <div className="msg-dd-icon" onClick={showDevelopmentAlert}>📝</div>
         </div>
       </div>
 
@@ -214,7 +215,7 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
       {!searchQuery && (
         <div className="msg-dd-tabs">
            <div className="msg-pill active">Tất cả</div>
-           <div className="msg-pill inactive">Chưa đọc</div>
+           <div className="msg-pill inactive" onClick={showDevelopmentAlert}>Chưa đọc</div>
         </div>
       )}
 
