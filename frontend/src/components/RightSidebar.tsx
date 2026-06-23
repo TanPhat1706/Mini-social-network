@@ -21,13 +21,11 @@ interface UserPresence {
   lastSeen?: string;
 }
 
-// 🟢 HÀM FORMAT THỜI GIAN NGẮN GỌN (Đã bỏ 'vừa xong', đếm thẳng từ 1p)
 const formatShortTime = (lastSeen?: string) => {
   if (!lastSeen) return '';
   const lastDate = new Date(lastSeen);
   const mins = differenceInMinutes(new Date(), lastDate);
 
-  // Kể cả dưới 1 phút hoặc bằng 0 thì vẫn hiển thị là 1p cho đẹp giao diện
   if (mins < 60) {
     return `${mins <= 0 ? 1 : mins}p`;
   }
@@ -49,17 +47,30 @@ export default function RightSidebar({ friends, onFriendClick }: RightSidebarPro
 
     const fetchAllPresences = async () => {
       try {
-        // 🟢 ĐÃ VÁ LỖI BẢO MẬT: Bọc encodeURIComponent để chống Injection/Path Traversal
-        const promises = friends.map(friend => 
-          api.get(`/api/users/${encodeURIComponent(friend.studentCode)}/presence`)
-        );
-        const results = await Promise.allSettled(promises);
+        const promises: Promise<any>[] = [];
+        const safeFriends: User[] = [];
 
+        friends.forEach(friend => {
+          const code = friend.studentCode;
+          
+          // 🟢 ĐÃ VÁ LỖI SONARCLOUD: Validate dữ liệu bằng Regex trước khi đưa vào URL
+          // Chỉ cho phép studentCode chứa chữ cái, số, dấu gạch ngang hoặc gạch dưới
+          if (code && /^[a-zA-Z0-9_-]+$/.test(code)) {
+            safeFriends.push(friend);
+            promises.push(api.get(`/api/users/${encodeURIComponent(code)}/presence`));
+          }
+        });
+
+        // Nếu không có friend nào hợp lệ thì bỏ qua
+        if (promises.length === 0) return;
+
+        const results = await Promise.allSettled(promises);
         const newPresences: Record<string, UserPresence> = {};
         
         results.forEach((result, index) => {
           if (result.status === 'fulfilled') {
-            newPresences[friends[index].studentCode] = result.value.data;
+            // Map đúng index của danh sách safeFriends đã được lọc
+            newPresences[safeFriends[index].studentCode] = result.value.data;
           }
         });
 
@@ -90,11 +101,9 @@ export default function RightSidebar({ friends, onFriendClick }: RightSidebarPro
             const isOnline = presence?.online;
             const offlineText = !isOnline ? formatShortTime(presence?.lastSeen) : '';
             
-            // 🟢 TÍNH TOÁN MÀU SẮC NỔI BẬT: Nếu chứa chữ 'p' (phút) thì tô màu xanh lá
             const isRecentOffline = offlineText.endsWith('p');
 
             return (
-              // ListItemButton của Material-UI đã tự động hỗ trợ A11y (phím Tab/Enter) nên không bị SonarCloud báo lỗi
               <ListItemButton
                 key={friend.id}
                 onClick={() => onFriendClick(friend)}
@@ -108,7 +117,6 @@ export default function RightSidebar({ friends, onFriendClick }: RightSidebarPro
                       size={36}
                     />
                     
-                    {/* RENDER TRẠNG THÁI NGAY GÓC AVATAR */}
                     {isOnline ? (
                       <Box sx={{
                         position: 'absolute', bottom: -2, right: -2, width: 12, height: 12,
@@ -118,7 +126,6 @@ export default function RightSidebar({ friends, onFriendClick }: RightSidebarPro
                     ) : offlineText ? (
                       <Box sx={{
                         position: 'absolute', bottom: -4, right: -6, 
-                        // 🟢 ĐỔI MÀU NỀN VÀ MÀU CHỮ DỰA TRÊN THỜI GIAN OFFLINE
                         backgroundColor: isRecentOffline ? '#e7f3ff' : 'action.selected', 
                         color: isRecentOffline ? '#1877f2' : 'text.secondary', 
                         borderRadius: '10px', 
@@ -127,7 +134,7 @@ export default function RightSidebar({ friends, onFriendClick }: RightSidebarPro
                         minWidth: '20px', 
                         height: '18px',
                         fontSize: '10px', 
-                        fontWeight: 800, // Làm chữ in đậm nổi bật hẳn lên
+                        fontWeight: 800, 
                         zIndex: 10,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         boxShadow: '0 2px 4px rgba(0,0,0,0.1)' 
