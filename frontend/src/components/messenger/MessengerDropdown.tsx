@@ -3,9 +3,8 @@ import { useChat } from '../../context/ChatContext';
 import './MessengerDropdown.css';
 import { getRecentConversations, markMessageAsRead } from '../../api/messageApi';
 import axiosClient from '../../api/axiosClient';
-import api from '../../api/api'; // 🟢 Import api chuẩn để gọi presence
+import api from '../../api/api'; 
 
-// 🟢 IMPORT DATE-FNS & DARK MODE
 import { differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
 import { useColorMode } from '../../styles/theme';
 import AvatarWithFrame from '../AvatarWithFrame';
@@ -14,20 +13,20 @@ import { showDevelopmentAlert } from '../../utils/swal';
 
 interface Conversation {
   partnerId: number;
-  studentCode: string; // 🟢 THÊM studentCode (Quan trọng để lấy trạng thái)
+  studentCode: string; 
   partnerName: string;
   partnerAvatar: string;
   lastMessage: string;
   timestamp: string;
   isRead: boolean;
   isFriendOnly?: boolean;
-  currentAvatarFrame?: string; // 🟢 ĐÓN DỮ LIỆU
+  currentAvatarFrame?: string; 
   currentNameColor?: string; 
 }
 
 interface Friend {
   id: number;
-  studentCode: string; // 🟢 THÊM studentCode
+  studentCode: string; 
   fullName: string;
   avatarUrl: string;
 }
@@ -42,7 +41,6 @@ interface Props {
   onMessageRead: () => void;
 }
 
-// 🟢 HÀM FORMAT THỜI GIAN NGẮN GỌN CHO HUY HIỆU
 const formatShortTime = (lastSeen?: string) => {
   if (!lastSeen) return '';
   const lastDate = new Date(lastSeen);
@@ -64,12 +62,10 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
   const [friends, setFriends] = useState<Friend[]>([]); 
   const [searchQuery, setSearchQuery] = useState(''); 
   
-  // 🟢 STATE LƯU TRẠNG THÁI BẠN BÈ
   const [presences, setPresences] = useState<Record<string, UserPresence>>({});
 
   const { openChat } = useChat();
   
-  // 🟢 LẤY CHẾ ĐỘ DARK MODE
   const { mode } = useColorMode();
   const isDark = mode === 'dark';
 
@@ -90,9 +86,7 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
       .catch(console.error);
   };
 
-  // 🟢 EFFECT POLLING TRẠNG THÁI HOẠT ĐỘNG
   useEffect(() => {
-    // Gom tất cả studentCode từ danh sách chat và bạn bè
     const codes = new Set([
       ...conversations.map(c => c.studentCode),
       ...friends.map(f => f.studentCode)
@@ -126,7 +120,7 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
   const handleItemClick = async (conv: Conversation) => {
     openChat({
       id: conv.partnerId,
-      studentCode: conv.studentCode, // Cần truyền để ChatBox hiển thị đúng
+      studentCode: conv.studentCode, 
       fullName: conv.partnerName,
       avatarUrl: conv.partnerAvatar,
       className: '', email: '', bio: '', role: '', active: true, createdAt: '', lastLogin: '',
@@ -192,14 +186,31 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
     return [...matchedConversations, ...matchedFriends];
   }, [searchQuery, conversations, friends]);
 
+  const handleAlertKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      showDevelopmentAlert();
+    }
+  };
+
+  // 🟢 Đã gỡ bỏ các comment sai cú pháp JSX gây vỡ giao diện
   return (
-    <div className={`messenger-dropdown ${isDark ? 'msg-dark-mode' : ''}`} onClick={(e) => e.stopPropagation()}>
+    <div 
+      className={`messenger-dropdown ${isDark ? 'msg-dark-mode' : ''}`} 
+      onClick={(e) => e.stopPropagation()}
+      tabIndex={-1}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.stopPropagation();
+        }
+      }}
+    >
       <div className="msg-dd-header">
         <div className="msg-dd-title">Đoạn chat</div>
         <div className="msg-dd-actions">
-           <div className="msg-dd-icon" onClick={showDevelopmentAlert}>•••</div>
-           <div className="msg-dd-icon" onClick={showDevelopmentAlert}>⤢</div>
-           <div className="msg-dd-icon" onClick={showDevelopmentAlert}>📝</div>
+           <div className="msg-dd-icon" role="button" tabIndex={0} onClick={showDevelopmentAlert} onKeyDown={handleAlertKeyDown}>•••</div>
+           <div className="msg-dd-icon" role="button" tabIndex={0} onClick={showDevelopmentAlert} onKeyDown={handleAlertKeyDown}>⤢</div>
+           <div className="msg-dd-icon" role="button" tabIndex={0} onClick={showDevelopmentAlert} onKeyDown={handleAlertKeyDown}>📝</div>
         </div>
       </div>
 
@@ -215,25 +226,40 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
       {!searchQuery && (
         <div className="msg-dd-tabs">
            <div className="msg-pill active">Tất cả</div>
-           <div className="msg-pill inactive" onClick={showDevelopmentAlert}>Chưa đọc</div>
+           <div 
+              className="msg-pill inactive" 
+              role="button" 
+              tabIndex={0} 
+              onClick={showDevelopmentAlert} 
+              onKeyDown={handleAlertKeyDown}
+           >
+              Chưa đọc
+           </div>
         </div>
       )}
 
       <div className="msg-dd-list">
         {displayList.length > 0 ? (
           displayList.map(c => {
-            // 🟢 LẤY VÀ PHÂN TÍCH TRẠNG THÁI HIỆN TẠI
             const presence = presences[c.studentCode];
             const isOnline = presence?.online;
             const offlineText = !isOnline ? formatShortTime(presence?.lastSeen) : '';
             const isRecentOffline = offlineText.endsWith('p');
-            const borderColor = isDark ? '#242526' : '#ffffff'; // Viền theo mode
+            const borderColor = isDark ? '#242526' : '#ffffff'; 
 
             return (
               <div 
                 key={c.partnerId} 
                 className={`msg-item ${!c.isRead ? 'unread' : ''}`}
+                role="button"
+                tabIndex={0}
                 onClick={() => handleItemClick(c)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleItemClick(c);
+                  }
+                }}
               >
                  <div className="msg-item-avatar-wrapper">
                  <AvatarWithFrame 
@@ -243,7 +269,6 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
                      size={56} 
                    />
                    
-                   {/* 🟢 RENDER HUY HIỆU TRẠNG THÁI */}
                    {isOnline ? (
                      <div style={{
                        position: 'absolute', bottom: 0, right: 0, width: 14, height: 14,
@@ -269,7 +294,6 @@ const MessengerDropdown: React.FC<Props> = ({ onClose, onMessageRead }) => {
                  
                  <div className="msg-item-info">
                  <div className="msg-item-name">
-                      {/* 🟢 TÔ MÀU CHO TÊN */}
                       <ColoredName name={c.partnerName} colorClass={c.currentNameColor} />
                     </div>
                     <div className="msg-item-preview">

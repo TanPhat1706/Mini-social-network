@@ -40,6 +40,14 @@ const AvatarWithFrame: React.FC<AvatarProps> = ({
             style={{ width: size, height: size, cursor: shouldShowPointer ? 'pointer' : 'default', overflow: 'visible' }}
             onClick={onClick}
             role={onClick ? 'button' : undefined}
+            // 🟢 THÊM XỬ LÝ SỰ KIỆN BÀN PHÍM CHO SONARCLOUD
+            tabIndex={onClick ? 0 : undefined} 
+            onKeyDown={onClick ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault(); // Tránh lỗi cuộn trang khi nhấn Space
+                    onClick(e as any);
+                }
+            } : undefined}
         >
             {frameClass && (
                 <div className={frameClass}></div>

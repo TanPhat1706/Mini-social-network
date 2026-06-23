@@ -15,11 +15,9 @@ import { Tooltip, Menu, MenuItem, Popover, Box } from '@mui/material';
 import ReplyIcon from '@mui/icons-material/Reply';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import InsertEmoticonIcon from '@mui/icons-material/InsertEmoticon'; // 🔴 IMPORT ICON MẶT CƯỜI CHO Ô INPUT
+import InsertEmoticonIcon from '@mui/icons-material/InsertEmoticon';
 
-// 🔴 IMPORT THƯ VIỆN EMOJI PICKER
 import EmojiPicker, { Theme } from 'emoji-picker-react';
-
 import AvatarWithFrame from '../AvatarWithFrame';
 import ColoredName from '../ColoredName';
 import { useProfileNavigation } from '../../utils/useProfileNavigation';
@@ -109,7 +107,6 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
   const [anchorElReact, setAnchorElReact] = useState<null | HTMLElement>(null);
   const [selectedMsgForReact, setSelectedMsgForReact] = useState<Message | null>(null);
   
-  // 🔴 STATE CHO BẢNG CHỌN EMOJI
   const [anchorElEmoji, setAnchorElEmoji] = useState<null | HTMLElement>(null);
 
   const stompClientRef = useRef<Client | null>(null);
@@ -275,7 +272,7 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
       })
     });
     setInput('');
-    setAnchorElEmoji(null); // Đóng bảng emoji nếu đang mở
+    setAnchorElEmoji(null); 
 
     stompClientRef.current?.publish({
       destination: '/app/chat.typing',
@@ -450,7 +447,21 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
   return (
     <div className={`fb-chat-container ${isDark ? 'fb-dark-mode' : ''}`}>
       <div className="fb-chat-header">
-        <div className="fb-chat-user" onClick={() => { navigateToProfile(targetUser.studentCode); closeChat(); }} style={{ cursor: 'pointer' }}>
+        {/* 🟢 SỬA VỊ TRÍ 1: Header User */}
+        <div 
+          className="fb-chat-user" 
+          style={{ cursor: 'pointer' }}
+          role="button"
+          tabIndex={0}
+          onClick={() => { navigateToProfile(targetUser.studentCode); closeChat(); }} 
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              navigateToProfile(targetUser.studentCode);
+              closeChat();
+            }
+          }}
+        >
           <div style={{ position: 'relative' }}>
             <AvatarWithFrame src={targetUser.avatarUrl || `https://ui-avatars.com/api/?name=${targetUser.fullName}`} frameClass={(targetUser as any).currentAvatarFrame} size={36} />
             {presence?.online && <span className="fb-online-dot" style={{ border: `2px solid ${isDark ? '#242526' : 'white'}` }} />}
@@ -492,7 +503,23 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
 
       {/* FOOTER: INPUT & EMOJI */}
       <div className="fb-chat-footer">
-        <div className="fb-icon" onClick={sendGameInvite} title="Mời chơi Game" style={{ width: '36px', height: '36px', fontSize: '20px' }}>🎮</div>
+        {/* 🟢 SỬA VỊ TRÍ 2: Nút mời chơi Game */}
+        <div 
+          className="fb-icon" 
+          title="Mời chơi Game" 
+          style={{ width: '36px', height: '36px', fontSize: '20px' }}
+          role="button"
+          tabIndex={0}
+          onClick={sendGameInvite} 
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              sendGameInvite();
+            }
+          }}
+        >
+          🎮
+        </div>
 
         <div className="fb-input-container">
           <input
@@ -504,14 +531,34 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
             className="fb-chat-input"
           />
           
-          {/* 🔴 NÚT GỌI BẢNG EMOJI */}
+          {/* 🔴 NÚT GỌI BẢNG EMOJI ĐÃ FIX TYPESCRIPT & BỔ SUNG SONARCLOUD */}
           <InsertEmoticonIcon
             sx={{ color: '#0084ff', cursor: 'pointer', mx: 0.5 }}
-            onClick={(e) => setAnchorElEmoji(e.currentTarget)}
+            role="button"
+            tabIndex={0}
+            onClick={(e) => setAnchorElEmoji(e.currentTarget as any)} // Ép kiểu để qua mặt TypeScript
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setAnchorElEmoji(e.currentTarget as any);
+              }
+            }}
           />
         </div>
 
-        <div className={`fb-footer-icons-right ${isConnected ? '' : 'fb-send-disabled'}`} onClick={sendMessage}>
+        {/* 🟢 SỬA VỊ TRÍ 3: Nút Send Message */}
+        <div 
+          className={`fb-footer-icons-right ${isConnected ? '' : 'fb-send-disabled'}`} 
+          role="button"
+          tabIndex={isConnected ? 0 : -1}
+          onClick={sendMessage}
+          onKeyDown={(e) => {
+            if (isConnected && (e.key === 'Enter' || e.key === ' ')) {
+              e.preventDefault();
+              sendMessage();
+            }
+          }}
+        >
           <i className="fb-send-btn">➤</i>
         </div>
       </div>
@@ -540,14 +587,26 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
       >
         <div className="fb-reaction-bar-popup">
           {Object.entries(REACTION_EMOJIS).map(([type, emoji]) => (
-            <span key={type} className="fb-reaction-emoji-btn" onClick={() => handleReact(type)}>
+            /* 🟢 SỬA VỊ TRÍ 4: Nút thả Reaction */
+            <span 
+              key={type} 
+              className="fb-reaction-emoji-btn" 
+              role="button"
+              tabIndex={0}
+              onClick={() => handleReact(type)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleReact(type);
+                }
+              }}
+            >
               {emoji}
             </span>
           ))}
         </div>
       </Popover>
 
-      {/* 🔴 BẢNG CHỌN EMOJI (TRÁNH LỖI XÊ DỊCH BẰNG POPOVER) */}
       <Popover
         anchorEl={anchorElEmoji}
         open={Boolean(anchorElEmoji)}
@@ -564,7 +623,7 @@ const ChatBox: React.FC<Props> = ({ currentUser }) => {
           onEmojiClick={(emojiData) => {
             setInput(prev => prev + emojiData.emoji);
           }}
-          theme={isDark ? Theme.DARK : Theme.LIGHT} // Ăn theo màu Dark mode dự án
+          theme={isDark ? Theme.DARK : Theme.LIGHT} 
           searchPlaceHolder="Tìm kiếm emoji..."
           width={300}
           height={350}

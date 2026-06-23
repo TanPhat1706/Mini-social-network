@@ -5,7 +5,6 @@ import FriendButton from './FriendButton';
 import AvatarWithFrame from '../AvatarWithFrame';
 import ColoredName from '../ColoredName'; 
 import { useTheme } from '@mui/material/styles';
-// 🟢 1. IMPORT HOOK ĐIỀU HƯỚNG
 import { useProfileNavigation } from '../../utils/useProfileNavigation';
 
 interface Props {
@@ -19,7 +18,6 @@ const SuggestedFriends: React.FC<Props> = ({ currentUserId }) => {
   
   const theme = useTheme();
   
-  // 🟢 2. KHỞI TẠO HOOK
   const navigateToProfile = useProfileNavigation();
 
   const fetchSuggestions = (page: number) => {
@@ -59,10 +57,18 @@ const SuggestedFriends: React.FC<Props> = ({ currentUserId }) => {
         {users.map(u => (
           <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             
-            {/* 🟢 3. GẮN SỰ KIỆN CLICK VÀ CON TRỎ CHUỘT VÀO KHỐI THÔNG TIN NÀY */}
+            {/* 🟢 ĐÃ VÁ LỖI SONARCLOUD: Thêm role, tabIndex và onKeyDown */}
             <div 
+              role="button"
+              tabIndex={0}
               style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, cursor: 'pointer' }}
               onClick={() => navigateToProfile(u.studentCode)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault(); // Ngăn cuộn trang
+                  navigateToProfile(u.studentCode);
+                }
+              }}
             >
               <div style={{ flexShrink: 0 }}>
                 <AvatarWithFrame

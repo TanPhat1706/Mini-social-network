@@ -49,7 +49,10 @@ export default function RightSidebar({ friends, onFriendClick }: RightSidebarPro
 
     const fetchAllPresences = async () => {
       try {
-        const promises = friends.map(friend => api.get(`/api/users/${friend.studentCode}/presence`));
+        // 🟢 ĐÃ VÁ LỖI BẢO MẬT: Bọc encodeURIComponent để chống Injection/Path Traversal
+        const promises = friends.map(friend => 
+          api.get(`/api/users/${encodeURIComponent(friend.studentCode)}/presence`)
+        );
         const results = await Promise.allSettled(promises);
 
         const newPresences: Record<string, UserPresence> = {};
@@ -91,6 +94,7 @@ export default function RightSidebar({ friends, onFriendClick }: RightSidebarPro
             const isRecentOffline = offlineText.endsWith('p');
 
             return (
+              // ListItemButton của Material-UI đã tự động hỗ trợ A11y (phím Tab/Enter) nên không bị SonarCloud báo lỗi
               <ListItemButton
                 key={friend.id}
                 onClick={() => onFriendClick(friend)}
