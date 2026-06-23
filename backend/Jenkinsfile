@@ -2,12 +2,18 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCOUNT_ID = "295662439915"
+        AWS_ACCOUNT_ID = "254201323904" 
         AWS_REGION     = "ap-southeast-1"
         ECR_REPO_NAME  = "minisocial-backend"
-        IMAGE_TAG      = "latest" 
+        
+        // 🟢 ĐÃ FIX: Sử dụng biến động từ Jenkins thay vì hardcode "latest"
+        IMAGE_TAG      = "v${env.BUILD_NUMBER}" 
+        
         ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         IMAGE_URI      = "${ECR_REGISTRY}/${ECR_REPO_NAME}:${IMAGE_TAG}"
+        
+        ECS_CLUSTER    = "MiniSocial-Cluster"
+        ECS_SERVICE    = "MiniSocial-Backend-Service"
     }
 
     stages {
@@ -20,7 +26,6 @@ pipeline {
         stage('Run Unit Tests') {
             steps {
                 dir('backend') {
-                    // 🟢 ĐỔI sh -> bat
                     bat 'mvn clean test' 
                 }
             }
@@ -29,8 +34,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 dir('backend') {
-                    echo "Building Docker image..."
-                    // 🟢 ĐỔI sh -> bat
+                    echo "Building Docker image with tag ${IMAGE_TAG}..."
                     bat "docker build -t ${IMAGE_URI} ."
                 }
             }
@@ -45,8 +49,6 @@ pipeline {
                     secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
                 ]]) {
                     echo "Logging into AWS ECR..."
-                    // 🟢 ĐỔI sh -> bat. 
-                    // Lưu ý ở Windows, dùng bat với block 1 dòng thường an toàn hơn dùng """ nhiều dòng
                     bat "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
                     
                     echo "Pushing image to ECR..."
@@ -54,17 +56,34 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy to AWS ECS') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-credentials', 
+                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                ]]) {
+                    // ⚠️ LƯU Ý KIẾN TRÚC: 
+                    // Vì chúng ta dùng Tag động, lệnh force-new-deployment sẽ kết hợp với việc 
+                    // cập nhật Task Definition để nhận diện IMAGE_URI mới trong các bước tới.
+                    echo "Ra lệnh cho Fargate tự động tải Image mới nhất về và khởi động lại container..."
+                    bat "aws ecs update-service --cluster ${ECS_CLUSTER} --service ${ECS_SERVICE} --force-new-deployment --region ${AWS_REGION}"
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo "🎉 TUYỆT VỜI! Đã test, build và push thành công lên AWS ECR!"
+            echo "🎉 TUYỆT VỜI! Đã test, build bản ${IMAGE_TAG}, push ECR và tự động Deploy lên ECS Fargate thành công!"
+            echo "Đợi khoảng 1-2 phút để Container mới khởi động xong là API sẽ nhận code mới nhé."
         }
         failure {
-            echo "❌ CÓ LỖI XẢY RA! Hãy vào kiểm tra lại log nhé!"
+            echo "❌ CÓ LỖI XẢY RA! Hãy vào kiểm tra lại log của Jenkins nhé!"
         }
         always {
-            // 🟢 ĐỔI sh -> bat
             bat "docker image prune -f"
         }
     }

@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    // 🟢 Kích hoạt luồng tự động nhận sự kiện từ GitHub Webhook
-    triggers {
-        githubPush()
-    }
-
     environment {
         // Đã cập nhật chính xác theo Output CloudFormation của bạn
         AWS_REGION         = "us-east-1" 
@@ -34,7 +29,7 @@ pipeline {
 
         stage('Deploy to S3 & Invalidate Cache') {
             steps {
-                // 🟢 ĐÃ FIX: Sử dụng credential dành riêng cho Frontend mà bạn vừa tạo
+                // 🟢 Sử dụng credential dành riêng cho Frontend mà bạn vừa tạo
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
                     credentialsId: 'aws-frontend-creds', 
@@ -43,10 +38,11 @@ pipeline {
                 ]]) {
                     dir('frontend') {
                         echo "Đồng bộ file tĩnh lên AWS S3 (Xóa file cũ không còn tồn tại)..."
-                        bat "aws s3 sync dist/ s3://%S3_BUCKET_NAME% --delete --region %AWS_REGION%"
+                        // 🟢 ĐÃ FIX: Chuyển %VAR% thành ${VAR} cho đồng bộ với file Backend
+                        bat "aws s3 sync dist/ s3://${S3_BUCKET_NAME} --delete --region ${AWS_REGION}"
                         
                         echo "Xóa bộ nhớ đệm (Cache) trên CloudFront để người dùng thấy giao diện mới ngay lập tức..."
-                        bat "aws cloudfront create-invalidation --distribution-id %CLOUDFRONT_DIST_ID% --paths \"/*\" --region %AWS_REGION%"
+                        bat "aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DIST_ID} --paths \"/*\" --region ${AWS_REGION}"
                     }
                 }
             }
@@ -55,7 +51,7 @@ pipeline {
 
     post {
         success {
-            echo "🎉 XUẤT SẮC! Giao diện mới đã được lên sóng tự động tại https://d1u4n9cczkts22.cloudfront.net với độ trễ cache = 0!"
+            echo "🎉 XUẤT SẮC! Giao diện mới đã được lên sóng tự động tại https://minisocial-network.id.vn với độ trễ cache = 0!"
         }
         failure {
             echo "❌ ÁI CHÀ! Có lỗi xảy ra ở luồng Frontend. Hãy xem log nhé."
