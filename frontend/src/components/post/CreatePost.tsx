@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'; // ⭐️ Thêm useEffect
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Box, Paper, Avatar, Button, Divider, IconButton,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, Typography,
@@ -30,18 +30,19 @@ const FakeInputButton = styled(Button)(({ theme }) => ({
 }));
 
 export default function CreatePost() {
-  // ⭐️ State cho User Info
-  const [user, setUser] = useState(null);
+  // 🟢 FIX LỖI 3 & 4: Định nghĩa rõ kiểu dữ liệu là <any> để TypeScript không báo lỗi 'never'
+  const [user, setUser] = useState<any>(null);
 
   const [open, setOpen] = useState(false);
   const [postContent, setPostContent] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<{ url: string, type: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const fileInputRef = useRef(null);
-  const MAX_FILE_SIZE = import.meta.env.VITE_APP_MAX_FILE_SIZE;
+  
+  // 🟢 FIX LỖI 2: Định nghĩa rõ đây là Ref của một thẻ Input HTML
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const MAX_FILE_SIZE = Number(import.meta.env.VITE_APP_MAX_FILE_SIZE) || 104857600; // Fallback 100MB
 
-  // ⭐️ FETCH USER PROFILE TẠI ĐÂY
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -49,7 +50,6 @@ export default function CreatePost() {
         setUser(response.data);
       } catch (err) {
         console.error("Failed to fetch user profile in CreatePost:", err);
-        // Có thể set user mặc định nếu lỗi
       }
     };
     fetchUserProfile();
@@ -66,12 +66,14 @@ export default function CreatePost() {
   const resetForm = () => {
     setPostContent('');
     setSelectedFiles([]);
-    previewUrls.forEach(url => URL.revokeObjectURL(url));
+    // 🟢 FIX LỖI 1: Truy cập đúng thuộc tính .url của object
+    previewUrls.forEach(item => URL.revokeObjectURL(item.url));
     setPreviewUrls([]);
   };
 
-  const handleFileSelect = (e: any) => {
-    const files = Array.from(e.target.files) as File[];
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
     const validFiles: File[] = [];
@@ -95,7 +97,7 @@ export default function CreatePost() {
         Swal.default.fire({
           icon: 'error',
           title: 'File quá lớn!',
-          text: 'Một hoặc nhiều file vượt quá giới hạn 100MB và đã bị loại bỏ.',
+          text: 'Một hoặc nhiều file vượt quá giới hạn và đã bị loại bỏ.',
           customClass: {
             container: 'swal-z-index-fix'
           }
@@ -103,11 +105,11 @@ export default function CreatePost() {
       });
     }
 
-    setSelectedFiles(prev => [...prev, ...validFiles] as any);
+    setSelectedFiles(prev => [...prev, ...validFiles]);
     setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
 
     if (fileInputRef.current) {
-      (fileInputRef.current as any).value = '';
+      fileInputRef.current.value = '';
     }
   };
 
@@ -129,11 +131,8 @@ export default function CreatePost() {
       });
 
       await api.post('/api/posts', formData, {
-        // ⭐ KHÔNG set Content-Type thủ công khi gửi FormData.
-        // Browser sẽ tự gắn "multipart/form-data; boundary=..." (có boundary đúng).
-        // Nếu set tay sẽ thiếu boundary → server không parse được file → Network Error.
         headers: { 'Content-Type': undefined },
-        timeout: 60000, // 60s cho upload ảnh lên S3
+        timeout: 60000, 
       });
 
       handleClose();
@@ -150,10 +149,10 @@ export default function CreatePost() {
   };
 
   const onClickPickImage = () => {
-    fileInputRef.current.click();
+    // 🟢 FIX LỖI 2: Dùng optional chaining (?) để an toàn 100%
+    fileInputRef.current?.click();
   };
 
-  // ⭐️ Lấy tên user để hiển thị (Fallback nếu user chưa load xong)
   const userName = user ? user.fullName : 'Bạn';
   const userAvatar = user ? user.avatarUrl : '';
 
@@ -176,13 +175,12 @@ export default function CreatePost() {
         onClick={handleClickOpen}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-          {/* ⭐️ Hiển thị Skeleton nếu chưa load xong user */}
           {user ? (
             <Box sx={{ mr: 1.5 }}>
               <AvatarWithFrame
                 src={userAvatar}
                 name={userName}
-                frameClass={(user as any)?.currentAvatarFrame}
+                frameClass={user?.currentAvatarFrame}
                 size={40}
               />
             </Box>
@@ -192,7 +190,7 @@ export default function CreatePost() {
 
           <FakeInputButton fullWidth>
             {user ? (
-              <><ColoredName name={userName} colorClass={(user as any)?.currentNameColor} />‎ ơi, bạn đang nghĩ gì thế?</>
+              <><ColoredName name={userName} colorClass={user?.currentNameColor} />‎ ơi, bạn đang nghĩ gì thế?</>
             ) : 'Đang tải...'}
           </FakeInputButton>
         </Box>
@@ -229,12 +227,12 @@ export default function CreatePost() {
             <AvatarWithFrame
               src={userAvatar}
               name={userName}
-              frameClass={(user as any)?.currentAvatarFrame}
+              frameClass={user?.currentAvatarFrame}
               size={40}
             />
             <Box sx={{ ml: 1.5 }}>
               <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                <ColoredName name={userName} colorClass={(user as any)?.currentNameColor} />
+                <ColoredName name={userName} colorClass={user?.currentNameColor} />
               </Typography>
               <Typography variant="caption" color="text.secondary">Công khai</Typography>
             </Box>
@@ -259,7 +257,6 @@ export default function CreatePost() {
               <ImageList cols={3} rowHeight={100} gap={8}>
                 {previewUrls.map((fileData, index) => (
                   <ImageListItem key={index} sx={{ position: 'relative' }}>
-                    {/* Phân tách logic render Image / Video */}
                     {fileData.type.startsWith('video/') ? (
                       <video
                         src={fileData.url}
@@ -277,7 +274,6 @@ export default function CreatePost() {
                       />
                     )}
 
-                    {/* Nút xóa */}
                     <IconButton
                       size="small"
                       sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.6)', color: 'white', '&:hover': { bgcolor: 'rgba(0,0,0,0.8)' } }}

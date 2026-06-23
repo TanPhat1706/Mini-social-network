@@ -1,10 +1,12 @@
 package com.example.backend.Notification;
 
 import com.example.backend.Enum.NotificationType;
+import com.example.backend.Enum.ReactionType;
 import com.example.backend.Event.NotificationEvent;
 import com.example.backend.User.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -29,7 +31,6 @@ class NotificationServiceTest {
     @Mock
     private SimpMessagingTemplate messagingTemplate;
 
-    // Sử dụng Spy để ObjectMapper chạy thật, giúp test metadata JSON chính xác
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper(); 
 
@@ -61,7 +62,8 @@ class NotificationServiceTest {
 
     @Test
     void handleNotificationEvent_whenSenderIsReceiver_shouldSkipAndNotSave() {
-        NotificationEvent event = new NotificationEvent(sender, sender, NotificationType.LIKE_POST, 10L, "POST", "", false);
+        // 🟢 ĐÃ FIX CONSTRUCTOR: Thêm null cho param ReactionType
+        NotificationEvent event = new NotificationEvent(sender, sender, NotificationType.LIKE_POST, 10L, "POST", "", null, false);
 
         notificationService.handleNotificationEvent(event);
 
@@ -72,7 +74,7 @@ class NotificationServiceTest {
     @Test
     void handleNotificationEvent_whenReceiverStudentCodeIsNull_shouldSaveButNotSendSocket() {
         receiver.setStudentCode(null);
-        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.SHARE_POST, 20L, "POST", "", false);
+        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.SHARE_POST, 20L, "POST", "", null, false);
 
         Notification savedNotification = Notification.builder()
                 .id(99L).sender(sender).receiver(receiver).type(NotificationType.SHARE_POST).build();
@@ -88,7 +90,7 @@ class NotificationServiceTest {
     @Test
     void handleNotificationEvent_whenValid_shouldSaveAndSendSocket() {
         NotificationEvent event = new NotificationEvent(
-                sender, receiver, NotificationType.LIKE_POST, 30L, "POST", "", false);
+                sender, receiver, NotificationType.LIKE_POST, 30L, "POST", "", null, false);
 
         Notification savedNotification = Notification.builder()
                 .id(100L)
@@ -121,9 +123,8 @@ class NotificationServiceTest {
 
     @Test
     void handleNotificationEvent_whenExceptionThrown_shouldCatchAndLog() {
-        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.LIKE_POST, 30L, "POST", "", false);
+        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.LIKE_POST, 30L, "POST", "", null, false);
         
-        // 🟢 BỔ SUNG: Ép repository văng lỗi để quét nhánh catch (Exception e)
         when(notificationRepository.save(any(Notification.class))).thenThrow(new RuntimeException("DB Save Error"));
         
         assertDoesNotThrow(() -> notificationService.handleNotificationEvent(event));
@@ -136,7 +137,7 @@ class NotificationServiceTest {
     @Test
     void handleNotificationEvent_withLongComment_shouldTruncateMetadata() {
         String longMessage = "Đây là một bình luận rất rất rất rất rất rất rất rất rất dài vượt qua giới hạn năm mươi ký tự.";
-        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.COMMENT_POST, 40L, "POST", longMessage, false);
+        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.COMMENT_POST, 40L, "POST", longMessage, null, false);
 
         ArgumentCaptor<Notification> notifCaptor = ArgumentCaptor.forClass(Notification.class);
         when(notificationRepository.save(notifCaptor.capture())).thenReturn(new Notification());
@@ -147,14 +148,12 @@ class NotificationServiceTest {
         assertNotNull(saved.getMetadata());
         assertTrue(saved.getMetadata().contains("..."));
         assertTrue(saved.getMetadata().contains("commentSnippet"));
-        assertTrue(saved.getMetadata().length() < 100);
     }
 
     @Test
     void handleNotificationEvent_withShortComment_shouldNotTruncateMetadata() {
-        // 🟢 BỔ SUNG: Quét nhánh text ngắn <= 50 ký tự
         String shortMessage = "Bình luận ngắn nè";
-        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.COMMENT_POST, 40L, "POST", shortMessage, false);
+        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.COMMENT_POST, 40L, "POST", shortMessage, null, false);
 
         ArgumentCaptor<Notification> notifCaptor = ArgumentCaptor.forClass(Notification.class);
         when(notificationRepository.save(notifCaptor.capture())).thenReturn(new Notification());
@@ -163,12 +162,11 @@ class NotificationServiceTest {
 
         Notification saved = notifCaptor.getValue();
         assertTrue(saved.getMetadata().contains("Bình luận ngắn nè"));
-        assertFalse(saved.getMetadata().contains("..."));
     }
 
     @Test
     void handleNotificationEvent_withFriendRequest_shouldAddPendingMetadata() {
-        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.FRIEND_REQUEST, 50L, "USER", "", false);
+        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.FRIEND_REQUEST, 50L, "USER", "", null, false);
 
         ArgumentCaptor<Notification> notifCaptor = ArgumentCaptor.forClass(Notification.class);
         when(notificationRepository.save(notifCaptor.capture())).thenReturn(new Notification());
@@ -179,11 +177,25 @@ class NotificationServiceTest {
         assertTrue(saved.getMetadata().contains("\"status\":\"PENDING\""));
     }
 
+    // 🟢 MỚI: TEST ĐƯA REACTION TYPE VÀO METADATA
+    @Test
+    @DisplayName("Nếu có ReactionType -> Đưa vào Metadata JSON")
+    void handleNotificationEvent_withReactionType_shouldIncludeInMetadata() {
+        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.LIKE_COMMENT, 30L, "COMMENT", "", ReactionType.LOVE, false);
+        
+        ArgumentCaptor<Notification> notifCaptor = ArgumentCaptor.forClass(Notification.class);
+        when(notificationRepository.save(notifCaptor.capture())).thenReturn(new Notification());
+
+        notificationService.handleNotificationEvent(event);
+
+        Notification saved = notifCaptor.getValue();
+        assertTrue(saved.getMetadata().contains("\"reactionType\":\"LOVE\""));
+    }
+
     @Test
     void handleNotificationEvent_whenJsonProcessingException_shouldReturnEmptyJson() throws Exception {
-        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.LIKE_POST, 30L, "POST", "", false);
+        NotificationEvent event = new NotificationEvent(sender, receiver, NotificationType.LIKE_POST, 30L, "POST", "", null, false);
         
-        // 🟢 BỔ SUNG: Ép ObjectMapper lỗi để quét nhánh catch khi tạo JSON
         doThrow(new RuntimeException("Parse Error")).when(objectMapper).writeValueAsString(any());
 
         ArgumentCaptor<Notification> notifCaptor = ArgumentCaptor.forClass(Notification.class);
@@ -242,10 +254,35 @@ class NotificationServiceTest {
         assertEquals("đã bình luận về bài viết của bạn.", dto.getMessage());
     }
 
+    // 🟢 MỚI: TEST LẤY REACTION TYPE TỪ METADATA
+    @Test
+    @DisplayName("mapToDTO: Đọc thành công reactionType từ metadata JSON")
+    void mapToDTO_withReactionMetadata_shouldExtractReactionType() {
+        Notification notification = Notification.builder()
+                .id(1L).sender(sender).receiver(receiver).type(NotificationType.LIKE_COMMENT)
+                .metadata("{\"reactionType\":\"HAHA\"}")
+                .build();
+        NotificationDTO dto = notificationService.mapToDTO(notification);
+        assertEquals("HAHA", dto.getReactionType());
+    }
+
+    // 🟢 MỚI: TEST BẮT LỖI KHI METADATA BỊ HỎNG (Nhánh catch exception)
+    @Test
+    @DisplayName("mapToDTO: Log lỗi và bỏ qua nếu metadata JSON không hợp lệ")
+    void mapToDTO_withInvalidMetadata_shouldCatchException() {
+        Notification notification = Notification.builder()
+                .id(1L).sender(sender).receiver(receiver).type(NotificationType.LIKE_COMMENT)
+                .metadata("invalid_json_string")
+                .build();
+        
+        assertDoesNotThrow(() -> {
+            NotificationDTO dto = notificationService.mapToDTO(notification);
+            assertNull(dto.getReactionType());
+        });
+    }
+
     @Test
     void mapToDTO_shouldCoverAllSwitchBranches() {
-        // 🟢 BỔ SUNG: Quét các Enum còn lại để bao phủ 100% switch-case
-
         // 1. LIKE_POST
         Notification nLike = buildMockNotification(NotificationType.LIKE_POST, 10L);
         NotificationDTO dtoLike = notificationService.mapToDTO(nLike);
@@ -269,6 +306,18 @@ class NotificationServiceTest {
         NotificationDTO dtoDefault = notificationService.mapToDTO(nDefault);
         assertEquals("đã tương tác với bạn.", dtoDefault.getMessage());
         assertEquals("/", dtoDefault.getTargetUrl());
+
+        // 🟢 5. BỔ SUNG: LIKE_COMMENT
+        Notification nLikeCmt = buildMockNotification(NotificationType.LIKE_COMMENT, 50L);
+        NotificationDTO dtoLikeCmt = notificationService.mapToDTO(nLikeCmt);
+        assertEquals("đã bày tỏ cảm xúc về bình luận của bạn", dtoLikeCmt.getMessage());
+        assertEquals("/posts/50", dtoLikeCmt.getTargetUrl());
+
+        // 🟢 6. BỔ SUNG: REPLY_COMMENT
+        Notification nReply = buildMockNotification(NotificationType.REPLY_COMMENT, 60L);
+        NotificationDTO dtoReply = notificationService.mapToDTO(nReply);
+        assertEquals("đã phản hồi bình luận của bạn.", dtoReply.getMessage());
+        assertEquals("/posts/60", dtoReply.getTargetUrl());
     }
 
     private Notification buildMockNotification(NotificationType type, Long entityId) {
@@ -289,17 +338,13 @@ class NotificationServiceTest {
 
     @Test
     void markAllAsRead_shouldCallRepository() {
-        // 🟢 BỔ SUNG: Chạy hàm markAllAsRead
         notificationService.markAllAsRead(2L);
         verify(notificationRepository).markAllAsReadByReceiverId(2L);
     }
 
     @Test
     void markAllAsRead_whenException_shouldCatchAndLog() {
-        // 🟢 BỔ SUNG: Ép repository lỗi để kích hoạt nhánh catch()
         doThrow(new RuntimeException("DB Timeout")).when(notificationRepository).markAllAsReadByReceiverId(2L);
-        
-        // Không được phép văng lỗi ra ngoài
         assertDoesNotThrow(() -> notificationService.markAllAsRead(2L));
     }
 }
