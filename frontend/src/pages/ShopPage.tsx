@@ -45,6 +45,7 @@ export default function ShopPage() {
         api.get('/api/shop/items'),
         api.get('/api/shop/items/inventory'),
       ]);
+      console.log("DỮ LIỆU CỬA HÀNG:", itemsRes.data);
       setUser(userRes.data);
       setShopItems(itemsRes.data);
       setInventory(invRes.data);
