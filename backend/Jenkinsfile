@@ -1,5 +1,10 @@
 pipeline {
     agent any
+    triggers {
+        // Poll SCM: Jenkins sẽ check Git repository mỗi 1 phút
+        // Dấu * * * * * là cú pháp Cron expression (mỗi phút)
+        pollSCM('* * * * *') 
+    }
 
     environment {
         AWS_ACCOUNT_ID = "254201323904" 
