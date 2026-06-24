@@ -6,6 +6,7 @@ pipeline {
         AWS_REGION         = "us-east-1" 
         S3_BUCKET_NAME     = "minisocial-frontend-254201323904-us-east-1" 
         CLOUDFRONT_DIST_ID = "EBY4LZSWUT290" 
+        VITE_API_BASE_URL = 'https://api.minisocial-network.id.vn' 
     }
 
     stages {
