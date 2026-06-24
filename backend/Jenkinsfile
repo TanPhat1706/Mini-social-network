@@ -6,11 +6,14 @@ pipeline {
         AWS_REGION     = "ap-southeast-1"
         ECR_REPO_NAME  = "minisocial-backend"
         
-        // 🟢 ĐÃ FIX: Sử dụng biến động từ Jenkins thay vì hardcode "latest"
+        // 🟢 ĐÃ FIX: Giữ tag động để lưu lịch sử build
         IMAGE_TAG      = "v${env.BUILD_NUMBER}" 
+        // 🟢 ĐÃ THÊM: Tag cố định để ECS tự động pull về
+        IMAGE_TAG_LATEST = "latest"
         
         ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         IMAGE_URI      = "${ECR_REGISTRY}/${ECR_REPO_NAME}:${IMAGE_TAG}"
+        IMAGE_URI_LATEST = "${ECR_REGISTRY}/${ECR_REPO_NAME}:${IMAGE_TAG_LATEST}"
         
         ECS_CLUSTER    = "MiniSocial-Cluster"
         ECS_SERVICE    = "MiniSocial-Backend-Service"
@@ -34,8 +37,9 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 dir('backend') {
-                    echo "Building Docker image with tag ${IMAGE_TAG}..."
-                    bat "docker build -t ${IMAGE_URI} ."
+                    echo "Building Docker image with tags ${IMAGE_TAG} and ${IMAGE_TAG_LATEST}..."
+                    // 🟢 ĐÃ FIX: Gắn cả 2 tag cho image vừa build
+                    bat "docker build -t ${IMAGE_URI} -t ${IMAGE_URI_LATEST} ."
                 }
             }
         }
@@ -51,8 +55,10 @@ pipeline {
                     echo "Logging into AWS ECR..."
                     bat "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
                     
-                    echo "Pushing image to ECR..."
+                    echo "Pushing images to ECR..."
+                    // 🟢 ĐÃ FIX: Đẩy cả 2 bản lên ECR
                     bat "docker push ${IMAGE_URI}"
+                    bat "docker push ${IMAGE_URI_LATEST}"
                 }
             }
         }
@@ -65,10 +71,10 @@ pipeline {
                     accessKeyVariable: 'AWS_ACCESS_KEY_ID',
                     secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
                 ]]) {
-                    // ⚠️ LƯU Ý KIẾN TRÚC: 
-                    // Vì chúng ta dùng Tag động, lệnh force-new-deployment sẽ kết hợp với việc 
-                    // cập nhật Task Definition để nhận diện IMAGE_URI mới trong các bước tới.
-                    echo "Ra lệnh cho Fargate tự động tải Image mới nhất về và khởi động lại container..."
+                    // ⚠️ LƯU Ý QUAN TRỌNG: 
+                    // Trên AWS Console, Task Definition của bạn PHẢI cấu hình Image URI kết thúc bằng ":latest"
+                    // Lúc này lệnh bên dưới mới có tác dụng tải code mới nhất!
+                    echo "Ra lệnh cho Fargate tự động tải Image :latest mới nhất về và khởi động lại container..."
                     bat "aws ecs update-service --cluster ${ECS_CLUSTER} --service ${ECS_SERVICE} --force-new-deployment --region ${AWS_REGION}"
                 }
             }
@@ -77,7 +83,7 @@ pipeline {
 
     post {
         success {
-            echo "🎉 TUYỆT VỜI! Đã test, build bản ${IMAGE_TAG}, push ECR và tự động Deploy lên ECS Fargate thành công!"
+            echo "🎉 TUYỆT VỜI! Đã test, build bản ${IMAGE_TAG} & latest, push ECR và tự động Deploy lên ECS Fargate thành công!"
             echo "Đợi khoảng 1-2 phút để Container mới khởi động xong là API sẽ nhận code mới nhé."
         }
         failure {
