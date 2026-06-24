@@ -5,7 +5,7 @@ pipeline {
         // Đã cập nhật chính xác theo Output CloudFormation của bạn
         AWS_REGION         = "us-east-1" 
         S3_BUCKET_NAME     = "minisocial-frontend-254201323904-us-east-1" 
-        CLOUDFRONT_DIST_ID = "EWX6GZ5SX7LMZ" 
+        CLOUDFRONT_DIST_ID = "EBY4LZSWUT290" 
     }
 
     stages {
