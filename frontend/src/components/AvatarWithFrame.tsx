@@ -1,73 +1,30 @@
 import React from 'react';
-import '../assets/css/AvatarFrames.css';
-import { getApiBaseUrl } from '../config/apiBase';
+import AvatarRenderer from './Cosmetic/AvatarRenderer';
 
 interface AvatarProps {
-    src?: string | null;
-    name?: string | null;
-    frameClass?: string | null;
-    size?: number;
-    className?: string;
-    onClick?: (e: React.MouseEvent) => void;
+  src?: string | null;
+  name?: string | null;
+  frameClass?: string | null;
+  size?: number;
+  className?: string;
+  onClick?: (e: React.MouseEvent) => void;
 }
 
-const AvatarWithFrame: React.FC<AvatarProps> = ({ 
-    src, 
-    name: _name,
-    frameClass, 
-    size = 50,
-    className,
-    onClick
-}) => {
-    const API_BASE = getApiBaseUrl();
-    const DEFAULT_AVATAR_IMAGE =
-        'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><rect width="160" height="160" fill="%23eef2f7"/><circle cx="80" cy="62" r="30" fill="%2394a3b8"/><path d="M26 144c5-25 28-42 54-42s49 17 54 42" fill="%2394a3b8"/></svg>';
-
-    const resolveAvatarUrl = () => {
-        const normalizedSrc = src?.trim();
-        if (!normalizedSrc) return DEFAULT_AVATAR_IMAGE;
-        if (/^(https?:|data:|blob:)/i.test(normalizedSrc)) return normalizedSrc;
-        if (normalizedSrc.startsWith('/')) return `${API_BASE}${normalizedSrc}`;
-        return `${API_BASE}/${normalizedSrc}`;
-    };
-
-    const hasHoleFrame = ['css-frame-golden-glow', 'css-frame-magma-fire', 'css-frame-cosmic-galaxy'].includes(frameClass || '');
-    const shouldShowPointer = Boolean(onClick) || className?.includes('hoverable-avatar');
-
-    return (
-        <div 
-            className={`avatar-wrapper${className ? ` ${className}` : ''}`} 
-            style={{ width: size, height: size, cursor: shouldShowPointer ? 'pointer' : 'default', overflow: 'visible' }}
-            onClick={onClick}
-            role={onClick ? 'button' : undefined}
-            // 🟢 THÊM XỬ LÝ SỰ KIỆN BÀN PHÍM CHO SONARCLOUD
-            tabIndex={onClick ? 0 : undefined} 
-            onKeyDown={onClick ? (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault(); // Tránh lỗi cuộn trang khi nhấn Space
-                    onClick(e as any);
-                }
-            } : undefined}
-        >
-            {frameClass && (
-                <div className={frameClass}></div>
-            )}
-
-            <img 
-                src={resolveAvatarUrl()}
-                alt="User Avatar"
-                className="avatar-image"
-                style={{ 
-                    width: '100%', 
-                    height: '100%',
-                    padding: hasHoleFrame ? '4px' : '0px'
-                }}
-                onError={(e) => {
-                    e.currentTarget.src = DEFAULT_AVATAR_IMAGE;
-                }}
-            />
-        </div>
-    );
-};
+const AvatarWithFrame: React.FC<AvatarProps> = ({
+  src,
+  name: _name,
+  frameClass,
+  size = 50,
+  className,
+  onClick,
+}) => (
+  <AvatarRenderer
+    src={src}
+    effectKey={frameClass}
+    size={size}
+    className={className}
+    onClick={onClick}
+  />
+);
 
 export default AvatarWithFrame;

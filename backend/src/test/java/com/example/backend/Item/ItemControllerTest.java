@@ -1,7 +1,9 @@
 package com.example.backend.Item;
 
+import com.example.backend.Enum.CosmeticRarity;
+import com.example.backend.Enum.CosmeticTheme;
+import com.example.backend.Enum.CosmeticType;
 import com.example.backend.Integration.BaseControllerTest;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
@@ -16,8 +18,11 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(
         value = ItemController.class,
@@ -37,9 +42,14 @@ class ItemControllerTest extends BaseControllerTest {
     void setUp() {
         mockItemResponse = ItemResponse.builder()
                 .id(1)
+                .code("frame-gold")
                 .name("Viền Vàng")
-                .type("AVATAR_FRAME")
+                .type(CosmeticType.AVATAR_FRAME)
+                .theme(CosmeticTheme.HOLY)
+                .rarity(CosmeticRarity.RARE)
+                .effectKey("css-frame-holy-gold")
                 .price(100)
+                .displayOrder(0)
                 .active(true)
                 .build();
     }
@@ -53,27 +63,35 @@ class ItemControllerTest extends BaseControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].name").value("Viền Vàng"));
+                .andExpect(jsonPath("$[0].name").value("Viền Vàng"))
+                .andExpect(jsonPath("$[0].effectKey").value("css-frame-holy-gold"))
+                .andExpect(jsonPath("$[0].rarity").value("RARE"));
     }
 
     @Test
     @WithMockUser(username = "1412")
     void getItemsByType_shouldReturn200() throws Exception {
-        when(itemService.getItemsByType("AVATAR_FRAME")).thenReturn(List.of(mockItemResponse));
+        when(itemService.getItemsByType(CosmeticType.AVATAR_FRAME)).thenReturn(List.of(mockItemResponse));
 
         mockMvc.perform(get("/api/shop/items/type")
                         .param("type", "AVATAR_FRAME")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].type").value("AVATAR_FRAME"));
+                .andExpect(jsonPath("$[0].type").value("AVATAR_FRAME"))
+                .andExpect(jsonPath("$[0].theme").value("HOLY"));
     }
 
     @Test
     @WithMockUser(username = "141204", roles = "ADMIN")
     void createItem_whenSuccess_shouldReturn200() throws Exception {
         ItemRequest request = new ItemRequest();
+        request.setCode("frame-gold");
         request.setName("Viền Vàng");
-        request.setType("AVATAR_FRAME");
+        request.setType(CosmeticType.AVATAR_FRAME);
+        request.setTheme(CosmeticTheme.HOLY);
+        request.setRarity(CosmeticRarity.RARE);
+        request.setEffectKey("css-frame-holy-gold");
+        request.setPrice(100);
 
         when(itemService.createItem(any(ItemRequest.class))).thenReturn(mockItemResponse);
 
@@ -81,7 +99,8 @@ class ItemControllerTest extends BaseControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Viền Vàng"));
+                .andExpect(jsonPath("$.name").value("Viền Vàng"))
+                .andExpect(jsonPath("$.effectKey").value("css-frame-holy-gold"));
     }
 
     @Test
@@ -127,7 +146,8 @@ class ItemControllerTest extends BaseControllerTest {
         mockMvc.perform(get("/api/shop/items/inventory")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Viền Vàng"));
+                .andExpect(jsonPath("$[0].name").value("Viền Vàng"))
+                .andExpect(jsonPath("$[0].code").value("frame-gold"));
     }
 
     @Test

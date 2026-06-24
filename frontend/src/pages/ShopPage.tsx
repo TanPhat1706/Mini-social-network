@@ -1,33 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Box, Container, Typography, Tab, Tabs, Card, CardContent, 
-  Button, Snackbar, Alert, CircularProgress, Chip 
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Box, Container, Typography, Tab, Tabs, Card, CardContent,
+  Button, Snackbar, Alert, CircularProgress, Chip,
+  FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material';
 import DiamondIcon from '@mui/icons-material/Diamond';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import api from '../api/api';
 import type { User } from '../types';
+import type { CosmeticItem, CosmeticRarity, CosmeticTheme } from '../types/cosmetic';
+import {
+  COSMETIC_RARITIES,
+  COSMETIC_THEMES,
+  RARITY_LABELS,
+  THEME_LABELS,
+} from '../types/cosmetic';
+import AvatarRenderer from '../components/Cosmetic/AvatarRenderer';
+import NameRenderer from '../components/Cosmetic/NameRenderer';
 
-import AvatarWithFrame from '../components/AvatarWithFrame'; 
-import ColoredName from '../components/ColoredName'; 
-
-interface ShopItem {
-  id: number;
-  name: string;
-  type: string;
-  imageUrl: string; 
-  price: number;
-  description: string;
-}
+const RARITY_CHIP_COLORS: Record<CosmeticRarity, 'default' | 'info' | 'secondary' | 'warning' | 'error'> = {
+  COMMON: 'default',
+  RARE: 'info',
+  EPIC: 'secondary',
+  LEGENDARY: 'warning',
+  MYTHIC: 'error',
+};
 
 export default function ShopPage() {
   const [tabValue, setTabValue] = useState(0);
   const [user, setUser] = useState<User | null>(null);
-  
-  const [shopItems, setShopItems] = useState<ShopItem[]>([]);
-  const [inventory, setInventory] = useState<ShopItem[]>([]);
+  const [shopItems, setShopItems] = useState<CosmeticItem[]>([]);
+  const [inventory, setInventory] = useState<CosmeticItem[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [themeFilter, setThemeFilter] = useState<CosmeticTheme | 'ALL'>('ALL');
+  const [rarityFilter, setRarityFilter] = useState<CosmeticRarity | 'ALL'>('ALL');
   const [toast, setToast] = useState({ open: false, message: '', type: 'success' as 'success' | 'error' | 'info' });
 
   const fetchData = async () => {
@@ -35,14 +42,15 @@ export default function ShopPage() {
       setLoading(true);
       const [userRes, itemsRes, invRes] = await Promise.all([
         api.get('/api/auth/profile'),
-        api.get('/api/shop/items'),          
-        api.get('/api/shop/items/inventory') 
+        api.get('/api/shop/items'),
+        api.get('/api/shop/items/inventory'),
       ]);
       setUser(userRes.data);
       setShopItems(itemsRes.data);
       setInventory(invRes.data);
-    } catch (error: any) {
-      showToast(error.response?.data?.error || "Lỗi tải dữ liệu cửa hàng", 'error');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      showToast(err.response?.data?.error || 'Lỗi tải dữ liệu cửa hàng', 'error');
     } finally {
       setLoading(false);
     }
@@ -50,41 +58,57 @@ export default function ShopPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info') => setToast({ open: true, message, type });
+  const showToast = (message: string, type: 'success' | 'error' | 'info') =>
+    setToast({ open: true, message, type });
 
   const handleBuy = async (itemId: number) => {
     try {
       const res = await api.post(`/api/shop/items/${itemId}/buy`);
-      showToast(res.data.message || "Mua vật phẩm thành công!", 'success');
-      fetchData(); 
-    } catch (error: any) {
-      showToast(error.response?.data?.error || "Không đủ điểm hoặc lỗi hệ thống", 'error');
+      showToast(res.data.message || 'Mua vật phẩm thành công!', 'success');
+      fetchData();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      showToast(err.response?.data?.error || 'Không đủ điểm hoặc lỗi hệ thống', 'error');
     }
   };
 
   const handleEquip = async (itemId: number) => {
     try {
       const res = await api.put(`/api/shop/items/${itemId}/equip`);
-      showToast(res.data.message || "Đã trang bị thành công!", 'success');
-      fetchData(); 
-    } catch (error: any) {
-      showToast(error.response?.data?.error || "Lỗi trang bị", 'error');
+      showToast(res.data.message || 'Đã trang bị thành công!', 'success');
+      fetchData();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      showToast(err.response?.data?.error || 'Lỗi trang bị', 'error');
     }
   };
 
-  // 🟢 HÀM MỚI: XỬ LÝ THÁO TRANG BỊ
-  const handleUnequip = async (itemId: number) => {
+  const handleUnequip = async () => {
     try {
-      // 🛑 CHÚ Ý: Đường dẫn API này đang là giả định, chờ bạn cung cấp Controller để fix lại cho chuẩn 100%
-      const res = await api.put(`/api/shop/items/unequip`); 
-      showToast(res.data.message || "Đã tháo trang bị!", 'success');
-      fetchData(); 
-    } catch (error: any) {
-      showToast(error.response?.data?.error || "Lỗi khi tháo trang bị", 'error');
+      const res = await api.put('/api/shop/items/unequip');
+      showToast(res.data.message || 'Đã tháo trang bị!', 'success');
+      fetchData();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      showToast(err.response?.data?.error || 'Lỗi khi tháo trang bị', 'error');
     }
   };
 
-  const isOwned = (itemId: number) => inventory.some(item => item.id === itemId);
+  const isOwned = (itemId: number) => inventory.some((item) => item.id === itemId);
+
+  const applyFilters = (items: CosmeticItem[]) =>
+    items.filter((item) => {
+      const themeMatch = themeFilter === 'ALL' || item.theme === themeFilter;
+      const rarityMatch = rarityFilter === 'ALL' || item.rarity === rarityFilter;
+      return themeMatch && rarityMatch;
+    });
+
+  const displayedItems = useMemo(
+    () => applyFilters(tabValue === 0 ? shopItems : inventory),
+    [tabValue, shopItems, inventory, themeFilter, rarityFilter],
+  );
+
+  const previewName = user?.fullName?.split(' ').pop() || 'Tên';
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -99,75 +123,102 @@ export default function ShopPage() {
         </Box>
       </Box>
 
-      <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)} centered sx={{ mb: 4 }}>
+      <Tabs value={tabValue} onChange={(_e, v) => setTabValue(v)} centered sx={{ mb: 3 }}>
         <Tab label="Cửa Hàng" sx={{ fontWeight: 'bold', fontSize: '16px' }} />
         <Tab label={`Tủ Đồ Của Tôi (${inventory.length})`} sx={{ fontWeight: 'bold', fontSize: '16px' }} />
       </Tabs>
 
+      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 3, justifyContent: 'center' }}>
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel>Chủ đề</InputLabel>
+          <Select
+            label="Chủ đề"
+            value={themeFilter}
+            onChange={(e: SelectChangeEvent) => setThemeFilter(e.target.value as CosmeticTheme | 'ALL')}
+          >
+            <MenuItem value="ALL">Tất cả chủ đề</MenuItem>
+            {COSMETIC_THEMES.map((theme) => (
+              <MenuItem key={theme} value={theme}>{THEME_LABELS[theme]}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel>Độ hiếm</InputLabel>
+          <Select
+            label="Độ hiếm"
+            value={rarityFilter}
+            onChange={(e: SelectChangeEvent) => setRarityFilter(e.target.value as CosmeticRarity | 'ALL')}
+          >
+            <MenuItem value="ALL">Tất cả độ hiếm</MenuItem>
+            {COSMETIC_RARITIES.map((rarity) => (
+              <MenuItem key={rarity} value={rarity}>{RARITY_LABELS[rarity]}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
       ) : (
-        <Box sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' }, 
-            gap: 4 
-        }}>
-          {(tabValue === 0 ? shopItems : inventory).map((item) => {
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 4 }}>
+          {displayedItems.map((item) => {
             const owned = isOwned(item.id);
-            
-            const isEquipped = item.type === 'NAME_COLOR' 
-                ? (user as any)?.currentNameColor === item.imageUrl 
-                : (user as any)?.currentAvatarFrame === item.imageUrl;
+            const isEquipped = item.type === 'NAME_COLOR'
+              ? user?.currentNameColor === item.effectKey
+              : user?.currentAvatarFrame === item.effectKey;
 
             return (
-                <Card key={item.id} sx={{ borderRadius: '16px', transition: '0.3s', '&:hover': { transform: 'translateY(-5px)', boxShadow: '0 10px 20px rgba(0,0,0,0.1)' } }}>
-                  <Box sx={{ height: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6', position: 'relative' }}>
-                    
-                    {item.type === 'NAME_COLOR' ? (
-                        <>
-                            <AvatarWithFrame src={user?.avatarUrl} name={user?.fullName} size={60} />
-                            <Typography variant="h6" sx={{ mt: 1.5, fontWeight: 'bold' }}>
-                                <ColoredName name={user?.fullName?.split(' ').pop() || 'Tên'} colorClass={item.imageUrl} />
-                            </Typography>
-                        </>
-                    ) : (
-                        <AvatarWithFrame src={user?.avatarUrl} name={user?.fullName} frameClass={item.imageUrl} size={80} />
-                    )}
+              <Card key={item.id} sx={{ borderRadius: '16px', transition: '0.3s', '&:hover': { transform: 'translateY(-5px)', boxShadow: '0 10px 20px rgba(0,0,0,0.1)' } }}>
+                <Box sx={{ height: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6', position: 'relative' }}>
+                  {item.type === 'NAME_COLOR' ? (
+                    <>
+                      <AvatarRenderer src={user?.avatarUrl || ''} size={60} />
+                      <Typography variant="h6" sx={{ mt: 1.5, fontWeight: 'bold' }}>
+                        <NameRenderer name={previewName} effectKey={item.effectKey} />
+                      </Typography>
+                    </>
+                  ) : (
+                    <AvatarRenderer src={user?.avatarUrl || ''} effectKey={item.effectKey} size={80} />
+                  )}
 
-                    {isEquipped && (
-                       <Chip icon={<CheckCircleIcon />} label="Đang dùng" color="success" size="small" sx={{ position: 'absolute', top: 10, right: 10, fontWeight: 'bold' }} />
-                    )}
+                  <Box sx={{ position: 'absolute', top: 10, left: 10, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    <Chip label={THEME_LABELS[item.theme]} size="small" variant="outlined" />
+                    <Chip label={RARITY_LABELS[item.rarity]} size="small" color={RARITY_CHIP_COLORS[item.rarity]} />
                   </Box>
 
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <Typography variant="h6" fontWeight="bold" noWrap>{item.name}</Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2, height: '40px', overflow: 'hidden' }}>{item.description}</Typography>
-                    
-                    {tabValue === 0 ? (
-                      owned ? (
-                        <Button fullWidth variant="contained" disabled sx={{ borderRadius: '50px', fontWeight: 'bold' }}>Đã Sở Hữu</Button>
-                      ) : (
-                        <Button fullWidth variant="contained" color="warning" onClick={() => handleBuy(item.id)} sx={{ borderRadius: '50px', fontWeight: 'bold', display: 'flex', gap: 1 }}>
-                          Mua ngay - {item.price} <DiamondIcon fontSize="small" />
-                        </Button>
-                      )
+                  {isEquipped && (
+                    <Chip icon={<CheckCircleIcon />} label="Đang dùng" color="success" size="small" sx={{ position: 'absolute', top: 10, right: 10, fontWeight: 'bold' }} />
+                  )}
+                </Box>
+
+                <CardContent sx={{ textAlign: 'center' }}>
+                  <Typography variant="h6" fontWeight="bold" noWrap>{item.name}</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2, height: '40px', overflow: 'hidden' }}>
+                    {item.description}
+                  </Typography>
+
+                  {tabValue === 0 ? (
+                    owned ? (
+                      <Button fullWidth variant="contained" disabled sx={{ borderRadius: '50px', fontWeight: 'bold' }}>Đã Sở Hữu</Button>
                     ) : (
-                      /* 🟢 UPDATE: Đổi nút Đã Trang Bị (disabled) thành nút Tháo Trang Bị (Clickable, màu đỏ) */
-                      isEquipped ? (
-                        <Button fullWidth variant="outlined" color="error" onClick={() => handleUnequip(item.id)} sx={{ borderRadius: '50px', fontWeight: 'bold' }}>Tháo Trang Bị</Button>
-                      ) : (
-                        <Button fullWidth variant="contained" color="primary" onClick={() => handleEquip(item.id)} sx={{ borderRadius: '50px', fontWeight: 'bold' }}>Trang Bị Lên Người</Button>
-                      )
-                    )}
-                  </CardContent>
-                </Card>
+                      <Button fullWidth variant="contained" color="warning" onClick={() => handleBuy(item.id)} sx={{ borderRadius: '50px', fontWeight: 'bold', display: 'flex', gap: 1 }}>
+                        Mua ngay - {item.price} <DiamondIcon fontSize="small" />
+                      </Button>
+                    )
+                  ) : isEquipped ? (
+                    <Button fullWidth variant="outlined" color="error" onClick={handleUnequip} sx={{ borderRadius: '50px', fontWeight: 'bold' }}>Tháo Trang Bị</Button>
+                  ) : (
+                    <Button fullWidth variant="contained" color="primary" onClick={() => handleEquip(item.id)} sx={{ borderRadius: '50px', fontWeight: 'bold' }}>Trang Bị Lên Người</Button>
+                  )}
+                </CardContent>
+              </Card>
             );
           })}
-          
-          {(tabValue === 0 ? shopItems : inventory).length === 0 && (
-              <Box sx={{ gridColumn: '1 / -1', textAlign: 'center', py: 10, color: 'gray' }}>
-                  <Typography variant="h6">Chưa có vật phẩm nào ở đây cả!</Typography>
-              </Box>
+
+          {displayedItems.length === 0 && (
+            <Box sx={{ gridColumn: '1 / -1', textAlign: 'center', py: 10, color: 'gray' }}>
+              <Typography variant="h6">Không có vật phẩm phù hợp bộ lọc.</Typography>
+            </Box>
           )}
         </Box>
       )}

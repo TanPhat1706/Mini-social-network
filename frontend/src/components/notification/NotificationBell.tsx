@@ -35,7 +35,7 @@ export default function NotificationBell() {
   const open = Boolean(anchorEl);
 
   // --- HELPER: Trả về icon + màu theo loại thông báo ---
-  const getNotifMeta = (type: string): { icon: React.ReactNode; color: string; label: string } => {
+  const getNotifMeta = (type: string): { icon: React.ReactNode; color: string; label: string; isImage?: boolean } => {
     switch (type) {
       case 'REPLY_COMMENT':
         return { icon: <ReplyIcon sx={{ fontSize: 11 }} />, color: '#8b5cf6', label: 'Phản hồi bình luận' };
@@ -239,7 +239,7 @@ export default function NotificationBell() {
                           // Ensure icon renders white on top of colored background
                           let iconElement = meta.icon;
                           if (!meta.isImage && React.isValidElement(meta.icon)) {
-                            iconElement = React.cloneElement(meta.icon as React.ReactElement, { sx: { ...( (meta.icon as any).props?.sx || {} ), color: '#fff', fontSize: 11 } });
+                            iconElement = React.cloneElement(meta.icon as React.ReactElement<{ sx?: object }>, { sx: { ...( (meta.icon as any).props?.sx || {} ), color: '#fff', fontSize: 11 } });
                           }
                           return (
                             <Tooltip title={meta.label} arrow>
