@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Collapse } from '@mui/material';
 import AvatarWithFrame from '../AvatarWithFrame';
+import ComboWrapper from '../Cosmetic/ComboWrapper';
 import { useProfileNavigation } from '../../hooks/useProfileNavigation';
 import ColoredName from '../ColoredName';
 import { formatDistanceToNow } from 'date-fns';
@@ -54,7 +55,12 @@ export default function CommentItem({ comment: initialComment, onReply }: Commen
 
     return (
         <Box sx={{ display: 'flex', mb: 2 }}>
-            <Box sx={{ mr: 1, ml: '8px', mt: '8px' }}>
+            <ComboWrapper
+                frameClass={(comment.author as any).currentAvatarFrame}
+                colorClass={(comment.author as any).currentNameColor}
+                style={{ alignItems: 'flex-start' }}
+            >
+            <Box sx={{ mr: 1, ml: '8px', mt: '8px', flexShrink: 0 }}>
                 <AvatarWithFrame
                     src={comment.author.avatarUrl}
                     frameClass={(comment.author as any).currentAvatarFrame}
@@ -141,6 +147,7 @@ export default function CommentItem({ comment: initialComment, onReply }: Commen
                     </Box>
                 </Collapse>
             </Box>
+            </ComboWrapper>
         </Box>
     );
 }

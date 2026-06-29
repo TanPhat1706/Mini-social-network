@@ -10,6 +10,7 @@ import { differenceInMinutes, differenceInHours, differenceInDays } from 'date-f
 import AvatarWithFrame from './AvatarWithFrame';
 import { useProfileNavigation } from '../hooks/useProfileNavigation';
 import ColoredName from './ColoredName'; 
+import ComboWrapper from './Cosmetic/ComboWrapper';
 
 interface RightSidebarProps {
   friends: User[];
@@ -107,10 +108,14 @@ export default function RightSidebar({ friends, onFriendClick }: RightSidebarPro
               <ListItemButton
                 key={friend.id}
                 onClick={() => onFriendClick(friend)}
-                sx={{ borderRadius: 2, p: 1, '&:hover': { backgroundColor: 'action.hover' } }}
+                sx={{ borderRadius: 2, p: 0.5, '&:hover': { backgroundColor: 'action.hover' } }}
               >
-                <ListItemIcon sx={{ minWidth: 44 }}>
-                  <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                <ComboWrapper
+                  frameClass={(friend as any).currentAvatarFrame}
+                  colorClass={(friend as any).currentNameColor}
+                  style={{ width: '100%' }}
+                >
+                  <Box sx={{ position: 'relative', display: 'inline-block', flexShrink: 0 }}>
                     <AvatarWithFrame
                       src={friend.avatarUrl || `https://ui-avatars.com/api/?name=${friend.fullName}`}
                       frameClass={(friend as any).currentAvatarFrame}
@@ -143,12 +148,13 @@ export default function RightSidebar({ friends, onFriendClick }: RightSidebarPro
                       </Box>
                     ) : null}
                   </Box>
-                </ListItemIcon>
 
-                <ListItemText
-                  primary={<ColoredName name={friend.fullName} colorClass={(friend as any).currentNameColor} />}
-                  primaryTypographyProps={{ fontWeight: 500, fontSize: '14px', color: 'text.primary' }}
-                />
+                  <ListItemText
+                    primary={<ColoredName name={friend.fullName} colorClass={(friend as any).currentNameColor} />}
+                    primaryTypographyProps={{ fontWeight: 500, fontSize: '14px', color: 'text.primary' }}
+                    sx={{ ml: 1 }}
+                  />
+                </ComboWrapper>
               </ListItemButton>
             );
           })

@@ -21,6 +21,7 @@ import EditProfileDialog from './EditProfileDialog';
 import FriendButton from '../friend/FriendButton';
 import AvatarWithFrame from '../AvatarWithFrame'; 
 import ColoredName from '../ColoredName'; 
+import ComboWrapper from '../Cosmetic/ComboWrapper';
 import type { User } from '../../types';
 import { useChat } from '../../context/ChatContext';
 import ImageCropperModal from './ImageCropperModal';
@@ -215,9 +216,13 @@ export default function ProfileHeader({ profileUser, isSelfProfile, onUpdateProf
             )}
           </Box>
 
-          {/* AVATAR & INFO */}
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'center', md: 'flex-end' }, mt: { xs: -8, md: -6 }, position: 'relative', px: { xs: 2, md: 4 } }}>
-            <Box onClick={isSelfProfile ? (e) => setAvatarMenuAnchor(e.currentTarget) : undefined} sx={{ p: 0.5, bgcolor: 'background.paper', borderRadius: '50%', cursor: isSelfProfile ? 'pointer' : 'default', position: 'relative' }}>
+          {/* AVATAR & INFO — wrapped in ComboWrapper for Easter Egg */}
+          <ComboWrapper
+            frameClass={(profileUser as any).currentAvatarFrame}
+            colorClass={(profileUser as any).currentNameColor}
+            style={{ alignItems: 'flex-end', marginTop: undefined, position: 'relative', padding: '6px 16px 6px 6px', flexWrap: 'wrap' }}
+          >
+            <Box onClick={isSelfProfile ? (e) => setAvatarMenuAnchor(e.currentTarget) : undefined} sx={{ p: 0.5, bgcolor: 'background.paper', borderRadius: '50%', cursor: isSelfProfile ? 'pointer' : 'default', position: 'relative', mt: { xs: -8, md: -6 } }}>
               <AvatarWithFrame src={getImageUrl(profileUser.avatarUrl) || `https://ui-avatars.com/api/?name=${profileUser.fullName}`} frameClass={(profileUser as any).currentAvatarFrame} size={168} />
               
               {/* 🟢 RENDER CHẤM XANH NỔI LÊN MẶT AVATAR NẾU ONLINE (CHỈ DÀNH CHO KHÁCH XEM) */}
@@ -276,7 +281,7 @@ export default function ProfileHeader({ profileUser, isSelfProfile, onUpdateProf
                 </>
               )}
             </Box>
-          </Box>
+          </ComboWrapper>
 
           <Divider />
           <Tabs value={activeTab} onChange={onTabChange} sx={{ px: { xs: 2, md: 4 } }}>

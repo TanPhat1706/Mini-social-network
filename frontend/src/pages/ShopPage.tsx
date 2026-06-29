@@ -203,7 +203,7 @@ export default function ShopPage() {
                       <Button fullWidth variant="contained" disabled sx={{ borderRadius: '50px', fontWeight: 'bold' }}>Đã Sở Hữu</Button>
                     ) : (
                       <Button fullWidth variant="contained" color="warning" onClick={() => handleBuy(item.id)} sx={{ borderRadius: '50px', fontWeight: 'bold', display: 'flex', gap: 1 }}>
-                        Mua ngay - {item.price} <DiamondIcon fontSize="small" />
+                        Mua ngay {item.price} <DiamondIcon fontSize="small" />
                       </Button>
                     )
                   ) : isEquipped ? (

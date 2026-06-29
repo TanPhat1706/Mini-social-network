@@ -11,8 +11,9 @@ export type CosmeticTheme =
   | 'CYBER'
   | 'ROYAL'
   | 'ICE'
-  | 'SAKURA'
-  | 'VOID';
+  | 'VOID'
+  | 'SUMMER'
+  | 'WORLDCUP'; 
 
 export type CosmeticRarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'MYTHIC';
 
@@ -41,8 +42,9 @@ export const COSMETIC_THEMES: CosmeticTheme[] = [
   'CYBER',
   'ROYAL',
   'ICE',
-  'SAKURA',
   'VOID',
+  'SUMMER', // <-- Bổ sung vào mảng để dùng trong Filter
+  'WORLDCUP',
 ];
 
 export const COSMETIC_RARITIES: CosmeticRarity[] = [
@@ -72,6 +74,7 @@ export const THEME_LABELS: Record<CosmeticTheme, string> = {
   CYBER: 'Cyber',
   ROYAL: 'Hoàng gia',
   ICE: 'Băng giá',
-  SAKURA: 'Hoa anh đào',
   VOID: 'Hư không',
+  SUMMER: 'Mùa Hè',
+  WORLDCUP: 'WORLD CUP 2026',
 };

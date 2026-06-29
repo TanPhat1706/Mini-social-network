@@ -31,6 +31,7 @@ import CommentSection from '../comment/CommentSection';
 
 import AvatarWithFrame from '../AvatarWithFrame';
 import ColoredName from '../ColoredName';
+import ComboWrapper from '../Cosmetic/ComboWrapper';
 import ReactionListDialog from './ReactionListDialog';
 import ReactionTooltip from './ReactionTooltip';
 
@@ -401,34 +402,32 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
         data-author-code={post.author.studentCode}
         sx={{ maxWidth: '100%', margin: 'auto', mb: 3, boxShadow: 3, borderRadius: 2 }}
       >
-        {/* HEADER */}
-        <CardHeader
-          avatar={
-            <Link component={RouterLink} to={`/profile/${post.author.studentCode}`} style={{ textDecoration: 'none' }}>
-              <AvatarWithFrame src={post.author.avatarUrl} name={post.author.fullName} frameClass={post.author.currentAvatarFrame} size={42} className="hoverable-avatar" />
-            </Link>
-          }
-          action={
-            <IconButton aria-label="settings" onClick={handleMenuClick}><MoreVertIcon /></IconButton>
-          }
-          title={
+        {/* HEADER — wrapped in ComboWrapper to detect Easter Egg Combos */}
+        <ComboWrapper
+          frameClass={post.author.currentAvatarFrame}
+          colorClass={post.author.currentNameColor}
+          style={{ margin: '8px 8px 0 8px' }}
+        >
+          <Link component={RouterLink} to={`/profile/${post.author.studentCode}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+            <AvatarWithFrame src={post.author.avatarUrl} name={post.author.fullName} frameClass={post.author.currentAvatarFrame} size={42} className="hoverable-avatar" />
+          </Link>
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <Link component={RouterLink} to={`/profile/${post.author.studentCode}`} variant="h6" sx={{ fontWeight: 'bold', textDecoration: 'none', color: 'text.primary', '&:hover': { textDecoration: 'underline' } }}>
                 <ColoredName name={post.author.fullName} colorClass={post.author.currentNameColor} />
               </Link>
               {post.originalPost && <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'normal' }}>đã chia sẻ một bài viết</Typography>}
             </Box>
-          }
-          subheader={
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.25 }}>
               {renderVisibilityIcon(post.visibility)}
               <span style={{ margin: '0 4px', fontSize: '10px', color: '#65676B' }}>•</span>
               <Link component={RouterLink} to={`/posts/${post.id}`} color="inherit" underline="hover" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
                 {formatDate(post.createdAt)}
               </Link>
             </Box>
-          }
-        />
+          </Box>
+          <IconButton aria-label="settings" onClick={handleMenuClick} sx={{ alignSelf: 'flex-start' }}><MoreVertIcon /></IconButton>
+        </ComboWrapper>
 
         <Menu anchorEl={anchorEl} open={isMenuOpen} onClose={handleMenuClose}>
           {post.selfPost && <MenuItem onClick={handleEditClick}><ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>Chỉnh sửa bài viết</MenuItem>}

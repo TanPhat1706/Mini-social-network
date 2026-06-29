@@ -11,6 +11,8 @@ public enum CosmeticTheme {
     CYBER,
     ROYAL,
     ICE,
+    VOID,
     SAKURA,
-    VOID
+    SUMMER,
+    WORLDCUP
 }

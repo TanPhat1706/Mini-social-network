@@ -37,8 +37,15 @@ const HOLE_FRAMES = new Set([
   'css-frame-frost-crystal',
   'css-frame-thunder-storm',
   'css-frame-tidal-wave',
+  // New hole frames — SUMMER EVENT (Mythic & Legendary)
+  'css-frame-smr-ocean-mythic',
+  'css-frame-smr-phoenix-sun',
+  'css-frame-smr-sunlight',
+  'css-frame-smr-gold-beach',
+  'css-frame-smr-sand-party',
+  'css-frame-smr-water-art',
+  'css-frame-smr-solar-mythic'
 ]);
-
 
 export interface AvatarRendererProps {
   src?: string | null;
