@@ -12,9 +12,9 @@ interface SpinButtonProps {
 }
 
 export default function SpinButton({ phase, errorMsg, gachaInfo, theme, onSpin }: SpinButtonProps) {
-  
+
   // Dynamic Button Colors
-  const btnConfig = theme === 'SUMMER' 
+  const btnConfig = theme === 'SUMMER'
     ? { bg: 'linear-gradient(90deg, #f59e0b, #ef4444)', hover: 'linear-gradient(90deg, #fbbf24, #f97316)', shadow: 'rgba(245, 158, 11, 0.6)' }
     : { bg: 'linear-gradient(90deg, #10b981, #047857)', hover: 'linear-gradient(90deg, #34d399, #059669)', shadow: 'rgba(16, 185, 129, 0.6)' };
 
@@ -41,7 +41,7 @@ export default function SpinButton({ phase, errorMsg, gachaInfo, theme, onSpin }
       >
         {phase === 'IDLE' ? (
           <Box display="flex" alignItems="center" gap={1}>
-            MỞ RƯƠNG X1 (500 <DiamondIcon fontSize="small" sx={{ color: '#F5A623 !important' }} />)
+            MỞ RƯƠNG X1 (10 <DiamondIcon fontSize="small" sx={{ color: '#F5A623 !important' }} />)
           </Box>
         ) : (
           <Box display="flex" alignItems="center" gap={1}>

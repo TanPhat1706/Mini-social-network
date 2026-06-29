@@ -38,8 +38,8 @@ export default function EventBanner({ theme, ownedCount, totalPoolSize }: EventB
   }[theme];
 
   return (
-    <Box 
-      sx={{ 
+    <Box
+      sx={{
         position: 'relative', width: '100%', textAlign: 'center', mb: 6,
         borderRadius: '16px 16px 0 0', overflow: 'hidden', minHeight: '320px', display: 'flex', flexDirection: 'column', justifyContent: 'center',
         ...config.bgStyle
@@ -77,7 +77,7 @@ export default function EventBanner({ theme, ownedCount, totalPoolSize }: EventB
 
       {/* LAYER 5: CONTENT (Chuẩn hóa layout Top-Middle-Bottom) */}
       <Box position="relative" zIndex={10} pt={4} pb={4} display="flex" flexDirection="column" alignItems="center" flexGrow={1}>
-        
+
         {/* TOP AREA (20%) */}
         <Box mb={2} minHeight="40px">
           {theme === 'WORLDCUP' ? (
@@ -107,30 +107,30 @@ export default function EventBanner({ theme, ownedCount, totalPoolSize }: EventB
 
         {/* BOTTOM AREA (20%) */}
         <Box mt={3} width="100%">
-          <Box 
-            display="flex" 
-            flexWrap="wrap" 
-            justifyContent="center" 
-            gap={2} 
+          <Box
+            display="flex"
+            flexWrap="wrap"
+            justifyContent="center"
+            gap={2}
             px={2} /* Thêm padding hai bên để không bao giờ chạm sát mép màn hình */
           >
-            <Chip 
-              icon={theme === 'WORLDCUP' ? <SportsSoccerIcon fontSize="small" sx={{ color: '#fff !important'}}/> : <InventoryIcon fontSize="small" sx={{ color: '#22d3ee !important' }}/>} 
-              label={`Đã sưu tầm: ${ownedCount} / ${totalPoolSize}`} 
-              variant="outlined" 
-              sx={{ color: '#fff', borderColor: 'rgba(255, 255, 255, 0.3)', bgcolor: 'rgba(0,0,0,0.6)' }} 
+            <Chip
+              icon={theme === 'WORLDCUP' ? <SportsSoccerIcon fontSize="small" sx={{ color: '#fff !important' }} /> : <InventoryIcon fontSize="small" sx={{ color: '#22d3ee !important' }} />}
+              label={`Đã sưu tầm: ${ownedCount} / ${totalPoolSize}`}
+              variant="outlined"
+              sx={{ color: '#fff', borderColor: 'rgba(255, 255, 255, 0.3)', bgcolor: 'rgba(0,0,0,0.6)' }}
             />
-            <Chip 
-              icon={<DiamondIcon fontSize="small" sx={{ color: '#F5A623 !important' }}/>} 
-              label="500 Điểm / Lượt" 
-              variant="outlined" 
-              sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(0,0,0,0.6)' }} 
+            <Chip
+              icon={<DiamondIcon fontSize="small" sx={{ color: '#F5A623 !important' }} />}
+              label="10 Điểm / Lượt"
+              variant="outlined"
+              sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(0,0,0,0.6)' }}
             />
-            <Chip 
-              icon={theme === 'WORLDCUP' ? <EmojiEventsIcon fontSize="small" sx={{ color: '#fde047 !important'}}/> : <SecurityIcon fontSize="small" color="success" />} 
-              label={theme === 'WORLDCUP' ? "Limited Edition" : "Bảo hiểm: Không trùng lặp"} 
-              variant="outlined" 
-              sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(0,0,0,0.6)' }} 
+            <Chip
+              icon={theme === 'WORLDCUP' ? <EmojiEventsIcon fontSize="small" sx={{ color: '#fde047 !important' }} /> : <SecurityIcon fontSize="small" color="success" />}
+              label={theme === 'WORLDCUP' ? "Limited Edition" : "Bảo hiểm: Không trùng lặp"}
+              variant="outlined"
+              sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(0,0,0,0.6)' }}
             />
           </Box>
         </Box>
