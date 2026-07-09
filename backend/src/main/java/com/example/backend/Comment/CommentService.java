@@ -1,25 +1,30 @@
 package com.example.backend.Comment;
 
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.backend.Enum.NotificationType;
+import com.example.backend.Enum.ReactionType;
 import com.example.backend.Event.NotificationEvent;
 import com.example.backend.Post.Post;
 import com.example.backend.Post.PostRepository;
+import com.example.backend.PostReaction.ReactionUserResponse;
 import com.example.backend.User.User;
 import com.example.backend.User.UserRepository;
 import com.example.backend.User.UserResponse;
 import com.example.backend.VPTLpoint.VptlService;
+
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
@@ -29,7 +34,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
-    private final CommentLikeRepository commentLikeRepository;
+    private final CommentReactionRepository commentReactionRepository;
     private final ApplicationEventPublisher evenPublisher;
     private final VptlService vptlService;
 
@@ -39,7 +44,6 @@ public class CommentService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng (Token không hợp lệ?)"));
     }
 
-    // 1. CẬP NHẬT HÀM CREATE COMMENT
     @Transactional
     public CommentResponse createComment(CommentRequest request) {
         User currentUser = getCurrentUser();
@@ -54,7 +58,6 @@ public class CommentService {
             commentRepository.incrementReplyCount(parentComment.getId());
         }
 
-        // 🟢 LẤY CỜ ẨN DANH TỪ REQUEST (Mặc định là false)
         Boolean isAnon = request.getIsAnonymous() != null ? request.getIsAnonymous() : false;
 
         Comment comment = Comment.builder()
@@ -62,22 +65,38 @@ public class CommentService {
                 .author(currentUser)
                 .post(post)
                 .parent(parentComment)
-                .likeCount(0L)
+                .reactionCount(0L)
                 .replyCount(0L)
-                .isAnonymous(isAnon) // 🟢 LƯU VÀO DB
+                .isAnonymous(isAnon)
                 .build();
 
         Comment savedComment = commentRepository.save(comment);
         postRepository.incrementCommentCount(post.getId());
         vptlService.trackSocialActivity(currentUser.getId(), "COMMENT");
 
-        // 🟢 TRUYỀN CỜ ẨN DANH VÀO EVENT (Nhớ cập nhật constructor của
-        // NotificationEvent)
-        evenPublisher.publishEvent(new NotificationEvent(
-                currentUser, post.getAuthor(), NotificationType.COMMENT_POST, post.getId(), "COMMENT",
-                "đã bình luận của bạn", isAnon));
+        if (parentComment != null) {
+            User parentAuthor = parentComment.getAuthor();
+            if (!parentAuthor.getId().equals(currentUser.getId())) {
+                evenPublisher.publishEvent(new NotificationEvent(
+                        currentUser, parentAuthor, NotificationType.REPLY_COMMENT, post.getId(), "COMMENT",
+                        "đã phản hồi bình luận của bạn", null, isAnon));
+            }
+            if (!post.getAuthor().getId().equals(parentAuthor.getId())
+                    && !post.getAuthor().getId().equals(currentUser.getId())) {
+                evenPublisher.publishEvent(new NotificationEvent(
+                        currentUser, post.getAuthor(), NotificationType.COMMENT_POST, post.getId(), "COMMENT",
+                        "đã bình luận về bài viết của bạn", null, isAnon));
+            }
+        } else {
+            if (!post.getAuthor().getId().equals(currentUser.getId())) {
+                evenPublisher.publishEvent(new NotificationEvent(
+                        currentUser, post.getAuthor(), NotificationType.COMMENT_POST, post.getId(), "COMMENT",
+                        "đã bình luận về bài viết của bạn", null, isAnon));
+            }
+        }
 
-        return mapToResponse(savedComment, false);
+        // Comment mới tạo nên map reactionCounts bằng rỗng
+        return mapToResponse(savedComment, null, new HashMap<>());
     }
 
     @Transactional
@@ -93,10 +112,21 @@ public class CommentService {
         }
 
         comment.setContent(newContent);
-        boolean isLiked = commentLikeRepository.findByCommentIdAndUserId(commentId, Long.valueOf(currentUserId))
-                .isPresent();
 
-        return mapToResponse(comment, isLiked);
+        ReactionType currentReaction = commentReactionRepository
+                .findByCommentIdAndUserId(commentId, Long.valueOf(currentUserId))
+                .map(CommentReaction::getReactionType)
+                .orElse(null);
+
+        // Lấy reaction counts cho 1 comment
+        Map<String, Long> countsMap = new HashMap<>();
+        List<CommentReactionRepository.SingleReactionCountProjection> counts = commentReactionRepository
+                .countReactionsByCommentId(commentId);
+        for (var c : counts) {
+            countsMap.put(c.getReactionType().name(), c.getCount());
+        }
+
+        return mapToResponse(comment, currentReaction, countsMap);
     }
 
     @Transactional
@@ -138,61 +168,121 @@ public class CommentService {
     @Transactional(readOnly = true)
     public Page<CommentResponse> getReplies(Long parentCommentId, Pageable pageable) {
         User currentUser = getCurrentUser();
-        System.out.println("Current User in Service: " + currentUser);
         Long currentUserId = Long.valueOf(currentUser.getId());
         Page<Comment> replies = commentRepository.findRepliesByParentId(parentCommentId, pageable);
         return mapToPageResponse(replies, currentUserId);
     }
 
+    public Page<ReactionUserResponse> getReactionsByCommentId(Long commentId, ReactionType type, int page, int size) {
+        if (commentId == null) {
+            throw new IllegalArgumentException("commentId is required");
+        }
+
+        if (!commentRepository.existsById(commentId)) {
+            throw new RuntimeException("Comment not found");
+        }
+
+        Pageable pageable = PageRequest.of(page, size);
+        return commentReactionRepository.findUsersReactionByCommentId(commentId, type, pageable);
+    }
+
+    // 🟢 Tối ưu N+1: Lấy toàn bộ reaction user và count thống kê trong 2 query
     private Page<CommentResponse> mapToPageResponse(Page<Comment> comments, Long currentUserId) {
         List<Long> commentIds = comments.getContent().stream().map(Comment::getId).toList();
 
-        Set<Long> likedCommentIds = new HashSet<>();
+        // 1. Lấy trạng thái đã react của user hiện tại
+        Map<Long, ReactionType> userReactions = Map.of();
         if (currentUserId != null && !commentIds.isEmpty()) {
-            likedCommentIds = commentLikeRepository.findCommentIdsLikedByUser(currentUserId, commentIds);
+            List<CommentReaction> reactions = commentReactionRepository
+                    .findReactionsByUserIdAndCommentIds(currentUserId, commentIds);
+            userReactions = reactions.stream()
+                    .collect(Collectors.toMap(
+                            reaction -> reaction.getComment().getId(), CommentReaction::getReactionType,
+                            (existing, replacement) -> existing));
         }
 
-        final Set<Long> finalLikedIds = likedCommentIds;
-        return comments.map(c -> mapToResponse(c, finalLikedIds.contains(c.getId())));
+        // 2. Lấy thống kê số lượng các loại cảm xúc (reactionCounts)
+        Map<Long, Map<String, Long>> allReactionCounts = new HashMap<>();
+        if (!commentIds.isEmpty()) {
+            List<CommentReactionRepository.ReactionCountProjection> counts = commentReactionRepository
+                    .countReactionsByCommentIds(commentIds);
+            for (var dto : counts) {
+                allReactionCounts
+                        .computeIfAbsent(dto.getCommentId(), k -> new HashMap<>())
+                        .put(dto.getReactionType().name(), dto.getCount());
+            }
+        }
+
+        final Map<Long, ReactionType> finalUserReactions = userReactions;
+        return comments.map(c -> {
+            Map<String, Long> countsMap = allReactionCounts.getOrDefault(c.getId(), new HashMap<>());
+            return mapToResponse(c, finalUserReactions.get(c.getId()), countsMap);
+        });
     }
 
     @Transactional
-    public void toggleLike(Long commentId) {
+    public void reactToComment(Long commentId, ReactionType reactionType) {
         User currentUser = getCurrentUser();
         Long userId = Long.valueOf(currentUser.getId());
-        Optional<CommentLike> existingLike = commentLikeRepository.findByCommentIdAndUserId(commentId, userId);
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new EntityNotFoundException("Comment not found"));
+        Optional<CommentReaction> existingReaction = commentReactionRepository.findByCommentIdAndUserId(commentId,
+                userId);
 
-        if (existingLike.isPresent()) {
-            commentLikeRepository.delete(existingLike.get());
-            commentRepository.decrementLikeCount(commentId);
+        Integer receiverId = comment.getAuthor().getId();
+        User realReceiver = userRepository.findById(receiverId)
+                .orElseThrow(() -> new EntityNotFoundException("Receiver not found"));
+
+        if (existingReaction.isPresent()) {
+            CommentReaction currentReaction = existingReaction.get();
+
+            if (currentReaction.getReactionType() == reactionType) {
+                commentReactionRepository.delete(currentReaction);
+                commentRepository.decrementReactionCount(commentId);
+            } else {
+                currentReaction.setReactionType(reactionType);
+                commentReactionRepository.save(currentReaction);
+                evenPublisher.publishEvent(new NotificationEvent(
+                        currentUser, realReceiver, NotificationType.LIKE_COMMENT, commentId, "COMMENT",
+                        "đã thay đổi cảm xúc về bình luận của bạn",
+                        reactionType,
+                        false));
+            }
         } else {
-            Comment comment = commentRepository.getReferenceById(commentId);
-            User user = userRepository.getReferenceById(userId);
 
-            CommentLike like = CommentLike.builder().comment(comment).user(user).build();
-            commentLikeRepository.save(like);
-            commentRepository.incrementLikeCount(commentId);
+            User user = userRepository.getReferenceById(userId);
+            CommentReaction reaction = CommentReaction.builder()
+                    .comment(comment)
+                    .user(user)
+                    .reactionType(reactionType)
+                    .build();
+            commentReactionRepository.save(reaction);
+            commentRepository.incrementReactionCount(commentId);
+
             vptlService.trackSocialActivity(currentUser.getId(), "LIKE");
+            evenPublisher.publishEvent(new NotificationEvent(
+                    currentUser, realReceiver, NotificationType.LIKE_COMMENT, commentId, "COMMENT",
+                    "đã bày tỏ cảm xúc về bình luận của bạn",
+                    reactionType,
+                    false));
         }
     }
 
-    // 2. CẬP NHẬT HÀM MAP TO RESPONSE (Nơi đeo mặt nạ thực sự)
-    private CommentResponse mapToResponse(Comment comment, boolean isLiked) {
+    // 🟢 Cập nhật lại MapToResponse để nhận map reactionCounts
+    private CommentResponse mapToResponse(Comment comment, ReactionType userReactionType,
+            Map<String, Long> reactionCountsMap) {
         UserResponse authorDTO;
 
-        // 🟢 LOGIC ẨN DANH: Đeo mặt nạ trước khi gửi về Frontend
         if (Boolean.TRUE.equals(comment.getIsAnonymous())) {
             authorDTO = UserResponse.builder()
-                    .id(0) // Xóa dấu vết ID
-                    .fullName("Người dùng ẩn danh") // Đổi tên hiển thị
-                    .avatarUrl("https://ui-avatars.com/api/?name=Anonymous&background=808080&color=fff") // Avatar mặt
-                                                                                                         // nạ xám
+                    .id(0)
+                    .fullName("Người dùng ẩn danh")
+                    .avatarUrl("https://ui-avatars.com/api/?name=Anonymous&background=808080&color=fff")
                     .studentCode("Hidden")
-                    .currentAvatarFrame(null) // Xóa khung avatar xịn (nếu có)
-                    .currentNameColor(null) // Xóa màu tên (nếu có)
+                    .currentAvatarFrame(null)
+                    .currentNameColor(null)
                     .build();
         } else {
-            // Giữ nguyên thông tin thật nếu không ẩn danh
             authorDTO = UserResponse.builder()
                     .id(comment.getAuthor().getId())
                     .fullName(comment.getAuthor().getFullName())
@@ -207,11 +297,12 @@ public class CommentService {
                 .id(comment.getId())
                 .content(comment.getContent())
                 .createdAt(comment.getCreatedAt())
-                .likeCount(comment.getLikeCount())
+                .reactionCount(comment.getReactionCount())
+                .reactionCounts(reactionCountsMap) // 🟢 SET MAP VÀO ĐÂY
                 .replyCount(comment.getReplyCount())
                 .parentId(comment.getParent() != null ? comment.getParent().getId() : null)
-                .isLikedByCurrentUser(isLiked)
-                .author(authorDTO) // 🟢 Gắn author đã được xử lý
+                .currentUserReaction(userReactionType)
+                .author(authorDTO)
                 .build();
     }
 }

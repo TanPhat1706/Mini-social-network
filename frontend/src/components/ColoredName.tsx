@@ -1,31 +1,43 @@
 import React from 'react';
-import '../assets/css/AvatarFrames.css'; // Mượn luôn file CSS của viền Avatar để chứa code màu tên
+import NameRenderer from './Cosmetic/NameRenderer';
 import { useProfileNavigation } from '../hooks/useProfileNavigation';
 
 interface ColoredNameProps {
-    name?: string | null;
-    colorClass?: string | null;
-    studentCode?: string; // optional mã sinh viên để điều hướng
+  name?: string | null;
+  colorClass?: string | null;
+  studentCode?: string;
 }
 
 const ColoredName: React.FC<ColoredNameProps> = ({ name, colorClass, studentCode }) => {
-    const navigateToProfile = useProfileNavigation();
+  const navigateToProfile = useProfileNavigation();
 
-    if (!name) return null;
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigateToProfile(studentCode);
+  };
 
-    const handleClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        navigateToProfile(studentCode);
-    };
-
-    const baseStyle: React.CSSProperties = studentCode ? { cursor: 'pointer', textDecoration: 'none' } : {};
-
-    // Nếu user có mua màu, thẻ <span> sẽ nhận class màu. Nếu không, nó là text bình thường.
-    if (colorClass) {
-        return <span className={colorClass} style={baseStyle} onClick={studentCode ? handleClick : undefined}>{name}</span>;
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick(e as unknown as React.MouseEvent);
     }
+  };
 
-    return <span style={baseStyle} onClick={studentCode ? handleClick : undefined}>{name}</span>;
+  const interactiveStyle: React.CSSProperties | undefined = studentCode
+    ? { cursor: 'pointer', textDecoration: 'none' }
+    : undefined;
+
+  return (
+    <NameRenderer
+      name={name}
+      effectKey={colorClass}
+      style={interactiveStyle}
+      onClick={studentCode ? handleClick : undefined}
+      onKeyDown={studentCode ? handleKeyDown : undefined}
+      role={studentCode ? 'button' : undefined}
+      tabIndex={studentCode ? 0 : undefined}
+    />
+  );
 };
 
 export default ColoredName;

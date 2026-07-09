@@ -1,0 +1,60 @@
+/* src/styles/gacha.css */
+
+/* Hiệu ứng rung nhẹ khi đang gọi API */
+@keyframes box-shake-light {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-3deg); }
+    75% { transform: rotate(3deg); }
+  }
+  
+  /* Hiệu ứng rung mạnh khi sắp nổ */
+  @keyframes box-shake-violent {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-2deg); }
+    20% { transform: translate(-3px, 0px) rotate(2deg); }
+    30% { transform: translate(3px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(2deg); }
+    50% { transform: translate(-1px, 2px) rotate(-2deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(3px, 1px) rotate(-2deg); }
+    80% { transform: translate(-1px, -1px) rotate(2deg); }
+    90% { transform: translate(1px, 2px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-2deg); }
+  }
+  
+  /* Hiệu ứng Rương Nổ tung */
+  @keyframes box-explode {
+    0% { transform: scale(1); filter: brightness(1); opacity: 1; }
+    50% { transform: scale(1.5); filter: brightness(2) blur(2px); opacity: 0.8; }
+    100% { transform: scale(2.5); filter: brightness(3) blur(10px); opacity: 0; }
+  }
+  
+  /* Hiệu ứng Item văng ra */
+  @keyframes item-reveal-pop {
+    0% { transform: scale(0) translateY(50px); opacity: 0; }
+    60% { transform: scale(1.2) translateY(-20px); opacity: 1; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  
+  /* Hiệu ứng hào quang đằng sau vật phẩm (quay tròn) */
+  @keyframes glow-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .gacha-box-light {
+    animation: box-shake-light 0.5s infinite;
+  }
+  
+  .gacha-box-violent {
+    animation: box-shake-violent 0.1s infinite;
+    filter: drop-shadow(0 0 10px #f59e0b) brightness(1.2);
+  }
+  
+  .gacha-box-explode {
+    animation: box-explode 0.6s forwards;
+  }
+  
+  .item-reveal {
+    animation: item-reveal-pop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }

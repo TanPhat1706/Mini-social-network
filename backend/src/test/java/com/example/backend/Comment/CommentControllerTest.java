@@ -2,7 +2,12 @@ package com.example.backend.Comment;
 
 import com.example.backend.Integration.BaseControllerTest;
 import com.example.backend.User.UserResponse;
+import com.example.backend.Enum.ReactionType;
+import com.example.backend.Post.ReactRequest;
+import com.example.backend.PostReaction.ReactionUserResponse;
+
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
@@ -46,7 +51,6 @@ class CommentControllerTest extends BaseControllerTest {
         mockRequest = new CommentRequest();
         mockRequest.setPostId(100L);
         mockRequest.setContent("Bài viết hay quá sếp ơi!");
-        // mockRequest.setParentCommentId(null);
 
         // Chuẩn bị Mock Response
         UserResponse authorResponse = UserResponse.builder()
@@ -59,10 +63,9 @@ class CommentControllerTest extends BaseControllerTest {
                 .id(1L)
                 .content("Bài viết hay quá sếp ơi!")
                 .createdAt(LocalDateTime.now())
-                .likeCount(0L)
                 .replyCount(0L)
                 .parentId(null)
-                .isLikedByCurrentUser(false)
+                // 🟢 FIX LỖI: Đã xóa likeCount và isLikedByCurrentUser vì không còn tồn tại
                 .author(authorResponse)
                 .build();
     }
@@ -100,7 +103,6 @@ class CommentControllerTest extends BaseControllerTest {
                 .author(mockResponse.getAuthor())
                 .build();
 
-        // Service chỉ nhận vào ID và Content dạng String
         when(commentService.updateComment(eq(1L), any(String.class))).thenReturn(updatedResponse);
 
         mockMvc.perform(put("/api/comments/1")
@@ -120,7 +122,6 @@ class CommentControllerTest extends BaseControllerTest {
         mockMvc.perform(delete("/api/comments/1"))
                 .andExpect(status().isNoContent());
 
-        // Xác minh service đã được gọi đúng 1 lần với ID = 1
         verify(commentService).deleteComment(1L);
     }
 
@@ -169,15 +170,44 @@ class CommentControllerTest extends BaseControllerTest {
     }
 
     // ==========================================
-    // 6. TEST THẢ TIM / BỎ THẢ TIM (TOGGLE LIKE)
+    // 6. 🟢 MỚI: TEST THẢ CẢM XÚC (REACT)
     // ==========================================
     @Test
     @WithMockUser(username = "1412")
-    void toggleLike_shouldReturn200() throws Exception {
-        mockMvc.perform(post("/api/comments/1/like"))
+    @DisplayName("Thả cảm xúc vào bình luận thành công")
+    void reactToComment_shouldReturn200() throws Exception {
+        // Tạo DTO ReactRequest
+        ReactRequest reactRequest = new ReactRequest();
+        reactRequest.setReactionType(ReactionType.LOVE);
+
+        mockMvc.perform(post("/api/comments/1/react")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(reactRequest)))
                 .andExpect(status().isOk());
 
-        // Xác minh service đã nhận lệnh toggle like cho comment ID = 1
-        verify(commentService).toggleLike(1L);
+        // Xác minh Controller gọi đúng service với ReactionType chuẩn
+        verify(commentService).reactToComment(1L, ReactionType.LOVE);
+    }
+
+    // ==========================================
+    // 7. 🟢 MỚI: TEST LẤY DANH SÁCH NGƯỜI THẢ CẢM XÚC
+    // ==========================================
+    @Test
+    @WithMockUser(username = "1412")
+    @DisplayName("Lấy danh sách người đã react bình luận")
+    void getReactionsByCommentId_shouldReturnPage() throws Exception {
+        Page<ReactionUserResponse> mockPage = new PageImpl<>(List.of());
+
+        when(commentService.getReactionsByCommentId(eq(1L), eq(ReactionType.HAHA), eq(0), eq(10)))
+                .thenReturn(mockPage);
+
+        mockMvc.perform(get("/api/comments/1/reactions")
+                        .param("type", "HAHA")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        verify(commentService).getReactionsByCommentId(1L, ReactionType.HAHA, 0, 10);
     }
 }

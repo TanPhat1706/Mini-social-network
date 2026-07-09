@@ -41,11 +41,14 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
         senderId: data.senderId,
         senderName: data.senderName,
         senderAvatar: data.senderAvatar,
+        senderAvatarFrame: data.senderAvatarFrame || null,
+        senderNameColor: data.senderNameColor || null,
         message: data.message,
         createdAt: data.createdAt || data.timestamp || new Date().toISOString(),
         targetUrl: data.targetUrl || (data.type === 'FRIEND_REQUEST' ? `/profile/${data.senderStudentCode || data.senderId}` : '#'),
         isRead: data.read || false,
-        type: data.type
+        type: data.type,
+        reactionType: data.reactionType || null,
     });
 
     const fetchHistory = async () => {

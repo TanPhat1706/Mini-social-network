@@ -1,0 +1,58 @@
+/* Layout khung avatar — tách biệt với skin (effectKey) */
+.avatar-wrapper {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  overflow: visible !important;
+  box-sizing: content-box;
+}
+
+.avatar-frame-base {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: visible !important;
+  box-sizing: content-box;
+}
+
+.avatar-image {
+  border-radius: 50%;
+  object-fit: cover;
+  z-index: 2;
+  background-color: #fff;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+}
+
+.name-color-base {
+  display: inline;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
+.hoverable-avatar {
+  cursor: pointer;
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.hoverable-avatar:hover {
+  transform: scale(1.06);
+}
+
+.hoverable-avatar:hover .avatar-image {
+  filter: brightness(1.05);
+}
+
+.avatar-frame-base .css-frame-golden-glow::after,
+.avatar-frame-base .css-frame-magma-fire::after,
+.avatar-frame-base .css-frame-cosmic-galaxy::after {
+  z-index: 0;
+}

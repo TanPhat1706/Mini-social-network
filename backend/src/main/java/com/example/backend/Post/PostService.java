@@ -159,6 +159,7 @@ public class PostService {
         for (PostMedia media : mediaToRemove) {
             fileStorageService.deleteFile(media.getMediaUrl());
         }
+        currentMediaList.removeAll(mediaToRemove);
 
         if (request.getMediaFiles() != null && !request.getMediaFiles().isEmpty()) {
             for (MultipartFile file : request.getMediaFiles()) {
@@ -248,6 +249,7 @@ public class PostService {
                     evenPublisher.publishEvent(new NotificationEvent(
                             currentUser, post.getAuthor(), NotificationType.LIKE_POST, postId, "POST",
                             "đã thay đổi cảm xúc về bài viết của bạn",
+                            requestedReaction,
                             false));
                 }
             } else {
@@ -264,6 +266,7 @@ public class PostService {
                 evenPublisher.publishEvent(new NotificationEvent(
                         currentUser, post.getAuthor(), NotificationType.LIKE_POST, postId, "POST",
                         "đã bày tỏ cảm xúc về bài viết của bạn",
+                        requestedReaction,
                         false));
             }
         } finally {
@@ -365,6 +368,7 @@ public class PostService {
                 rootPost.getId(),
                 "POST",
                 "đã chia sẻ bài viết của bạn.",
+                null,
                 false));
         return mapToPostResponse(savedShare);
     }

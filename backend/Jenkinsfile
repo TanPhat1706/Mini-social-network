@@ -1,13 +1,27 @@
 pipeline {
     agent any
+    triggers {
+        // Poll SCM: Jenkins sẽ check Git repository mỗi 1 phút
+        // Dấu * * * * * là cú pháp Cron expression (mỗi phút)
+        pollSCM('* * * * *') 
+    }
 
     environment {
-        AWS_ACCOUNT_ID = "295662439915"
+        AWS_ACCOUNT_ID = "254201323904" 
         AWS_REGION     = "ap-southeast-1"
         ECR_REPO_NAME  = "minisocial-backend"
-        IMAGE_TAG      = "latest" 
+        
+        // 🟢 ĐÃ FIX: Giữ tag động để lưu lịch sử build
+        IMAGE_TAG      = "v${env.BUILD_NUMBER}" 
+        // 🟢 ĐÃ THÊM: Tag cố định để ECS tự động pull về
+        IMAGE_TAG_LATEST = "latest"
+        
         ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         IMAGE_URI      = "${ECR_REGISTRY}/${ECR_REPO_NAME}:${IMAGE_TAG}"
+        IMAGE_URI_LATEST = "${ECR_REGISTRY}/${ECR_REPO_NAME}:${IMAGE_TAG_LATEST}"
+        
+        ECS_CLUSTER    = "MiniSocial-Cluster"
+        ECS_SERVICE    = "MiniSocial-Backend-Service"
     }
 
     stages {
@@ -20,7 +34,6 @@ pipeline {
         stage('Run Unit Tests') {
             steps {
                 dir('backend') {
-                    // 🟢 ĐỔI sh -> bat
                     bat 'mvn clean test' 
                 }
             }
@@ -29,9 +42,9 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 dir('backend') {
-                    echo "Building Docker image..."
-                    // 🟢 ĐỔI sh -> bat
-                    bat "docker build -t ${IMAGE_URI} ."
+                    echo "Building Docker image with tags ${IMAGE_TAG} and ${IMAGE_TAG_LATEST}..."
+                    // 🟢 ĐÃ FIX: Gắn cả 2 tag cho image vừa build
+                    bat "docker build -t ${IMAGE_URI} -t ${IMAGE_URI_LATEST} ."
                 }
             }
         }
@@ -45,12 +58,48 @@ pipeline {
                     secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
                 ]]) {
                     echo "Logging into AWS ECR..."
-                    // 🟢 ĐỔI sh -> bat. 
-                    // Lưu ý ở Windows, dùng bat với block 1 dòng thường an toàn hơn dùng """ nhiều dòng
                     bat "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
                     
-                    echo "Pushing image to ECR..."
+                    echo "Pushing images to ECR..."
+                    // 🟢 ĐÃ FIX: Đẩy cả 2 bản lên ECR
                     bat "docker push ${IMAGE_URI}"
+                    bat "docker push ${IMAGE_URI_LATEST}"
+                }
+            }
+        }
+
+        stage('Deploy to AWS ECS') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-credentials', 
+                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                ]]) {
+                    echo "--------------------------------------------------------"
+                    echo "BẮT ĐẦU QUY TRÌNH DEPLOY CHUẨN DEVOPS"
+                    echo "--------------------------------------------------------"
+                    
+                    // Gọi Config File Provider Plugin để tiêm file từ Jenkins vào Pipeline
+                    configFileProvider([configFile(fileId: 'ecs-task-def-template', variable: 'TEMPLATE_PATH')]) {
+                        echo "1. Đang tiêm file cấu hình từ Jenkins Managed Files và sinh file cho lượt build này..."
+                        
+                        // Lệnh bat trên Windows để copy nội dung từ đường dẫn tạm của Jenkins ra workspace
+                        bat 'copy "%TEMPLATE_PATH%" task-definition-template.json'
+                        
+                        // Dùng PowerShell thay thế URI như cũ
+                        bat "powershell -Command \"(Get-Content task-definition-template.json) -replace '{{IMAGE_URI}}', '${IMAGE_URI}' | Set-Content task-definition.json\""
+                    }
+                    
+                    echo "2. Đang tiến hành đăng ký mã cấu hình (Task Definition) mới lên AWS..."
+                    bat "aws ecs register-task-definition --cli-input-json file://task-definition.json --region ${AWS_REGION}"
+                    
+                    echo "3. Đang cập nhật ECS Service sang số hiệu Revision mới nhất..."
+                    bat "aws ecs update-service --cluster ${ECS_CLUSTER} --service ${ECS_SERVICE} --task-definition minisocial-backend-task --region ${AWS_REGION}"
+                    
+                    echo "--------------------------------------------------------"
+                    echo "Yêu cầu cập nhật hạ tầng đã được gửi thành công lên AWS ECS!"
+                    echo "--------------------------------------------------------"
                 }
             }
         }
@@ -58,13 +107,13 @@ pipeline {
 
     post {
         success {
-            echo "🎉 TUYỆT VỜI! Đã test, build và push thành công lên AWS ECR!"
+            echo "🎉 TUYỆT VỜI! Đã test, build bản ${IMAGE_TAG} & latest, push ECR và tự động Deploy lên ECS Fargate thành công!"
+            echo "Đợi khoảng 1-2 phút để Container mới khởi động xong là API sẽ nhận code mới nhé."
         }
         failure {
-            echo "❌ CÓ LỖI XẢY RA! Hãy vào kiểm tra lại log nhé!"
+            echo "❌ CÓ LỖI XẢY RA! Hãy vào kiểm tra lại log của Jenkins nhé!"
         }
         always {
-            // 🟢 ĐỔI sh -> bat
             bat "docker image prune -f"
         }
     }

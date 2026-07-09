@@ -1,0 +1,1203 @@
+/* ==========================================================================
+   🏆 BỘ SƯU TẬP WORLD CUP 2026 - VINH QUANG SÂN CỎ (62 ITEMS)
+   [DNA Thiết kế: Thể thao, Góc cạnh, Hình học, Sọc cờ, Kim loại]
+   ========================================================================== */
+
+/* --- A. ANIMATIONS CHUẨN THỂ THAO (DỨT KHOÁT, KHÔNG MỀM MẠI) --- */
+@keyframes wc-light-sweep {
+  0% {
+    background-position: -220% center;
+    filter: brightness(0.95);
+  }
+
+  35% {
+    filter: brightness(1.08);
+  }
+
+  50% {
+    filter: brightness(1.15);
+  }
+
+  65% {
+    filter: brightness(1.08);
+  }
+
+  100% {
+    background-position: 220% center;
+    filter: brightness(0.95);
+  }
+}
+
+@keyframes wc-strobe-flash {
+
+  0%,
+  49% {
+    border-color: #1e293b;
+  }
+
+  50%,
+  100% {
+    border-color: #ffffff;
+  }
+}
+
+@keyframes wc-dash-move {
+  100% {
+    stroke-dashoffset: -20;
+  }
+}
+
+@keyframes wc-stadium-flash {
+
+  0%,
+  100% {
+    opacity: 0.45;
+    filter: brightness(0.9);
+  }
+
+  45% {
+    opacity: 1;
+    filter: brightness(1.6);
+  }
+
+  55% {
+    opacity: 0.7;
+    filter: brightness(1.1);
+  }
+}
+
+@keyframes wc-metal-shine {
+  0% {
+    transform: translateX(-140%);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 0.25;
+  }
+
+  50% {
+    opacity: 0.9;
+  }
+
+  80% {
+    opacity: 0.25;
+  }
+
+  100% {
+    transform: translateX(140%);
+    opacity: 0;
+  }
+}
+
+@keyframes wc-stadium-pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  50% {
+    transform: scale(1.03);
+    filter: brightness(1.18);
+  }
+}
+
+@keyframes wc-camera-flash {
+
+  0%,
+  92% {
+    opacity: 0;
+  }
+
+  94% {
+    opacity: 1;
+    box-shadow: 0 0 20px #fff;
+  }
+
+  96% {
+    opacity: 0.2;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes wc-confetti {
+  0% {
+    transform: translateY(-8px) rotate(0deg);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(12px) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+@keyframes wc-crowd {
+
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  50% {
+    transform: scaleY(1.08);
+  }
+
+  /* Nhấp nhô sóng người */
+}
+
+@keyframes wc-border-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes wc-scan {
+  0% {
+    background-position: 0 0;
+  }
+
+  100% {
+    background-position: 0 200%;
+  }
+
+  /* Quét dọc màn hình VAR */
+}
+
+@keyframes wc-name-highlight {
+
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.3);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* CSS Dùng chung cho Màu Tên - Text Shadow Cứng (Hard Shadow) */
+.wc-name-base {
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.95), 0 0 10px rgba(255, 255, 255, 0.08);
+  filter: contrast(1.08);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+/* ==========================================================================
+       1. TIER MYTHIC (Hiếm nhất - 2 Items)
+       ========================================================================== */
+.css-frame-wc-golden-cup {
+  position: absolute;
+  inset: -8px;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: 50%;
+  border: 3px solid #f6d365;
+  background: linear-gradient(135deg, #5b3a00 0%, #c18a00 12%, #ffe89a 24%, #fff8d6 32%, #facc15 45%, #b77900 62%, #ffec99 78%, #9a6700 100%);
+  background-size: 250% 250%;
+  animation: wc-light-sweep 3s linear infinite;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35), inset 0 0 10px rgba(255, 255, 255, 0.28), inset 0 -6px 8px rgba(90, 55, 0, 0.45), 0 0 0 2px #8b5a00;
+}
+
+.css-frame-wc-golden-cup::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+}
+
+.css-frame-wc-golden-cup::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.75) 45%, transparent 58%);
+  background-size: 250%;
+  animation: wc-light-sweep 3s linear infinite;
+  mix-blend-mode: screen;
+}
+
+.css-color-wc-world-champion {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  background-image: linear-gradient(180deg, #fffbe6 0%, #ffe38a 12%, #facc15 28%, #d29a00 55%, #8f5f00 75%, #facc15 100%);
+  background-size: 100% 220%;
+  text-shadow: 0 1px 0 #fff3, 2px 2px 0 #6b4200, 3px 3px 6px rgba(0, 0, 0, 0.45);
+  -webkit-text-stroke: 0.4px rgba(90, 55, 0, 0.6);
+  animation: wc-light-sweep 3s linear infinite;
+}
+
+/* ==========================================================================
+       2. TIER LEGENDARY (4 Items)
+       ========================================================================== */
+.css-frame-wc-stadium-lights {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  border: 5px solid #1e293b;
+  animation: wc-strobe-flash 0.8s infinite step-end;
+}
+
+.css-frame-wc-fire-goal {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  border: 3px solid #5a0000;
+  background: repeating-conic-gradient(from 0deg, #dc2626 0deg 12deg, #f97316 12deg 24deg, #facc15 24deg 30deg);
+  animation: wc-border-rotate 8s linear infinite;
+  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.35);
+}
+
+.css-frame-wc-fire-goal::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.45);
+}
+
+.css-color-wc-golden-ball {
+  background-image: linear-gradient(to bottom, #fef08a 50%, #ca8a04 50%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 900 !important;
+  text-shadow: 2px 2px 0px #000;
+  animation: wc-metal-shine 3s infinite;
+}
+
+.css-color-wc-golden-boot {
+  background-image: linear-gradient(to bottom, #fcd34d 50%, #d97706 50%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 900 !important;
+  text-shadow: 2px 2px 0px #000;
+  animation: wc-metal-shine 3s infinite reverse;
+}
+
+/* ==========================================================================
+       3. TIER EPIC (10 Items)
+       ========================================================================== */
+.css-frame-wc-goal-net {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  border: 4px solid #e2e8f0;
+  background: linear-gradient(45deg, transparent 45%, #94a3b8 45%, #94a3b8 55%, transparent 55%), linear-gradient(-45deg, transparent 45%, #94a3b8 45%, #94a3b8 55%, transparent 55%);
+  background-size: 10px 10px;
+  animation: wc-stadium-pulse 2s ease-in-out infinite;
+}
+
+.css-frame-wc-confetti {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  border: 6px dashed #1e293b;
+  background: repeating-linear-gradient(90deg, #ef4444 0 15px, #3b82f6 15px 30px, #facc15 30px 45px);
+  animation: wc-border-rotate 8s linear infinite;
+}
+
+.css-frame-wc-confetti::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, transparent 50%, rgba(255, 255, 255, 0.8) 100%);
+  animation: wc-confetti 1.5s linear infinite;
+}
+
+.css-frame-wc-confetti::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.css-frame-wc-final-match-ball {
+  position: absolute;
+  inset: -6px;
+  z-index: 1;
+  pointer-events: none;
+  border: 4px solid #000;
+  background: #fff;
+  clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+  animation: wc-stadium-pulse 2.5s infinite;
+}
+
+.css-frame-wc-vietnam-special {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  border: 4px solid #ef4444;
+  box-shadow: 0 0 0 3px #facc15;
+}
+
+.css-color-wc-golden-glove {
+  background: #f59e0b;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 900 !important;
+  text-shadow: 3px 3px 0px #000;
+  animation: wc-metal-shine 4s infinite;
+}
+
+/* Sọc Quốc Kỳ */
+.css-color-wc-vietnam {
+  background-image: linear-gradient(90deg, #ef4444 0% 30%, #facc15 30% 70%, #ef4444 70% 100%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-brazil {
+  background-image: linear-gradient(90deg, #16a34a 0% 33.3%, #facc15 33.3% 66.6%, #1d4ed8 66.6% 100%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-argentina {
+  background-image: linear-gradient(90deg, #38bdf8 0% 33.3%, #e0f2fe 33.3% 66.6%, #38bdf8 66.6% 100%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-france {
+  background-image: linear-gradient(90deg, #1d4ed8 0% 33.3%, #e0f2fe 33.3% 66.6%, #dc2626 66.6% 100%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-spain {
+  background-image: linear-gradient(90deg, #dc2626 0% 25%, #facc15 25% 75%, #dc2626 75% 100%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+/* ==========================================================================
+       4. TIER RARE (16 Items)
+       ========================================================================== */
+.css-frame-wc-rtg-kickoff {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 3px solid #22c55e;
+  box-shadow: 0 0 0 3px #000;
+  pointer-events: none;
+}
+
+.css-frame-wc-rtg-group {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 3px solid #f97316;
+  box-shadow: 0 0 0 3px #000;
+  pointer-events: none;
+}
+
+.css-frame-wc-rtg-round16 {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 3px solid #94a3b8;
+  box-shadow: 0 0 0 3px #000;
+  pointer-events: none;
+}
+
+.css-frame-wc-rtg-quarter {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 3px solid #3b82f6;
+  box-shadow: 0 0 0 3px #000;
+  pointer-events: none;
+}
+
+.css-frame-wc-rtg-semi {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 3px solid #a855f7;
+  box-shadow: 0 0 0 3px #000;
+  pointer-events: none;
+}
+
+.css-frame-wc-rtg-final {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 3px solid #eab308;
+  box-shadow: 0 0 0 3px #000;
+  pointer-events: none;
+}
+
+.css-frame-wc-captain-band {
+  position: absolute;
+  inset: -4px;
+  z-index: 1;
+  pointer-events: none;
+  border-left: 8px solid #dc2626;
+  border-right: 8px solid #dc2626;
+  border-top: 4px solid #000;
+  border-bottom: 4px solid #000;
+  border-radius: 12px;
+}
+
+.css-frame-wc-ultras-scarf {
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  border: 4px dashed #ef4444;
+}
+
+.css-color-wc-germany {
+  background-image: linear-gradient(90deg, #000000 0% 33.3%, #dc2626 33.3% 66.6%, #facc15 66.6% 100%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-italy {
+  background-image: linear-gradient(90deg, #16a34a 0% 33.3%, #e0f2fe 33.3% 66.6%, #dc2626 66.6% 100%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-portugal {
+  background-image: linear-gradient(90deg, #dc2626 0% 50%, #16a34a 50% 100%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-england {
+  background-image: linear-gradient(90deg, #e0f2fe 0% 45%, #dc2626 45% 55%, #e0f2fe 55% 100%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-japan {
+  background-image: radial-gradient(circle, #dc2626 40%, #e0f2fe 45%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-korea {
+  background-image: linear-gradient(to bottom, #dc2626 50%, #2563eb 50%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-netherlands {
+  background-image: linear-gradient(90deg, #ea580c 0% 50%, #e0f2fe 50% 100%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-belgium {
+  background-image: linear-gradient(90deg, #000000 0% 33.3%, #facc15 33.3% 66.6%, #dc2626 66.6% 100%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+/* ==========================================================================
+       5. TIER COMMON (30 Items)
+       ========================================================================== */
+.css-frame-wc-yellow-card {
+  position: absolute;
+  inset: -4px;
+  z-index: 1;
+  border: 4px solid #eab308;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.css-frame-wc-red-card {
+  position: absolute;
+  inset: -4px;
+  z-index: 1;
+  border: 4px solid #dc2626;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.css-frame-wc-whistle {
+  position: absolute;
+  inset: -4px;
+  z-index: 1;
+  border: 4px solid #475569;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Màn Hình VAR: Ứng dụng hiệu ứng Scan nhiễu sóng xuất sắc */
+.css-frame-wc-var-screen {
+  position: absolute;
+  inset: -6px;
+  z-index: 1;
+  border: 3px double #10b981;
+  border-radius: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(16, 185, 129, 0.2) 2px, rgba(16, 185, 129, 0.2) 4px);
+  background-size: 100% 200%;
+  animation: wc-scan 2s linear infinite;
+}
+
+.css-frame-wc-vuvuzela {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 4px solid #f97316;
+  pointer-events: none;
+}
+
+.css-frame-wc-fan-drum {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 4px solid #8b5cf6;
+  pointer-events: none;
+}
+
+/* Mexican Wave: Ứng dụng hiệu ứng Crowd nhấp nhô */
+.css-frame-wc-mexican-wave {
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  border-top: 5px solid #38bdf8;
+  border-bottom: 5px solid #000;
+  border-left: 2px solid transparent;
+  border-right: 2px solid transparent;
+  animation: wc-crowd 1.2s ease-in-out infinite;
+}
+
+.css-frame-wc-smoke-flare {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 4px dashed #ec4899;
+  pointer-events: none;
+}
+
+.css-frame-wc-corner-flag {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border-right: 6px solid #facc15;
+  border-top: 6px solid #ef4444;
+  pointer-events: none;
+}
+
+.css-frame-wc-stadium-tunnel {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 6px solid #1e293b;
+  pointer-events: none;
+}
+
+.css-frame-wc-sub-board {
+  position: absolute;
+  inset: -4px;
+  border-radius: 8px;
+  border: 3px solid #10b981;
+  border-top: 4px solid #ef4444;
+  pointer-events: none;
+}
+
+.css-frame-wc-tactical-board {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 4px dashed #fff;
+  box-shadow: inset 0 0 0 4px #16a34a;
+  pointer-events: none;
+}
+
+.css-color-wc-first-half {
+  color: #3b82f6;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-second-half {
+  color: #8b5cf6;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-extra-time {
+  color: #f59e0b;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-penalty-shootout {
+  color: #dc2626;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+  animation: wc-camera-flash 3s infinite;
+}
+
+.css-color-wc-golden-goal {
+  color: #ca8a04;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-brace {
+  color: #10b981;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-hat-trick {
+  background-image: linear-gradient(90deg, #10b981 0% 33%, #34d399 33% 66%, #10b981 66% 100%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-clean-sheet {
+  color: #06b6d4;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-fan-pride {
+  color: #ec4899;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+  animation: wc-name-highlight 2s infinite;
+}
+
+.css-color-wc-motm {
+  background-image: linear-gradient(to bottom, #f59e0b 50%, #fbbf24 50%);
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+  animation: wc-name-highlight 1.5s infinite;
+}
+
+.css-color-wc-best-young-player {
+  color: #22c55e;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-playmaker {
+  color: #6366f1;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-dark-horse {
+  color: #334155;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+  text-shadow: 1px 1px 0px #fff;
+}
+
+.css-color-wc-fair-play {
+  color: #14b8a6;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-12th-man {
+  color: #f43f5e;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+.css-color-wc-bicycle-kick {
+  color: #d946ef;
+  font-style: italic;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0px rgba(0, 0, 0, 0.8)) contrast(1.1);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+/* ==========================================================================
+   🏆 BỘ SƯU TẬP COMBO QUỐC GIA (NATIONAL COMBOS)
+   ========================================================================== */
+
+/* Base class cho mọi Viền Quốc Gia (13 đội) */
+.css-frame-wc-vietnam,
+.css-frame-wc-brazil,
+.css-frame-wc-argentina,
+.css-frame-wc-france,
+.css-frame-wc-germany,
+.css-frame-wc-spain,
+.css-frame-wc-italy,
+.css-frame-wc-portugal,
+.css-frame-wc-england,
+.css-frame-wc-japan,
+.css-frame-wc-korea,
+.css-frame-wc-netherlands,
+.css-frame-wc-belgium {
+  position: absolute;
+  inset: -6px;
+  /* Cách avatar ra 6px */
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  animation: wc-stadium-pulse 2.5s infinite;
+  /* Hiệu ứng đập nhịp tim nhẹ */
+}
+
+/* Dùng pseudo-element ::before kết hợp mask để vẽ sọc cờ lên viền tròn */
+.css-frame-wc-vietnam::before,
+.css-frame-wc-brazil::before,
+.css-frame-wc-argentina::before,
+.css-frame-wc-france::before,
+.css-frame-wc-germany::before,
+.css-frame-wc-spain::before,
+.css-frame-wc-italy::before,
+.css-frame-wc-portugal::before,
+.css-frame-wc-england::before,
+.css-frame-wc-japan::before,
+.css-frame-wc-korea::before,
+.css-frame-wc-netherlands::before,
+.css-frame-wc-belgium::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  padding: 4px;
+  /* Độ dày của viền */
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+/* 🇻🇳 Việt Nam (Đỏ - Vàng - Đỏ) */
+.css-frame-wc-vietnam::before {
+  background: linear-gradient(135deg, #ef4444 0% 40%, #facc15 40% 60%, #ef4444 60% 100%);
+  box-shadow: inset 0 0 10px rgba(239, 68, 68, 0.8);
+}
+
+/* 🇧🇷 Brazil (Xanh lá - Vàng - Xanh dương) */
+.css-frame-wc-brazil::before {
+  background: linear-gradient(135deg, #16a34a 0% 33%, #facc15 33% 66%, #1d4ed8 66% 100%);
+}
+
+/* 🇦🇷 Argentina (Xanh nhạt - Trắng - Xanh nhạt) */
+.css-frame-wc-argentina::before {
+  background: linear-gradient(90deg, #38bdf8 0% 33%, #ffffff 33% 66%, #38bdf8 66% 100%);
+}
+
+/* 🇫🇷 Pháp (Xanh đậm - Trắng - Đỏ) */
+.css-frame-wc-france::before {
+  background: linear-gradient(90deg, #1d4ed8 0% 33.3%, #ffffff 33.3% 66.6%, #dc2626 66.6% 100%);
+}
+
+/* 🇩🇪 Đức (Đen - Đỏ - Vàng) */
+.css-frame-wc-germany::before {
+  background: linear-gradient(180deg, #1f2937 0% 33.3%, #dc2626 33.3% 66.6%, #facc15 66.6% 100%);
+}
+
+/* 🇪🇸 Tây Ban Nha (Đỏ - Vàng - Đỏ) */
+.css-frame-wc-spain::before {
+  background: linear-gradient(180deg, #dc2626 0% 25%, #facc15 25% 75%, #dc2626 75% 100%);
+  box-shadow: inset 0 0 10px rgba(220, 38, 38, 0.7);
+}
+
+/* 🇮🇹 Ý (Xanh lá - Trắng - Đỏ) */
+.css-frame-wc-italy::before {
+  background: linear-gradient(90deg, #16a34a 0% 33.3%, #ffffff 33.3% 66.6%, #dc2626 66.6% 100%);
+  box-shadow: inset 0 0 10px rgba(22, 163, 74, 0.6);
+}
+
+/* 🇵🇹 Bồ Đào Nha (Xanh lá - Đỏ) */
+.css-frame-wc-portugal::before {
+  background: linear-gradient(90deg, #16a34a 0% 40%, #dc2626 40% 100%);
+  box-shadow: inset 0 0 10px rgba(220, 38, 38, 0.6);
+}
+
+/* 🏴󠁧󠁢󠁥󠁮󠁧󠁿 Anh (Trắng + Thập giá đỏ) */
+.css-frame-wc-england::before {
+  background:
+    linear-gradient(#ffffff 0 0) content-box,
+    linear-gradient(to right, transparent 42%, #dc2626 42%, #dc2626 58%, transparent 58%) border-box,
+    linear-gradient(to bottom, transparent 42%, #dc2626 42%, #dc2626 58%, transparent 58%) border-box,
+    #ffffff border-box;
+  box-shadow: inset 0 0 8px rgba(220, 38, 38, 0.4);
+}
+
+/* 🇯🇵 Nhật Bản (Trắng - Đỏ tròn) */
+.css-frame-wc-japan::before {
+  background: linear-gradient(135deg, #ffffff 0% 50%, #dc2626 50% 100%);
+  box-shadow: inset 0 0 10px rgba(220, 38, 38, 0.5);
+}
+
+/* 🇰🇷 Hàn Quốc (Đỏ trên - Xanh dưới) */
+.css-frame-wc-korea::before {
+  background: linear-gradient(to bottom, #dc2626 0% 50%, #2563eb 50% 100%);
+  box-shadow: inset 0 0 10px rgba(37, 99, 235, 0.5);
+}
+
+/* 🇳🇱 Hà Lan (Da cam - Trắng - Da cam) */
+.css-frame-wc-netherlands::before {
+  background: linear-gradient(90deg, #ea580c 0% 33.3%, #ffffff 33.3% 66.6%, #ea580c 66.6% 100%);
+  box-shadow: inset 0 0 12px rgba(234, 88, 12, 0.8);
+}
+
+/* 🇧🇪 Bỉ (Đen - Vàng - Đỏ) */
+.css-frame-wc-belgium::before {
+  background: linear-gradient(90deg, #1f2937 0% 33.3%, #facc15 33.3% 66.6%, #dc2626 66.6% 100%);
+  box-shadow: inset 0 0 10px rgba(220, 38, 38, 0.5);
+}
+
+/* ==========================================================================
+   🌟 EASTER EGG COMBO QUỐC GIA — Powered by ComboWrapper [data-combo]
+   Selector: .wc-combo-wrapper[data-combo="X"]
+   Thay thế hoàn toàn CSS :has() không hoạt động với cấu trúc DOM MUI.
+   ========================================================================== */
+
+/* Base style cho tất cả combo wrapper */
+.wc-combo-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 50px;
+  padding: 4px 12px 4px 4px;
+  transition: box-shadow 0.35s ease, background 0.35s ease;
+  position: relative;
+}
+
+/* 🇻🇳 Combo Việt Nam */
+.wc-combo-wrapper[data-combo="vietnam"] {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.5), inset 0 0 10px rgba(239, 68, 68, 0.1) !important;
+  border-radius: 50px !important;
+  background-color: rgba(239, 68, 68, 0.05) !important;
+  padding: 4px 12px 4px 4px !important;
+  /* Tạo khoảng thở cho Hào quang */
+  transition: all 0.3s ease-in-out;
+}
+
+/* 🇧🇷 Combo Brazil */
+.wc-combo-wrapper[data-combo="brazil"] {
+  box-shadow: 0 0 15px rgba(22, 163, 74, 0.5), inset 0 0 10px rgba(22, 163, 74, 0.1) !important;
+  border-radius: 50px !important;
+  background-color: rgba(22, 163, 74, 0.05) !important;
+  padding: 4px 12px 4px 4px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+/* 🇦🇷 Combo Argentina */
+.wc-combo-wrapper[data-combo="argentina"] {
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.5), inset 0 0 10px rgba(56, 189, 248, 0.1) !important;
+  border-radius: 50px !important;
+  background-color: rgba(56, 189, 248, 0.05) !important;
+  padding: 4px 12px 4px 4px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+/* 🇫🇷 Combo Pháp */
+.wc-combo-wrapper[data-combo="france"] {
+  box-shadow: 0 0 15px rgba(29, 78, 216, 0.5), inset 0 0 10px rgba(29, 78, 216, 0.1) !important;
+  border-radius: 50px !important;
+  background-color: rgba(29, 78, 216, 0.05) !important;
+  padding: 4px 12px 4px 4px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+/* 🇩🇪 Combo Đức */
+.wc-combo-wrapper[data-combo="germany"] {
+  box-shadow: 0 0 15px rgba(250, 204, 21, 0.5), inset 0 0 10px rgba(250, 204, 21, 0.1) !important;
+  border-radius: 50px !important;
+  background-color: rgba(250, 204, 21, 0.05) !important;
+  padding: 4px 12px 4px 4px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+/* 🇪🇸 Combo Tây Ban Nha */
+.wc-combo-wrapper[data-combo="spain"] {
+  box-shadow: 0 0 15px rgba(220, 38, 38, 0.5), 0 0 30px rgba(250, 204, 21, 0.2), inset 0 0 10px rgba(220, 38, 38, 0.1) !important;
+  border-radius: 50px !important;
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.04), rgba(250, 204, 21, 0.04)) !important;
+  padding: 4px 12px 4px 4px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+/* 🇮🇹 Combo Ý */
+.wc-combo-wrapper[data-combo="italy"] {
+  box-shadow: 0 0 15px rgba(22, 163, 74, 0.4), 0 0 25px rgba(220, 38, 38, 0.2), inset 0 0 10px rgba(22, 163, 74, 0.08) !important;
+  border-radius: 50px !important;
+  background: linear-gradient(135deg, rgba(22, 163, 74, 0.04), rgba(220, 38, 38, 0.04)) !important;
+  padding: 4px 12px 4px 4px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+/* 🇵🇹 Combo Bồ Đào Nha */
+.wc-combo-wrapper[data-combo="portugal"] {
+  box-shadow: 0 0 15px rgba(220, 38, 38, 0.45), 0 0 25px rgba(22, 163, 74, 0.25), inset 0 0 10px rgba(220, 38, 38, 0.08) !important;
+  border-radius: 50px !important;
+  background: linear-gradient(135deg, rgba(22, 163, 74, 0.04), rgba(220, 38, 38, 0.04)) !important;
+  padding: 4px 12px 4px 4px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+/* 🏴󠁧󠁢󠁥󠁮󠁧󠁿 Combo Anh */
+.wc-combo-wrapper[data-combo="england"] {
+  box-shadow: 0 0 15px rgba(220, 38, 38, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.08) !important;
+  border-radius: 50px !important;
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  padding: 4px 12px 4px 4px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+/* 🇯🇵 Combo Nhật Bản */
+.wc-combo-wrapper[data-combo="japan"] {
+  box-shadow: 0 0 18px rgba(220, 38, 38, 0.5), 0 0 35px rgba(255, 255, 255, 0.15), inset 0 0 10px rgba(220, 38, 38, 0.08) !important;
+  border-radius: 50px !important;
+  background: radial-gradient(circle at 35% 50%, rgba(220, 38, 38, 0.06), transparent 60%) !important;
+  padding: 4px 12px 4px 4px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+/* 🇰🇷 Combo Hàn Quốc */
+.wc-combo-wrapper[data-combo="korea"] {
+  box-shadow: 0 0 15px rgba(220, 38, 38, 0.4), 0 0 25px rgba(37, 99, 235, 0.3), inset 0 0 10px rgba(220, 38, 38, 0.06) !important;
+  border-radius: 50px !important;
+  background: linear-gradient(to bottom, rgba(220, 38, 38, 0.04), rgba(37, 99, 235, 0.04)) !important;
+  padding: 4px 12px 4px 4px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+/* 🇳🇱 Combo Hà Lan */
+.wc-combo-wrapper[data-combo="netherlands"] {
+  box-shadow: 0 0 20px rgba(234, 88, 12, 0.6), 0 0 40px rgba(234, 88, 12, 0.2), inset 0 0 12px rgba(234, 88, 12, 0.1) !important;
+  border-radius: 50px !important;
+  background-color: rgba(234, 88, 12, 0.05) !important;
+  padding: 4px 12px 4px 4px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+/* 🇧🇪 Combo Bỉ */
+.wc-combo-wrapper[data-combo="belgium"] {
+  box-shadow: 0 0 15px rgba(220, 38, 38, 0.45), 0 0 25px rgba(250, 204, 21, 0.25), inset 0 0 10px rgba(31, 41, 55, 0.1) !important;
+  border-radius: 50px !important;
+  background: linear-gradient(135deg, rgba(31, 41, 55, 0.05), rgba(220, 38, 38, 0.04)) !important;
+  padding: 4px 12px 4px 4px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+/* ==========================================================================
+   ✨ COMBO HOVER ENHANCEMENT — Tăng glow khi hover vào combo card
+   ========================================================================== */
+.wc-combo-wrapper[data-combo]:hover {
+  filter: brightness(1.08);
+  transform: scale(1.01);
+  transition: filter 0.2s ease, transform 0.2s ease, box-shadow 0.35s ease;
+}

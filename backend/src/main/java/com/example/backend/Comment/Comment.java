@@ -25,8 +25,10 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "comments")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class Comment extends BaseEntity {
     @Id
@@ -54,8 +56,8 @@ public class Comment extends BaseEntity {
     @Column(columnDefinition = "NVARCHAR(MAX)", nullable = false)
     private String content;
 
-    @Column(nullable = false)
-    private Long likeCount = 0L;
+    @Column(name = "reaction_count", nullable = false)
+    private Long reactionCount = 0L;
 
     @Column(nullable = false)
     private Long replyCount = 0L;

@@ -136,7 +136,7 @@
         <dependency>
             <groupId>io.github.bonigarcia</groupId>
             <artifactId>webdrivermanager</artifactId>
-            <version>5.8.0</version>
+            <version>6.1.0</version>
             <scope>test</scope>
         </dependency>
         <!-- <dependency>
@@ -203,6 +203,9 @@
                         <exclude>com/example/backend/Item/UserInventory.class</exclude>
                         <exclude>com/example/backend/Test/TestController.class</exclude>
                         <exclude>com/example/backend/Controller/InternalTestController.class</exclude>
+                        <exclude>com/example/backend/Storage/StorageException.class</exclude>
+                        <exclude>com/example/backend/Moderation/BlacklistedWord.class</exclude>
+                        <exclude>com/example/backend/Notification/Notification.class</exclude>
 
                         <exclude>**/Config/**</exclude>
                         <exclude>**/HealthCheck/**</exclude>

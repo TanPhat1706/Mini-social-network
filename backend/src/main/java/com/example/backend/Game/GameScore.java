@@ -17,6 +17,7 @@ public class GameScore {
     @Column(nullable = false)
     private Integer userId; // <--- ĐÃ SỬA: Khớp với Integer id của User
 
+    @Column(nullable = false, columnDefinition = "NVARCHAR(255)")
     private String username;
     
     // Thêm cái này để hiển thị avatar trên Bảng Xếp Hạng cho đẹp

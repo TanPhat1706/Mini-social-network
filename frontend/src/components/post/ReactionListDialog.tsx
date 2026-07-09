@@ -2,23 +2,27 @@ import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, IconButton,
   Tabs, Tab, Box, Typography, List, ListItem,
-  ListItemAvatar, ListItemText, CircularProgress, Button, Avatar, Badge
+  ListItemAvatar, ListItemText, CircularProgress, Button, Badge
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { Link as RouterLink } from 'react-router-dom';
 import api from '../../api/api';
 import AvatarWithFrame from '../AvatarWithFrame';
 import ColoredName from '../ColoredName';
-import type { ReactionType } from './CardPost'
+import type { ReactionType } from './CardPost';
+import icons from 'react-reactions/src/helpers/icons'; // 🔴 IMPORT BỘ ICON
 
-const REACTION_CONFIG: Record<ReactionType, { emoji: string; color: string }> = {
-  LIKE: { emoji: '👍', color: 'primary.main' },
-  LOVE: { emoji: '❤️', color: 'error.main' },
-  HAHA: { emoji: '😂', color: 'warning.dark' },
-  WOW: { emoji: '😮', color: 'warning.main' },
-  SAD: { emoji: '😢', color: 'info.main' },
-  ANGRY: { emoji: '😡', color: 'error.dark' }
+// 🔴 CONFIG SỬ DỤNG ICON KEY
+const REACTION_CONFIG: Record<ReactionType, { iconKey: string }> = {
+  LIKE: { iconKey: 'like' },
+  LOVE: { iconKey: 'love' },
+  HAHA: { iconKey: 'haha' },
+  WOW: { iconKey: 'wow' },
+  SAD: { iconKey: 'sad' },
+  ANGRY: { iconKey: 'angry' }
 };
+
+const getReactionImg = (type: ReactionType) => icons.find('facebook', REACTION_CONFIG[type]?.iconKey || 'like');
 
 interface ReactionUser {
   userId: number;
@@ -43,34 +47,32 @@ export default function ReactionListDialog({ open, onClose, postId, reactionCoun
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  // Khởi tạo danh sách các Tab dựa trên những cảm xúc đang có thật trong bài viết
   const availableTabs = [
-    { value: 'ALL', label: 'Tất cả', count: totalReactions, emoji: '' },
+    { value: 'ALL', label: 'Tất cả', count: totalReactions, iconType: null },
     ...Object.entries(reactionCounts)
       .filter(([, count]) => count > 0)
-      .sort((a, b) => b[1] - a[1]) // Sắp xếp giảm dần theo số lượng
+      .sort((a, b) => b[1] - a[1])
       .map(([type, count]) => ({
         value: type,
         label: '',
         count: count,
-        emoji: REACTION_CONFIG[type as ReactionType]?.emoji || ''
+        iconType: type as ReactionType
       }))
   ];
 
   const fetchReactions = async (tab: string, pageNum: number) => {
     setLoading(true);
     try {
-      // Nếu tab là ALL, không truyền params type
       const params: any = { page: pageNum, size: 10 };
       if (tab !== 'ALL') {
         params.type = tab;
       }
 
       const response = await api.get(`/api/posts/${postId}/reactions`, { params });
-      const newUsers = response.data.content; // Phụ thuộc vào cấu trúc Page<T> của Spring Boot
+      const newUsers = response.data.content;
       
       setUsers(prev => pageNum === 0 ? newUsers : [...prev, ...newUsers]);
-      setHasMore(!response.data.last); // Spring Boot Page trả về field 'last' (boolean)
+      setHasMore(!response.data.last);
     } catch (error) {
       console.error("Lỗi khi tải danh sách tương tác:", error);
     } finally {
@@ -78,7 +80,6 @@ export default function ReactionListDialog({ open, onClose, postId, reactionCoun
     }
   };
 
-  // Mỗi khi đổi Tab hoặc mở Dialog, reset lại dữ liệu và gọi API trang 0
   useEffect(() => {
     if (open) {
       setPage(0);
@@ -115,7 +116,16 @@ export default function ReactionListDialog({ open, onClose, postId, reactionCoun
               value={tab.value} 
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  {tab.emoji && <Typography sx={{ fontSize: 16 }}>{tab.emoji}</Typography>}
+                  {/* 🔴 TAB ICON */}
+                  {tab.iconType && (
+                    <Box
+                      sx={{
+                        width: 18, height: 18,
+                        backgroundImage: `url(${getReactionImg(tab.iconType)})`,
+                        backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'
+                      }}
+                    />
+                  )}
                   <Typography variant="body2" sx={{ fontWeight: currentTab === tab.value ? 'bold' : 'normal' }}>
                     {tab.label || tab.count}
                   </Typography>
@@ -135,7 +145,7 @@ export default function ReactionListDialog({ open, onClose, postId, reactionCoun
             <ListItem 
               key={`${user.userId}-${index}`} 
               component={RouterLink} 
-              to={`/profile/${user.studentCode}`} // Chuyển hướng tới trang cá nhân
+              to={`/profile/${user.studentCode}`}
               sx={{ '&:hover': { bgcolor: 'action.hover' }, textDecoration: 'none', color: 'inherit' }}
             >
               <ListItemAvatar>
@@ -143,25 +153,23 @@ export default function ReactionListDialog({ open, onClose, postId, reactionCoun
                   overlap="circular"
                   anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                   badgeContent={
-                    <Box sx={{ 
-                      width: 16, height: 16, borderRadius: '50%', bgcolor: 'background.paper', 
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 1,
-                      zIndex: 2
-                    }}>
-                      <Typography sx={{ fontSize: 10 }}>
-                        {REACTION_CONFIG[user.reactionType]?.emoji}
-                      </Typography>
-                    </Box>
+                    // 🔴 BADGE ICON TRÊN AVATAR
+                    <Box sx={{
+                      width: 18, height: 18,
+                      borderRadius: '50%',
+                      bgcolor: 'background.paper',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 0 0 2px #fff',
+                      backgroundImage: `url(${getReactionImg(user.reactionType)})`,
+                      backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
+                      zIndex: 2,
+                    }} />
                   }
                   sx={{ '& .MuiBadge-badge': { zIndex: 2 } }}>
                   <AvatarWithFrame src={user.avatarUrl} name={user.fullName} size={40} />
                 </Badge>
               </ListItemAvatar>
-              <ListItemText 
-                primary={
-                  <ColoredName name={user.fullName} /> // Nếu em có xử lý màu tên
-                } 
-              />
+              <ListItemText primary={<ColoredName name={user.fullName} />} />
             </ListItem>
           ))}
         </List>

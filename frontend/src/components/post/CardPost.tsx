@@ -3,25 +3,25 @@ import {
   Card, CardHeader, CardContent, CardActions,
   IconButton, Typography, Box, Divider, Button, Link,
   Menu, MenuItem, ListItemIcon,
-  Collapse, Dialog, DialogTitle, DialogContent, DialogActions, TextField
+  Collapse, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  Tooltip
 } from '@mui/material';
-import { showSuccess, showError } from '../../utils/swal';
+import { showSuccess, showError, showDevelopmentAlert } from '../../utils/swal';
 import { Link as RouterLink } from 'react-router-dom';
 
 // Import Icons
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import ThumbUpOutlinedIcon from '@mui/icons-material/ThumbUpOutlined';
-import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined';
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import { Tooltip } from '@mui/material';
 import PublicIcon from '@mui/icons-material/Public';
 import LockIcon from '@mui/icons-material/Lock';
 import PendingIcon from '@mui/icons-material/Pending';
 import GroupIcon from '@mui/icons-material/Group';
+import icons from 'react-reactions/src/helpers/icons'; // 🔴 IMPORT BỘ ICON FACEBOOK
 
 // Import API & Components
 import api from '../../api/api';
@@ -29,11 +29,14 @@ import EditPost from './EditPost';
 import PostMediaGrid from './PostMediaGrid';
 import CommentSection from '../comment/CommentSection';
 
-// 🔴 IMPORT MA THUẬT GIAO DIỆN (Lưu ý sửa đường dẫn cho khớp thư mục của bạn)
 import AvatarWithFrame from '../AvatarWithFrame';
 import ColoredName from '../ColoredName';
+import ComboWrapper from '../Cosmetic/ComboWrapper';
 import ReactionListDialog from './ReactionListDialog';
 import ReactionTooltip from './ReactionTooltip';
+
+// 🟢 IMPORT CONTEXT
+import { useAuth } from '../../context/AuthContext';
 
 // --- Types ---
 export interface PostMedia {
@@ -54,17 +57,19 @@ export interface PostAuthor {
 
 export type ReactionType = 'LIKE' | 'LOVE' | 'HAHA' | 'WOW' | 'SAD' | 'ANGRY';
 
-const REACTION_CONFIG: Record<ReactionType, { emoji: string; label: string; color: string; tooltip: string }> = {
-  LIKE: { emoji: '👍', label: 'Thích', color: 'primary.main', tooltip: 'Thích' },
-  LOVE: { emoji: '❤️', label: 'Yêu thích', color: 'error.main', tooltip: 'Yêu' },
-  HAHA: { emoji: '😂', label: 'Haha', color: 'warning.dark', tooltip: 'Haha' },
-  WOW: { emoji: '😮', label: 'Wow', color: 'warning.main', tooltip: 'Wow' },
-  SAD: { emoji: '😢', label: 'Buồn', color: 'info.main', tooltip: 'Buồn' },
-  ANGRY: { emoji: '😡', label: 'Giận', color: 'error.dark', tooltip: 'Giận' }
+// 🔴 ĐỔI TỪ EMOJI SANG ICON KEY
+const REACTION_CONFIG: Record<ReactionType, { iconKey: string; label: string; color: string }> = {
+  LIKE: { iconKey: 'like', label: 'Thích', color: 'primary.main' },
+  LOVE: { iconKey: 'love', label: 'Yêu thích', color: 'error.main' },
+  HAHA: { iconKey: 'haha', label: 'Haha', color: 'warning.dark' },
+  WOW: { iconKey: 'wow', label: 'Wow', color: 'warning.main' },
+  SAD: { iconKey: 'sad', label: 'Buồn', color: 'info.main' },
+  ANGRY: { iconKey: 'angry', label: 'Giận', color: 'error.dark' }
 };
 
-const REACTION_ORDER: ReactionType[] = ['LIKE', 'LOVE', 'HAHA', 'WOW', 'SAD', 'ANGRY'];
+const getReactionImg = (type: ReactionType) => icons.find('facebook', REACTION_CONFIG[type].iconKey);
 
+const REACTION_ORDER: ReactionType[] = ['LIKE', 'LOVE', 'HAHA', 'WOW', 'SAD', 'ANGRY'];
 
 const formatCount = (count: number) => {
   if (count < 1000) return String(count);
@@ -118,7 +123,6 @@ const renderVisibilityIcon = (visibility?: string) => {
   }
 }
 
-// ⭐️ COMPONENT CON: HIỂN THỊ NỘI DUNG BÀI GỐC (BÀI ĐƯỢC SHARE)
 const SharedPostContent = ({ originalPost }: { originalPost: PostData }) => {
   if (!originalPost) {
     return (
@@ -133,7 +137,6 @@ const SharedPostContent = ({ originalPost }: { originalPost: PostData }) => {
   return (
     <Box sx={{ mt: 2, border: 1, borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
       <Box sx={{ p: 1.5, display: 'flex', alignItems: 'center', bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider' }}>
-
         <Box sx={{ mr: 1.5 }}>
           <Link component={RouterLink} to={`/profile/${originalPost.author.studentCode}`} underline="none" sx={{ display: 'inline-flex' }}>
             <AvatarWithFrame
@@ -145,7 +148,6 @@ const SharedPostContent = ({ originalPost }: { originalPost: PostData }) => {
             />
           </Link>
         </Box>
-
         <Box>
           <Link component={RouterLink} to={`/profile/${originalPost.author.studentCode}`} underline="hover" color="text.primary">
             <Typography variant="subtitle2" fontWeight="bold">
@@ -174,9 +176,8 @@ const SharedPostContent = ({ originalPost }: { originalPost: PostData }) => {
   );
 };
 
-// ⭐️ MAIN COMPONENT: CARD POST CHÍNH
 export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCardProps) {
-
+  const { user } = useAuth();
   const [post, setPost] = useState<PostData>(initialPost);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -289,7 +290,6 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
 
   const handleReactionButtonClick = () => {
     const currentReaction = normalizeReactionType(post.currentUserReaction || null);
-
     if (currentReaction) {
       submitReaction(currentReaction, null);
     } else {
@@ -309,17 +309,12 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
   const handleReactionMouseEnter = () => {
     clearReactionCloseTimer();
     if (showReactionPopup) return;
-
-    reactionOpenTimeoutRef.current = window.setTimeout(() => {
-      openReactionPopup();
-    }, 400);
+    reactionOpenTimeoutRef.current = window.setTimeout(() => { openReactionPopup(); }, 400);
   };
 
   const handleReactionMouseLeave = () => {
     clearReactionOpenTimer();
-    reactionCloseTimeoutRef.current = window.setTimeout(() => {
-      closeReactionPopup();
-    }, 200);
+    reactionCloseTimeoutRef.current = window.setTimeout(() => { closeReactionPopup(); }, 200);
   };
 
   const handleReactionTouchStart = () => {
@@ -352,15 +347,12 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
     if (window.confirm("Bạn có chắc chắn muốn xóa bài viết này không? Hành động này không thể hoàn tác.")) {
       try {
         const response = await api.delete(`/api/posts/${post.id}`);
-
-        // Kiểm tra chuẩn xác HTTP status 204 No Content (hoặc 200 tùy backend config)
         if (response.status === 204 || response.status === 200) {
-          onDeleteSuccess(post.id); // Trả id về component cha (Feed) để update UI
+          onDeleteSuccess(post.id);
         }
       } catch (error: any) {
         console.error("Error deleting post:", error);
-        const errorMsg = error.response?.data?.message || "Lỗi mạng hoặc máy chủ khi xóa bài viết!";
-        showError(errorMsg);
+        showError(error?.response?.data?.message || "Lỗi mạng hoặc máy chủ khi xóa bài viết!");
       }
     }
     handleMenuClose();
@@ -377,7 +369,6 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
   const handleShareSubmit = async () => {
     const caption = shareCaption.trim();
     if (!caption) return;
-
     setShareLoading(true);
     try {
       await api.post(`/api/posts/${post.id}/share`, { content: caption });
@@ -401,9 +392,7 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
     };
   }, []);
 
-  useEffect(() => {
-    setPost(initialPost);
-  }, [initialPost]);
+  useEffect(() => { setPost(initialPost); }, [initialPost]);
 
   return (
     <>
@@ -413,80 +402,37 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
         data-author-code={post.author.studentCode}
         sx={{ maxWidth: '100%', margin: 'auto', mb: 3, boxShadow: 3, borderRadius: 2 }}
       >
-
-        {/* HEADER: NGƯỜI ĐĂNG BÀI */}
-        <CardHeader
-          avatar={
-            <Link component={RouterLink} to={`/profile/${post.author.studentCode}`} style={{ textDecoration: 'none' }}>
-              <AvatarWithFrame
-                src={post.author.avatarUrl}
-                name={post.author.fullName}
-                frameClass={post.author.currentAvatarFrame}
-                size={42}
-                className="hoverable-avatar"
-              />
-            </Link>
-          }
-          action={
-            <IconButton aria-label="settings" onClick={handleMenuClick}>
-              <MoreVertIcon />
-            </IconButton>
-          }
-          title={
+        {/* HEADER — wrapped in ComboWrapper to detect Easter Egg Combos */}
+        <ComboWrapper
+          frameClass={post.author.currentAvatarFrame}
+          colorClass={post.author.currentNameColor}
+          style={{ margin: '8px 8px 0 8px' }}
+        >
+          <Link component={RouterLink} to={`/profile/${post.author.studentCode}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+            <AvatarWithFrame src={post.author.avatarUrl} name={post.author.fullName} frameClass={post.author.currentAvatarFrame} size={42} className="hoverable-avatar" />
+          </Link>
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Link component={RouterLink} to={`/profile/${post.author.studentCode}`}
-                variant="h6"
-                sx={{ fontWeight: 'bold', textDecoration: 'none', color: 'text.primary', '&:hover': { textDecoration: 'underline' } }}
-              >
-                <ColoredName
-                  name={post.author.fullName}
-                  colorClass={post.author.currentNameColor}
-                />
+              <Link component={RouterLink} to={`/profile/${post.author.studentCode}`} variant="h6" sx={{ fontWeight: 'bold', textDecoration: 'none', color: 'text.primary', '&:hover': { textDecoration: 'underline' } }}>
+                <ColoredName name={post.author.fullName} colorClass={post.author.currentNameColor} />
               </Link>
-              {post.originalPost && (
-                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'normal' }}>
-                  đã chia sẻ một bài viết
-                </Typography>
-              )}
+              {post.originalPost && <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'normal' }}>đã chia sẻ một bài viết</Typography>}
             </Box>
-          }
-          subheader={
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.25 }}>
               {renderVisibilityIcon(post.visibility)}
               <span style={{ margin: '0 4px', fontSize: '10px', color: '#65676B' }}>•</span>
-              <Link
-                component={RouterLink}
-                to={`/posts/${post.id}`}
-                color="inherit"
-                underline="hover"
-                sx={{ color: 'text.secondary', fontSize: '0.875rem' }}
-              >
+              <Link component={RouterLink} to={`/posts/${post.id}`} color="inherit" underline="hover" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
                 {formatDate(post.createdAt)}
               </Link>
             </Box>
-          }
-        />
+          </Box>
+          <IconButton aria-label="settings" onClick={handleMenuClick} sx={{ alignSelf: 'flex-start' }}><MoreVertIcon /></IconButton>
+        </ComboWrapper>
 
         <Menu anchorEl={anchorEl} open={isMenuOpen} onClose={handleMenuClose}>
-          {post.selfPost && (
-            <MenuItem onClick={handleEditClick}>
-              <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
-              Chỉnh sửa bài viết
-            </MenuItem>
-          )}
-
-          <MenuItem onClick={() => { alert("Tính năng ẩn bài viết đang được phát triển!"); handleMenuClose(); }}>
-            <ListItemIcon><VisibilityOffIcon fontSize="small" /></ListItemIcon>
-            Ẩn bài viết
-          </MenuItem>
-
-          {post.selfPost && (
-            <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
-              <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
-              Xóa bài viết
-            </MenuItem>
-          )}
+          {post.selfPost && <MenuItem onClick={handleEditClick}><ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>Chỉnh sửa bài viết</MenuItem>}
+          <MenuItem onClick={() => { showDevelopmentAlert(); handleMenuClose(); }}><ListItemIcon><VisibilityOffIcon fontSize="small" /></ListItemIcon>Ẩn bài viết</MenuItem>
+          {post.selfPost && <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}><ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>Xóa bài viết</MenuItem>}
         </Menu>
 
         <CardContent sx={{ pt: 0 }}>
@@ -507,34 +453,28 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
           )}
         </CardContent>
 
+        {/* REACTION SUMMARY */}
         {totalReactions > 0 && (
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 2, py: 1 }}>
             <ReactionTooltip postId={post.id} totalReactions={totalReactions}>
-              <Box
-                sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer'}}
-                onClick={() => setShowReactionList(true)}
-              >
+              <Box sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => setShowReactionList(true)}>
                 <Box sx={{ display: 'flex', alignItems: 'center', ml: -0.6 }}>
                   {topReactions.map(([type], index) => (
                     <Box
                       key={type}
                       sx={{
-                        width: 28,
-                        height: 28,
+                        width: 24,
+                        height: 24,
                         borderRadius: '50%',
                         bgcolor: 'background.paper',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: 1,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        ml: index === 0 ? 0 : -1.2,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 0 0 2px #fff',
+                        ml: index === 0 ? 0 : -1,
                         zIndex: topReactions.length - index,
+                        backgroundImage: `url(${getReactionImg(type)})`,
+                        backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
                       }}
-                    >
-                      <Typography sx={{ fontSize: 14 }}>{REACTION_CONFIG[type].emoji}</Typography>
-                    </Box>
+                    />
                   ))}
                 </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
@@ -544,11 +484,7 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
             </ReactionTooltip>
 
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <Typography
-                variant="body2" color="text.secondary"
-                sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
-                onClick={handleCommentClick}
-              >
+              <Typography variant="body2" color="text.secondary" sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }} onClick={handleCommentClick}>
                 {post.commentCount} bình luận
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -561,11 +497,7 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
         {totalReactions === 0 && (
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', px: 2, py: 1 }}>
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <Typography
-                variant="body2" color="text.secondary"
-                sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
-                onClick={handleCommentClick}
-              >
+              <Typography variant="body2" color="text.secondary" sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }} onClick={handleCommentClick}>
                 {post.commentCount} bình luận
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -577,6 +509,7 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
 
         <Divider variant="middle" sx={{ my: 0 }} />
 
+        {/* POST ACTIONS (LIKE, COMMENT, SHARE) */}
         <CardActions sx={{ justifyContent: 'space-around', p: 1, position: 'relative' }}>
           <Box
             sx={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}
@@ -589,15 +522,18 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
             <Button
               fullWidth
               onClick={(event) => {
-                if (skipClickRef.current) {
-                  skipClickRef.current = false;
-                  return;
-                }
+                if (skipClickRef.current) { skipClickRef.current = false; return; }
                 handleReactionButtonClick();
               }}
               startIcon={
-                activeReaction ? (
-                  <Typography sx={{ fontSize: 18 }}>{activeReaction.emoji}</Typography>
+                activeReactionType ? (
+                  <Box
+                    sx={{
+                      width: 20, height: 20,
+                      backgroundImage: `url(${getReactionImg(activeReactionType)})`,
+                      backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'
+                    }}
+                  />
                 ) : (
                   <ThumbUpOutlinedIcon />
                 )
@@ -605,79 +541,64 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
               sx={{
                 color: activeReaction ? activeReaction.color : 'text.secondary',
                 fontWeight: activeReaction ? 'bold' : 'normal',
-                textTransform: 'none',
-                justifyContent: 'flex-start',
-                width: '100%'
+                textTransform: 'none', justifyContent: 'flex-start', width: '100%'
               }}
             >
               {activeReaction ? activeReaction.label : 'Thích'}
             </Button>
 
+            {/* 🔴 HOVER POPUP CẢM XÚC - ĐÃ FIX XÊ DỊCH */}
             <Box
               sx={{
                 position: 'absolute',
-                bottom: '100%',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                mb: 1,
-                px: 1,
-                py: 1,
-                bgcolor: 'background.paper',
-                borderRadius: 50,
-                boxShadow: 6,
+                bottom: '100%', left: '50%',
+                mb: 1, px: 1, py: 0.5,
+                bgcolor: 'background.paper', borderRadius: 50,
+                boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
                 opacity: showReactionPopup ? 1 : 0,
-                transformOrigin: 'bottom center',
                 pointerEvents: showReactionPopup ? 'auto' : 'none',
                 transition: 'opacity 180ms ease, transform 180ms ease',
+                transformOrigin: 'bottom center',
                 transform: showReactionPopup ? 'translate(-50%, 0)' : 'translate(-50%, 8px)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                minWidth: 240,
+                display: 'flex', alignItems: 'center', gap: 0.5,
                 zIndex: 20,
               }}
               onMouseEnter={clearReactionCloseTimer}
               onMouseLeave={handleReactionMouseLeave}
             >
-              {Object.entries(REACTION_CONFIG).map(([type, config]) => (
-                <Box
-                  key={type}
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    px: 0.5,
-                    transition: 'transform 120ms ease',
-                    '&:hover': { transform: 'scale(1.15)' }
-                  }}
-                  onClick={() => handleSelectReaction(type as ReactionType)}
-                >
-                  <Box
-                    sx={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      bgcolor: activeReactionType === type ? 'action.selected' : 'grey.100'
-                    }}
-                  >
-                    <Typography sx={{ fontSize: 18 }}>{config.emoji}</Typography>
-                  </Box>
-                  <Typography variant="caption" sx={{ mt: 0.5, color: 'text.secondary' }}>
-                    {config.tooltip}
-                  </Typography>
-                </Box>
-              ))}
+              {REACTION_ORDER.map((type) => {
+                const config = REACTION_CONFIG[type];
+                return (
+                  <Tooltip key={type} title={config.label} arrow placement="top">
+                    {/* WRAPPER CỐ ĐỊNH KÍCH THƯỚC */}
+                    <Box
+                      sx={{
+                        width: 48, height: 48,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', borderRadius: '50%',
+                        bgcolor: activeReactionType === type ? 'action.selected' : 'transparent',
+                      }}
+                      onClick={() => handleSelectReaction(type as ReactionType)}
+                    >
+                      {/* ẢNH ĐƯỢC PHÓNG TO KHI HOVER */}
+                      <Box
+                        sx={{
+                          width: 40, height: 40,
+                          backgroundImage: `url(${getReactionImg(type)})`,
+                          backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
+                          transition: 'transform 150ms cubic-bezier(0.4, 0, 0.2, 1)',
+                          '.MuiBox-root:hover > &': { transform: 'scale(1.25) translateY(-4px)' }
+                        }}
+                      />
+                    </Box>
+                  </Tooltip>
+                );
+              })}
             </Box>
           </Box>
 
           <Button
-            fullWidth
-            onClick={handleCommentClick}
+            fullWidth onClick={handleCommentClick}
             startIcon={<ChatBubbleOutlineOutlinedIcon />}
             sx={{ color: 'text.secondary', textTransform: 'none' }}
           >
@@ -686,8 +607,7 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
 
           <Button
             data-testid="post-share-button"
-            fullWidth
-            onClick={handleShareClick}
+            fullWidth onClick={handleShareClick}
             startIcon={<ShareOutlinedIcon />}
             sx={{ color: 'text.secondary', textTransform: 'none' }}
           >
@@ -698,73 +618,37 @@ export default function PostCard({ post: initialPost, onDeleteSuccess }: PostCar
         <Collapse in={showComments} timeout="auto" unmountOnExit>
           <Divider />
           <Box sx={{ p: 2 }}>
-            <CommentSection
-              postId={post.id}
-              currentUserAvatar="https://via.placeholder.com/150"
-            />
+            <CommentSection postId={post.id} currentUser={user || undefined} />
           </Box>
         </Collapse>
       </Card>
 
-      <Dialog
-        open={shareOpen}
-        onClose={() => !shareLoading && setShareOpen(false)}
-        fullWidth
-        maxWidth="sm"
-        data-testid="share-post-dialog"
-      >
+      {/* SHARE DIALOG */}
+      <Dialog open={shareOpen} onClose={() => !shareLoading && setShareOpen(false)} fullWidth maxWidth="sm" data-testid="share-post-dialog">
         <DialogTitle>Chia sẻ bài viết</DialogTitle>
         <DialogContent>
           <TextField
             data-testid="share-post-content"
-            autoFocus
-            fullWidth
-            multiline
-            minRows={3}
+            autoFocus fullWidth multiline minRows={3}
             placeholder="Nhập nội dung bạn muốn chia sẻ..."
-            value={shareCaption}
-            onChange={(e) => setShareCaption(e.target.value)}
-            disabled={shareLoading}
-            sx={{ mt: 1 }}
+            value={shareCaption} onChange={(e) => setShareCaption(e.target.value)}
+            disabled={shareLoading} sx={{ mt: 1 }}
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button
-            data-testid="share-post-cancel"
-            onClick={() => setShareOpen(false)}
-            disabled={shareLoading}
-          >
-            Hủy
-          </Button>
-          <Button
-            data-testid="share-post-submit"
-            variant="contained"
-            onClick={handleShareSubmit}
-            disabled={!shareCaption.trim() || shareLoading}
-          >
+          <Button data-testid="share-post-cancel" onClick={() => setShareOpen(false)} disabled={shareLoading}>Hủy</Button>
+          <Button data-testid="share-post-submit" variant="contained" onClick={handleShareSubmit} disabled={!shareCaption.trim() || shareLoading}>
             {shareLoading ? 'Đang chia sẻ...' : 'Chia sẻ'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {isEditDialogOpen && (
-        <EditPost
-          open={isEditDialogOpen}
-          onClose={() => setIsEditDialogOpen(false)}
-          post={post}
-          onUpdateSuccess={handleUpdateSuccess}
-        />
+        <EditPost open={isEditDialogOpen} onClose={() => setIsEditDialogOpen(false)} post={post} onUpdateSuccess={handleUpdateSuccess} />
       )}
 
-      {/* ⭐️ NHÚNG DIALOG HIỂN THỊ DANH SÁCH TƯƠNG TÁC */}
       {showReactionList && (
-        <ReactionListDialog
-          open={showReactionList}
-          onClose={() => setShowReactionList(false)}
-          postId={post.id}
-          reactionCounts={reactionCounts}
-          totalReactions={totalReactions}
-        />
+        <ReactionListDialog open={showReactionList} onClose={() => setShowReactionList(false)} postId={post.id} reactionCounts={reactionCounts} totalReactions={totalReactions} />
       )}
     </>
   );

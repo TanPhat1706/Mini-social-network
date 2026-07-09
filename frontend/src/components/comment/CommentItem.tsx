@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { Box, Avatar, Typography, IconButton, Link, Button, Collapse } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Typography, Collapse } from '@mui/material';
 import AvatarWithFrame from '../AvatarWithFrame';
+import ComboWrapper from '../Cosmetic/ComboWrapper';
 import { useProfileNavigation } from '../../hooks/useProfileNavigation';
 import ColoredName from '../ColoredName';
-import ThumbUpIcon from '@mui/icons-material/ThumbUp';
-import ThumbUpOutlinedIcon from '@mui/icons-material/ThumbUpOutlined';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import api from '../../api/api';
+import CommentReactionButton from './CommentReactionButton';
 import type { CommentData } from '../../types/types';
 
 interface CommentItemProps {
@@ -18,31 +18,30 @@ interface CommentItemProps {
 export default function CommentItem({ comment: initialComment, onReply }: CommentItemProps) {
     const [comment, setComment] = useState(initialComment);
     const [showReplies, setShowReplies] = useState(false);
-    const [replies, setReplies] = useState<CommentData[]>([]);
+    const [replies, setReplies] = useState<CommentData[]>(initialComment.replies || []);
     const [loadingReplies, setLoadingReplies] = useState(false);
 
-    const handleLike = async () => {
-        const previousState = { ...comment };
-        const isLiked = comment.likedByCurrentUser;
-        setComment(prev => ({
-            ...prev,
-            likedByCurrentUser: !isLiked,
-            likeCount: isLiked ? prev.likeCount - 1 : prev.likeCount + 1
-        }));
-
-        try {
-            await api.post(`/api/comments/${comment.id}/like`);
-        } catch (error) {
-            setComment(previousState);
+    // Sync khi replies được push từ parent (optimistic update sau khi reply thành công)
+    React.useEffect(() => {
+        if (initialComment.replies && initialComment.replies.length > replies.length) {
+            setReplies(initialComment.replies);
+            setShowReplies(true); // Tự động mở danh sách replies để user thấy reply vừa gửi
         }
-    };
+        // Đồng bộ replyCount
+        setComment(prev => ({ ...prev, replyCount: initialComment.replyCount }));
+    }, [initialComment.replies, initialComment.replyCount]);
 
     const handleLoadReplies = async () => {
         if (!showReplies && replies.length === 0) {
             setLoadingReplies(true);
             try {
                 const res = await api.get(`/api/comments/${comment.id}/replies?page=0&size=10`);
-                setReplies(res.data.content);
+                // Merge: giữ replies đã có từ optimistic update, bổ sung từ API
+                setReplies(prev => {
+                    const existingIds = new Set(prev.map(r => r.id));
+                    const newFromApi = res.data.content.filter((r: CommentData) => !existingIds.has(r.id));
+                    return [...prev, ...newFromApi];
+                });
             } catch (error) {
                 console.error("Lỗi load replies", error);
             } finally {
@@ -56,7 +55,12 @@ export default function CommentItem({ comment: initialComment, onReply }: Commen
 
     return (
         <Box sx={{ display: 'flex', mb: 2 }}>
-            <Box sx={{ mr: 1, ml: '8px', mt: '8px' }}>
+            <ComboWrapper
+                frameClass={(comment.author as any).currentAvatarFrame}
+                colorClass={(comment.author as any).currentNameColor}
+                style={{ alignItems: 'flex-start' }}
+            >
+            <Box sx={{ mr: 1, ml: '8px', mt: '8px', flexShrink: 0 }}>
                 <AvatarWithFrame
                     src={comment.author.avatarUrl}
                     frameClass={(comment.author as any).currentAvatarFrame}
@@ -88,15 +92,23 @@ export default function CommentItem({ comment: initialComment, onReply }: Commen
                     </Typography>
                 </Box>
 
-                {/* ACTION BUTTONS (Like, Reply, Time) */}
-                <Box sx={{ display: 'flex', alignItems: 'center', ml: 1.5, mt: 0.5, gap: 2 }}>
-                    <Typography
-                        variant="caption"
-                        sx={{ cursor: 'pointer', fontWeight: comment.likedByCurrentUser ? 'bold' : 'normal', color: comment.likedByCurrentUser ? 'primary.main' : 'text.secondary' }}
-                        onClick={handleLike}
-                    >
-                        Thích
-                    </Typography>
+                {/* ACTION BUTTONS (Reaction, Reply, Time) */}
+                <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', ml: 1.5, mt: 0.5, gap: 2 }}>
+                    <CommentReactionButton
+                        commentId={comment.id}
+                        reactionCounts={comment.reactionCounts}
+                        reactionCount={comment.reactionCount}
+                        currentUserReaction={comment.currentUserReaction || null}
+                        onReactionChange={(nextReactionCounts, nextCurrentUserReaction) => {
+                            const nextReactionCount = Object.values(nextReactionCounts).reduce((sum, value) => sum + value, 0);
+                            setComment(prev => ({
+                                ...prev,
+                                reactionCounts: nextReactionCounts,
+                                reactionCount: nextReactionCount,
+                                currentUserReaction: nextCurrentUserReaction,
+                            }));
+                        }}
+                    />
 
                     <Typography
                         variant="caption"
@@ -109,15 +121,6 @@ export default function CommentItem({ comment: initialComment, onReply }: Commen
                     <Typography variant="caption" color="text.secondary">
                         {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true, locale: vi })}
                     </Typography>
-
-                    {/* Số lượng like nhỏ */}
-                    {comment.likeCount > 0 && (
-                        /* 🟢 ĐÃ SỬA: Đổi màu nền nhỏ thành background.paper để hòa nhập với card */
-                        <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: 'background.paper', borderRadius: 10, px: 0.5, boxShadow: 1 }}>
-                            <ThumbUpIcon sx={{ width: 12, height: 12, color: 'primary.main' }} />
-                            <Typography variant="caption" sx={{ ml: 0.5, color: 'text.primary' }}>{comment.likeCount}</Typography>
-                        </Box>
-                    )}
                 </Box>
 
                 {/* XEM CÁC CÂU TRẢ LỜI */}
@@ -144,6 +147,7 @@ export default function CommentItem({ comment: initialComment, onReply }: Commen
                     </Box>
                 </Collapse>
             </Box>
+            </ComboWrapper>
         </Box>
     );
 }

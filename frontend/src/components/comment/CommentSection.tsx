@@ -1,18 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
-// 🟢 ĐÃ THÊM: Import Switch và FormControlLabel từ MUI
-import { Box, TextField, IconButton, CircularProgress, Typography, Avatar, InputAdornment, Switch, FormControlLabel } from '@mui/material';
+import { Box, TextField, IconButton, CircularProgress, Typography, InputAdornment, Switch, FormControlLabel, Snackbar, Alert } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
 import api from '../../api/api';
 import CommentItem from './CommentItem';
 import type { CommentData } from '../../types/types';
 
+// 🟢 MỚI: Import 2 Component VIP của chúng ta vào
+import AvatarWithFrame from '../AvatarWithFrame';
+import ColoredName from '../ColoredName';
+
+// 🟢 MỚI: Cập nhật Props để nhận toàn bộ thông tin User thay vì chỉ mỗi cái link Avatar
 interface CommentSectionProps {
     postId: number;
-    currentUserAvatar?: string;
+    currentUser?: {
+        fullName: string;
+        studentCode: string;
+        avatarUrl?: string;
+        currentAvatarFrame?: string | null;
+        currentNameColor?: string | null;
+    };
 }
 
-export default function CommentSection({ postId, currentUserAvatar }: CommentSectionProps) {
+export default function CommentSection({ postId, currentUser }: CommentSectionProps) {
     const [comments, setComments] = useState<CommentData[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(0);
@@ -22,8 +32,11 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
     const [replyTo, setReplyTo] = useState<{ name: string; parentId: number } | null>(null);
     const [submitting, setSubmitting] = useState(false);
     
-    // 🟢 STATE MỚI: Quản lý trạng thái bật/tắt Bình luận ẩn danh
     const [isAnonymous, setIsAnonymous] = useState(false);
+    // Snackbar để thông báo sau khi reply thành công
+    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'info' }>(
+        { open: false, message: '', severity: 'success' }
+    );
     
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -66,31 +79,57 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
     const handleSubmit = async () => {
         if (!content.trim()) return;
         setSubmitting(true);
-
+    
         try {
             const payload = {
                 content: content,
                 postId: postId,
                 parentCommentId: replyTo?.parentId || null,
-                // 🟢 GỬI CỜ ẨN DANH LÊN BACKEND
-                isAnonymous: isAnonymous 
+                isAnonymous: isAnonymous
             };
-
+    
             const res = await api.post('/api/comments', payload);
-            const newComment = res.data;
-
+            const savedComment = res.data;
+    
+            // 🟢 TỐI ƯU UI: Enrichment dữ liệu
+            // Chúng ta tạo một bản sao đã làm giàu thông tin để cập nhật State ngay lập tức
+            const enrichedComment = {
+                ...savedComment,
+                author: {
+                    ...savedComment.author,
+                    // Nếu bình luận ẩn danh, thông tin author thường được backend trả về là null hoặc thông tin ẩn danh
+                    // Nếu không ẩn danh, ta ghi đè thông tin frame/color từ currentUser để đảm bảo UI khớp 100%
+                    ...(isAnonymous ? {} : {
+                        currentAvatarFrame: currentUser?.currentAvatarFrame || savedComment.author.currentAvatarFrame,
+                        currentNameColor: currentUser?.currentNameColor || savedComment.author.currentNameColor
+                    })
+                }
+            };
+    
             if (replyTo) {
-                alert("Đã gửi câu trả lời! Hãy mở mục phản hồi để xem.");
+                // Cập nhật replies ngay trong state của comment cha
+                setComments(prev => prev.map(c => {
+                    if (c.id === replyTo.parentId) {
+                        return {
+                            ...c,
+                            replyCount: c.replyCount + 1,
+                            replies: [...(c.replies || []), enrichedComment]
+                        };
+                    }
+                    return c;
+                }));
                 handleCancelReply();
+                // Hiện Snackbar thông báo nhẹ nhàng thay vì alert() chặn UI
+                setSnackbar({ open: true, message: 'Đã gửi phản hồi thành công! 💬', severity: 'success' });
             } else {
-                setComments(prev => [newComment, ...prev]);
+                // Cập nhật State để React tự render lại UI ngay lập tức
+                setComments(prev => [enrichedComment, ...prev]);
             }
-
+    
             setContent('');
-            // Lưu ý: Tui cố tình không set isAnonymous(false) ở đây, 
-            // để nếu user đang thích chat ẩn danh thì họ gõ tiếp luôn không cần bật lại.
         } catch (error) {
             console.error("Failed to post comment", error);
+            // Có thể thêm showError("Không thể gửi bình luận") ở đây
         } finally {
             setSubmitting(false);
         }
@@ -133,10 +172,31 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
             </Box>
 
             {/* KHUNG INPUT */}
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', pt: 1, borderTop: 1, borderColor: 'divider' }}>
-                <Avatar src={currentUserAvatar} sx={{ mr: 1, width: 32, height: 32 }} />
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', pt: 1.5, borderTop: 1, borderColor: 'divider' }}>
+                
+                {/* 🟢 ĐÃ SỬA: Dùng AvatarWithFrame thay cho Avatar thường */}
+                <Box sx={{ mr: 1, mt: 0.5 }}>
+                    <AvatarWithFrame 
+                        src={isAnonymous ? "https://ui-avatars.com/api/?name=Anonymous&background=808080&color=fff" : currentUser?.avatarUrl} 
+                        frameClass={isAnonymous ? null : currentUser?.currentAvatarFrame} 
+                        size={36} 
+                    />
+                </Box>
                 
                 <Box sx={{ flexGrow: 1 }}>
+                    
+                    {/* 🟢 HIỂN THỊ TÊN NGƯỜI ĐANG BÌNH LUẬN Ở TRÊN KHUNG NHẬP */}
+                    {currentUser && !isAnonymous && (
+                        <Typography variant="caption" sx={{ ml: 1, mb: 0.5, display: 'block' }}>
+                            Bình luận dưới tên: <ColoredName name={currentUser.fullName} colorClass={currentUser.currentNameColor} studentCode={currentUser.studentCode} />
+                        </Typography>
+                    )}
+                    {isAnonymous && (
+                        <Typography variant="caption" sx={{ ml: 1, mb: 0.5, display: 'block', color: 'text.secondary', fontStyle: 'italic' }}>
+                            Đang bình luận với tư cách: <b>Một người dùng ẩn danh</b> 🕵️
+                        </Typography>
+                    )}
+
                     {replyTo && (
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5, bgcolor: 'action.hover', p: 0.5, borderRadius: 1 }}>
                             <Typography variant="caption" sx={{ mr: 1, color: 'text.primary' }}>
@@ -176,7 +236,7 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
                         }}
                     />
                     
-                    {/* 🟢 KHU VỰC TOOLBAR DƯỚI INPUT: NÚT SWITCH VÀ HƯỚNG DẪN */}
+                    {/* KHU VỰC TOOLBAR DƯỚI INPUT */}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5, px: 1 }}>
                         <FormControlLabel
                             data-testid="comment-anonymous-toggle"
@@ -210,6 +270,23 @@ export default function CommentSection({ postId, currentUserAvatar }: CommentSec
                     
                 </Box>
             </Box>
+
+            {/* SNACKBAR THÔNG BÁO REPLY THÀNH CÔNG */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={3000}
+                onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert
+                    onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+                    severity={snackbar.severity}
+                    variant="filled"
+                    sx={{ width: '100%', borderRadius: 2 }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }
